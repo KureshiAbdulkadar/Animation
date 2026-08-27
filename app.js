@@ -9,7 +9,7 @@
   // HUD Elements
   let designPreset, speedRange, speedValue, accentPicker, accentHex, presetDots;
   let pixelSizeSlider, pixelSizeValue, arcThicknessSlider, arcThicknessValue, glowIntensitySlider, glowIntensityValue;
-  let transparentBgCheckbox, exportHtmlBtn, exportJsBtn, exportWebmBtn, webmBtnText;
+  let transparentBgCheckbox, exportHtmlBtn, exportJsBtn, exportWebmBtn, webmBtnText, exportMdBtn, exportGifBtn, gifBtnText;
   
   // System Stats
   let fpsCounter, particleCounter, dprCounter;
@@ -2414,6 +2414,271 @@ export class ${cleanPresetName}Visualizer {
     }
   };
 
+  const downloadMdIntegrationGuide = () => {
+    const preset = presetMode;
+    const cleanPresetName = preset.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join("");
+    const isTransparent = transparentBgCheckbox ? transparentBgCheckbox.checked : false;
+
+    const classCode = `/**
+ * Standalone Canvas 2D Visualizer: ${cleanPresetName}
+ * Primary Accent Color: ${color}
+ * Throttled to 90 FPS
+ */
+export class ${cleanPresetName}Visualizer {
+  constructor(canvas, options = {}) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext("2d");
+    this.color = options.color || "${color}";
+    this.speed = options.speed || ${speed};
+    this.pixelSize = options.pixelSize || ${pixelSize};
+    this.arcThickness = options.arcThickness || ${arcThickness};
+    this.glowIntensity = options.glowIntensity || ${glowIntensity};
+    this.transparent = options.transparent !== undefined ? options.transparent : ${isTransparent};
+    
+    this.width = 0;
+    this.height = 0;
+    this.raf = 0;
+    this.lastFrameTime = performance.now();
+    this.fpsInterval = 1000 / 90;
+    
+    this.init();
+  }
+
+  init() {
+    this.resize = this.resize.bind(this);
+    this.draw = this.draw.bind(this);
+    window.addEventListener("resize", this.resize);
+    this.resize();
+    this.raf = requestAnimationFrame(this.draw);
+  }
+
+  resize() {
+    this.width = window.innerWidth;
+    this.height = window.innerHeight;
+    const dpr = window.devicePixelRatio || 1;
+    this.canvas.width = this.width * dpr;
+    this.canvas.height = this.height * dpr;
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  draw(time) {
+    const now = performance.now();
+    const elapsedFrame = now - this.lastFrameTime;
+    if (elapsedFrame < this.fpsInterval) {
+      this.raf = requestAnimationFrame(this.draw);
+      return;
+    }
+    this.lastFrameTime = now - (elapsedFrame % this.fpsInterval);
+
+    const ctx = this.ctx;
+    const width = this.width;
+    const height = this.height;
+
+    // Clear background
+    if (this.transparent) {
+      ctx.clearRect(0, 0, width, height);
+    } else {
+      ctx.fillStyle = "#030704";
+      ctx.fillRect(0, 0, width, height);
+    }
+
+    const t = time * 0.001 * this.speed;
+    const [baseR, baseG, baseB] = this.hexToRgb(this.color);
+    const speed = this.speed;
+    const pixelSize = this.pixelSize;
+    const arcThickness = this.arcThickness;
+    const glowIntensity = this.glowIntensity;
+    const transparent = this.transparent;
+
+    ${getPresetCode(preset).trim()}
+
+    this.raf = requestAnimationFrame(this.draw);
+  }
+
+  hexToRgb(hex) {
+    const val = hex.replace("#", "");
+    return [
+      parseInt(val.substring(0, 2), 16),
+      parseInt(val.substring(2, 4), 16),
+      parseInt(val.substring(4, 6), 16)
+    ];
+  }
+
+  destroy() {
+    cancelAnimationFrame(this.raf);
+    window.removeEventListener("resize", this.resize);
+  }
+}`;
+
+    const mdContent = `# Developer Integration Guide: ${cleanPresetName} Visualizer
+
+This guide provides the complete standalone integration code and instructions for embedding the **${cleanPresetName}** visualizer inside your own projects.
+
+## Visualizer Configuration
+* **Preset Variant**: \`${preset}\`
+* **Primary Accent Color**: \`${color}\`
+* **Block Dimension**: \`${pixelSize}px\`
+* **Wave Spread**: \`${arcThickness}px\`
+* **Glow Bloom**: \`${glowIntensity}x\`
+* **Animation Speed**: \`${speed}x\`
+* **Transparent Background Mode**: \`${isTransparent ? "Enabled" : "Disabled"}\`
+
+---
+
+## Standalone ES6 Class Module
+
+Save the following code inside a JavaScript module file (e.g. \`visualizer.js\`):
+
+\`\`\`javascript
+${classCode}
+\`\`\`
+
+---
+
+## Setup & Integration Steps
+
+### Step 1: Add Canvas to HTML
+Place a \`<canvas>\` container in your markup where you want the visualizer to render:
+\`\`\`html
+<!-- Ensure the parent container has explicit dimensions -->
+<div style="position: relative; width: 100vw; height: 100vh;">
+  <canvas id="my-visualizer-canvas" style="display: block; width: 100%; height: 100%;"></canvas>
+</div>
+\`\`\`
+
+### Step 2: Instantiate Visualizer
+Import the class and initialize it by passing your canvas element:
+\`\`\`javascript
+import { ${cleanPresetName}Visualizer } from "./visualizer.js";
+
+const canvas = document.getElementById("my-visualizer-canvas");
+const visualizer = new ${cleanPresetName}Visualizer(canvas, {
+  color: "${color}",
+  speed: ${speed},
+  pixelSize: ${pixelSize},
+  arcThickness: ${arcThickness},
+  glowIntensity: ${glowIntensity},
+  transparent: ${isTransparent}
+});
+
+// To clean up/destroy event listeners when navigating away (SPAs):
+// visualizer.destroy();
+\`\`\`
+`;
+
+    const blob = new Blob([mdContent], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${preset}-integration-guide.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  let isRecordingGif = false;
+  const loadScript = (url) => {
+    return new Promise((resolve, reject) => {
+      if (document.querySelector(`script[src="${url}"]`)) {
+        resolve();
+        return;
+      }
+      const script = document.createElement("script");
+      script.src = url;
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error("Failed to load script " + url));
+      document.head.appendChild(script);
+    });
+  };
+
+  const recordGifVideo = () => {
+    if (isRecordingGif) return;
+    isRecordingGif = true;
+
+    if (gifBtnText) gifBtnText.textContent = "Loading Engine...";
+    if (exportGifBtn) {
+      exportGifBtn.style.background = "rgba(234, 179, 8, 0.15)";
+      exportGifBtn.style.borderColor = "rgba(234, 179, 8, 0.4)";
+    }
+
+    loadScript("https://cdnjs.cloudflare.com/ajax/libs/gifshot/0.4.5/gifshot.min.js")
+      .then(() => {
+        captureGifFrames();
+      })
+      .catch((e) => {
+        console.error("Failed to load gifshot:", e);
+        alert("Failed to load GIF recording engine. Please check your internet connection.");
+        resetGifButton();
+      });
+  };
+
+  const captureGifFrames = () => {
+    const frames = [];
+    const maxFrames = 60; // 2 seconds of animation at 30 FPS
+    const recordInterval = 1000 / 30; // 30 FPS capture
+    let framesCaptured = 0;
+
+    if (gifBtnText) gifBtnText.textContent = "Capturing (2s)...";
+
+    // Setup temp downscaling canvas (480x270 standard preview size)
+    const tempCanvas = document.createElement("canvas");
+    tempCanvas.width = 480;
+    tempCanvas.height = 270;
+    const tempCtx = tempCanvas.getContext("2d");
+
+    const captureInterval = setInterval(() => {
+      // Draw main canvas onto downscaled canvas
+      tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+      tempCtx.drawImage(canvas, 0, 0, canvas.width, canvas.height, 0, 0, tempCanvas.width, tempCanvas.height);
+      
+      frames.push(tempCanvas.toDataURL("image/png"));
+      framesCaptured++;
+
+      if (framesCaptured >= maxFrames) {
+        clearInterval(captureInterval);
+        compileGif(frames, tempCanvas.width, tempCanvas.height);
+      }
+    }, recordInterval);
+  };
+
+  const compileGif = (frames, gifWidth, gifHeight) => {
+    if (gifBtnText) gifBtnText.textContent = "Encoding GIF...";
+
+    window.gifshot.createGIF({
+      images: frames,
+      gifWidth: gifWidth,
+      gifHeight: gifHeight,
+      interval: 1 / 30,
+      numFrames: frames.length,
+      frameDuration: 3, // 30 FPS (3 centiseconds per frame)
+      sampleInterval: 10,
+      numWorkers: 2
+    }, (obj) => {
+      if (!obj.error) {
+        const a = document.createElement("a");
+        a.href = obj.image;
+        a.download = `${presetMode}-preview.gif`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      } else {
+        console.error("gifshot error:", obj.error);
+        alert("Failed to encode GIF. Please try again!");
+      }
+      resetGifButton();
+    });
+  };
+
+  const resetGifButton = () => {
+    isRecordingGif = false;
+    if (gifBtnText) gifBtnText.textContent = "Record & Download GIF";
+    if (exportGifBtn) {
+      exportGifBtn.style.background = "rgba(255, 255, 255, 0.04)";
+      exportGifBtn.style.borderColor = "rgba(255, 255, 255, 0.10)";
+    }
+  };
+
   const updateGlobalAccentColor = (newColor) => {
     color = newColor;
     if (accentPicker) accentPicker.value = newColor;
@@ -2494,6 +2759,9 @@ export class ${cleanPresetName}Visualizer {
     exportJsBtn = document.getElementById("export-js-btn");
     exportWebmBtn = document.getElementById("export-webm-btn");
     webmBtnText = document.getElementById("webm-btn-text");
+    exportMdBtn = document.getElementById("export-md-btn");
+    exportGifBtn = document.getElementById("export-gif-btn");
+    gifBtnText = document.getElementById("gif-btn-text");
 
     // Initialize State Variables
     presetMode = designPreset.value;
@@ -2621,6 +2889,20 @@ export class ${cleanPresetName}Visualizer {
       exportWebmBtn.addEventListener("click", (e) => {
         e.stopPropagation();
         recordWebmVideo();
+      });
+    }
+
+    if (exportMdBtn) {
+      exportMdBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        downloadMdIntegrationGuide();
+      });
+    }
+
+    if (exportGifBtn) {
+      exportGifBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        recordGifVideo();
       });
     }
 
