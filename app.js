@@ -123,6 +123,8 @@
   let lastTime = performance.now();
   let frameCount = 0;
   let fps = 60;
+  let lastFrameTime = performance.now();
+  const fpsInterval = 1000 / 90; // Target maximum of 90 FPS
 
   // Resize canvas & adjust DPR
   const resize = () => {
@@ -695,12 +697,21 @@
   };
 
   const draw = (time) => {
+    const now = performance.now();
+    const elapsedFrame = now - lastFrameTime;
+
+    // Throttle loop to target maximum of 90 FPS
+    if (elapsedFrame < fpsInterval) {
+      raf = requestAnimationFrame(draw);
+      return;
+    }
+    lastFrameTime = now - (elapsedFrame % fpsInterval);
+
     // Measure FPS
     frameCount++;
-    const now = performance.now();
     if (now - lastTime >= 1000) {
       fps = Math.round((frameCount * 1000) / (now - lastTime));
-      fpsCounter.textContent = fps;
+      if (fpsCounter) fpsCounter.textContent = fps;
       frameCount = 0;
       lastTime = now;
     }
