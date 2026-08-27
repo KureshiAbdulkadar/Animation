@@ -150,6 +150,39 @@
     return [r, g, b];
   };
 
+  let lastPatternPreset = "";
+  let lastPatternPixelSize = 0;
+  let gridPattern = null;
+
+  const updateGridPattern = (preset, size) => {
+    if (preset === lastPatternPreset && size === lastPatternPixelSize && gridPattern) {
+      return;
+    }
+    lastPatternPreset = preset;
+    lastPatternPixelSize = size;
+
+    const pitch = (preset === "ghosting") ? 16 : (preset === "gravity-matrix") ? 12 : size;
+    const gap = (preset === "ghosting") ? 4 : (preset === "gravity-matrix") ? 2 : 1;
+    const drawSize = pitch - gap;
+
+    const patternCanvas = document.createElement("canvas");
+    patternCanvas.width = pitch;
+    patternCanvas.height = pitch;
+    const pCtx = patternCanvas.getContext("2d");
+
+    // Background fill
+    pCtx.fillStyle = (preset === "ghosting") ? "#090A0B" : background;
+    pCtx.fillRect(0, 0, pitch, pitch);
+
+    // Inactive square fill
+    pCtx.fillStyle = (preset === "ghosting" || preset === "snake-game" || preset === "gravity-matrix") 
+                     ? "rgb(18, 19, 20)" 
+                     : "rgba(0, 20, 5, 0.15)";
+    pCtx.fillRect(gap / 2, gap / 2, drawSize, drawSize);
+
+    gridPattern = ctx.createPattern(patternCanvas, 'repeat');
+  };
+
   // Snake Game helpers
   const createSnake = (startC, startR) => {
     const segments = [];
@@ -1644,9 +1677,13 @@
       lightRadius *= pulse;
     }
 
-    // Inactive cells path batching for performance optimization (stable 90 FPS)
-    ctx.beginPath();
-    let hasInactive = false;
+    // Update and draw the inactive grid pattern in a single call (blazing fast!)
+    updateGridPattern(presetMode, pixelSize);
+    ctx.fillStyle = gridPattern;
+    ctx.save();
+    ctx.translate(offsetX, offsetY);
+    ctx.fillRect(-offsetX, -offsetY, width, height);
+    ctx.restore();
 
     // Loop through LED grid coordinates
     for (let c = 0; c < cols; c++) {
@@ -1655,16 +1692,16 @@
       for (let r = 0; r < rows; r++) {
         const y = offsetY + r * pitch + pitch / 2;
 
-        const dx = x - cx;
-        const dy = y - cy;
-        const distToCenter = Math.sqrt(dx * dx + dy * dy);
-        const angle = Math.atan2(dy, dx);
-
         let intensity = 0;
 
         // Visual Preset Switcher
         switch (presetMode) {
           case "led-arch": {
+            const dx = x - cx;
+            const dy = y - cy;
+            const distToCenter = Math.sqrt(dx * dx + dy * dy);
+            const angle = Math.atan2(dy, dx);
+
             // 01. Classic LED Arch (with high-frequency volatility oscillations)
             const baseWave = Math.sin(t * 1.2 + angle * 2.5) * 16;
             const jitter = Math.sin(t * 8.5 + angle * 13.0) * 6; // volatile jitter
@@ -1700,10 +1737,6 @@
               bVal = Math.min(255, Math.max(0, Math.floor(startB + (targetB - startB) * lightFactor * 1.3)));
               ctx.fillStyle = `rgb(${rVal}, ${gVal}, ${bVal})`;
               ctx.fillRect(x - drawSize / 2, y - drawSize / 2, drawSize, drawSize);
-            } else {
-              // Background: added to batch path
-              ctx.rect(x - drawSize / 2, y - drawSize / 2, drawSize, drawSize);
-              hasInactive = true;
             }
 
             if (lightFactor > 0.05) {
@@ -1736,10 +1769,6 @@
               ctx.fillStyle = `rgb(${rVal}, ${gVal}, ${bVal})`;
               ctx.fillRect(x - drawSize / 2, y - drawSize / 2, drawSize, drawSize);
               activeLEDCount++;
-            } else {
-              // Background cells: added to batch path
-              ctx.rect(x - drawSize / 2, y - drawSize / 2, drawSize, drawSize);
-              hasInactive = true;
             }
             continue;
           }
@@ -1784,10 +1813,6 @@
               ctx.fillStyle = `rgb(${rVal}, ${gVal}, ${bVal})`;
               ctx.fillRect(x - drawSize / 2, y - drawSize / 2, drawSize, drawSize);
               activeLEDCount++;
-            } else {
-              // Background cells: added to batch path
-              ctx.rect(x - drawSize / 2, y - drawSize / 2, drawSize, drawSize);
-              hasInactive = true;
             }
             continue;
           }
@@ -1801,9 +1826,6 @@
         const finalIntensity = Math.max(intensity, mouseGlow);
 
         if (finalIntensity < 0.015) {
-          // Render faint dark inactive cells: added to batch path
-          ctx.rect(x - drawSize / 2, y - drawSize / 2, drawSize, drawSize);
-          hasInactive = true;
           continue;
         }
 
@@ -1818,14 +1840,6 @@
         ctx.fillStyle = `rgb(${rVal}, ${gVal}, ${bVal})`;
         ctx.fillRect(x - drawSize / 2, y - drawSize / 2, drawSize, drawSize);
       }
-    }
-
-    // Render batched inactive grid cells
-    if (hasInactive) {
-      ctx.fillStyle = (presetMode === "ghosting" || presetMode === "snake-game" || presetMode === "gravity-matrix") 
-                      ? "rgb(18, 19, 20)" 
-                      : "rgba(0, 20, 5, 0.15)";
-      ctx.fill();
     }
 
     particleCounter.textContent = activeLEDCount.toLocaleString();
