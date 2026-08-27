@@ -1703,7 +1703,7 @@
             const angle = Math.atan2(dy, dx);
 
             // 01. Classic LED Arch (with high-frequency volatility oscillations)
-            const baseWave = Math.sin(t * 1.2 + angle * 2.5) * 16;
+            const baseWave = Math.sin(t * 1.2 + angle * 2.0) * 16;
             const jitter = Math.sin(t * 8.5 + angle * 13.0) * 6; // volatile jitter
             const noise = Math.cos(t * 3.8 - angle * 5.0) * 11;   // chaotic wave noise
             
