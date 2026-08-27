@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Constellation Field — Multi-Renderer Collection</title>
+  <link rel="stylesheet" href="effects/constellation-field/styles.css">
+</head>
+<body>
+  <div class="effect-frame">
+    <!-- Active Canvas Mount Target -->
+    <div id="cf-container" class="cf-canvas-container"></div>
+
+    <!-- HUD Control Panel -->
+    <aside class="cf-hud-panel" id="cf-hud">
+      <div class="cf-hud-header" id="cf-hud-header">
+        <div class="cf-hud-title">
+          <span>✦</span>
+          <span>Constellation Field</span>
+        </div>
+        <button class="cf-toggle-btn" id="cf-toggle" aria-label="Toggle Panel">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
+      </div>
+
+      <div class="cf-hud-content">
+        <!-- Variant Selection -->
+        <div class="cf-control-group">
+          <div class="cf-control-label-row">
+            <span>Variant Source</span>
+          </div>
+          <select id="cf-variant-select" class="cf-select">
+            <option value="constellation-field" selected>1. Constellation Field</option>
+            <option value="particle-drift">2. Particle Drift</option>
+            <option value="particle-network">3. Particle Network</option>
+            <option value="gateway-flow">4. Gateway Flow</option>
+            <option value="connectivity-graph">5. Connectivity Graph</option>
+            <option value="interface-lines">6. Interface Lines</option>
+            <option value="defense-lines">7. Defense Lines</option>
+            <option value="topo-field">8. Topo Field (WebGL)</option>
+          </select>
+        </div>
+
+        <!-- Surface Mode (Dark / Light) -->
+        <div class="cf-control-group">
+          <div class="cf-control-label-row">
+            <span>Surface Mode</span>
+          </div>
+          <select id="cf-mode-select" class="cf-select">
+            <option value="dark" selected>Dark Surface</option>
+            <option value="light">Light Surface</option>
+          </select>
+        </div>
+
+        <!-- Primary Palette -->
+        <div class="cf-control-group">
+          <div class="cf-control-label-row">
+            <span>Palette Accent</span>
+          </div>
+          <div class="cf-palette-row">
+            <button class="cf-color-btn active" data-color="#00ffd2" style="background: #00ffd2;"></button>
+            <button class="cf-color-btn" data-color="#39ff14" style="background: #39ff14;"></button>
+            <button class="cf-color-btn" data-color="#00a8ff" style="background: #00a8ff;"></button>
+            <button class="cf-color-btn" data-color="#d000ff" style="background: #d000ff;"></button>
+            <button class="cf-color-btn" data-color="#ff0055" style="background: #ff0055;"></button>
+            <button class="cf-color-btn" data-color="#ffaa00" style="background: #ffaa00;"></button>
+          </div>
+        </div>
+
+        <!-- Speed Slider -->
+        <div class="cf-control-group">
+          <div class="cf-control-label-row">
+            <span>Motion Speed</span>
+            <span id="cf-speed-val">1.0x</span>
+          </div>
+          <input type="range" id="cf-speed" class="cf-slider" min="0.2" max="3.0" step="0.1" value="1.0">
+        </div>
+
+        <!-- Size Slider -->
+        <div class="cf-control-group">
+          <div class="cf-control-label-row">
+            <span>Element Size</span>
+            <span id="cf-size-val">1.0x</span>
+          </div>
+          <input type="range" id="cf-size" class="cf-slider" min="0.4" max="2.5" step="0.1" value="1.0">
+        </div>
+
+        <!-- Stroke Width Slider -->
+        <div class="cf-control-group">
+          <div class="cf-control-label-row">
+            <span>Stroke Width</span>
+            <span id="cf-stroke-val">1.0px</span>
+          </div>
+          <input type="range" id="cf-stroke" class="cf-slider" min="0.5" max="3.0" step="0.25" value="1.0">
+        </div>
+
+        <!-- Length / Reach Slider -->
+        <div class="cf-control-group">
+          <div class="cf-control-label-row">
+            <span>Reach / Length</span>
+            <span id="cf-length-val">1.0x</span>
+          </div>
+          <input type="range" id="cf-length" class="cf-slider" min="0.4" max="2.0" step="0.1" value="1.0">
+        </div>
+
+        <!-- Density Slider -->
+        <div class="cf-control-group">
+          <div class="cf-control-label-row">
+            <span>Node Density</span>
+            <span id="cf-density-val">1.0x</span>
+          </div>
+          <input type="range" id="cf-density" class="cf-slider" min="0.4" max="2.0" step="0.1" value="1.0">
+        </div>
+
+        <!-- Opacity Slider -->
+        <div class="cf-control-group">
+          <div class="cf-control-label-row">
+            <span>Line Opacity</span>
+            <span id="cf-opacity-val">1.0</span>
+          </div>
+          <input type="range" id="cf-opacity" class="cf-slider" min="0.2" max="1.0" step="0.05" value="1.0">
+        </div>
+
+        <!-- Footer Info -->
+        <div class="cf-hud-footer">
+          <span>ISOLATED SANDBOX</span>
+          <span class="cf-pill" id="cf-runtime-badge">CANVAS 2D</span>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <script type="module">
+    import { ConstellationField } from './effects/constellation-field/ConstellationField.js';
+
+    const container = document.getElementById('cf-container');
+    const hud = document.getElementById('cf-hud');
+    const hudHeader = document.getElementById('cf-hud-header');
+    const runtimeBadge = document.getElementById('cf-runtime-badge');
+
+    // Initialize Constellation Field
+    const cf = new ConstellationField(container, {
+      variant: 'constellation-field',
+      mode: 'dark',
+      speed: 1.0,
+      size: 1.0,
+      strokeWidth: 1.0,
+      length: 1.0,
+      density: 1.0,
+      opacity: 1.0,
+      palette: '#00ffd2'
+    });
+
+    // Toggle HUD minimize
+    hudHeader.addEventListener('click', () => {
+      hud.classList.toggle('minimized');
+    });
+
+    // Variant selector
+    const variantSelect = document.getElementById('cf-variant-select');
+    variantSelect.addEventListener('change', (e) => {
+      const v = e.target.value;
+      cf.update({ variant: v });
+      runtimeBadge.textContent = (v === 'topo-field') ? 'RAW WEBGL' : 'CANVAS 2D';
+    });
+
+    // Surface mode
+    const modeSelect = document.getElementById('cf-mode-select');
+    modeSelect.addEventListener('change', (e) => {
+      const mode = e.target.value;
+      document.body.classList.toggle('light-mode', mode === 'light');
+      cf.update({ mode });
+    });
+
+    // Palette selector
+    const colorBtns = document.querySelectorAll('.cf-color-btn');
+    colorBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        colorBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const palette = btn.getAttribute('data-color');
+        document.documentElement.style.setProperty('--cf-accent', palette);
+        cf.update({ palette });
+      });
+    });
+
+    // Slider bindings
+    const bindSlider = (id, valId, key, suffix = '') => {
+      const slider = document.getElementById(id);
+      const valDisplay = document.getElementById(valId);
+      slider.addEventListener('input', (e) => {
+        const val = parseFloat(e.target.value);
+        valDisplay.textContent = val.toFixed(1) + suffix;
+        cf.update({ [key]: val });
+      });
+    };
+
+    bindSlider('cf-speed', 'cf-speed-val', 'speed', 'x');
+    bindSlider('cf-size', 'cf-size-val', 'size', 'x');
+    bindSlider('cf-stroke', 'cf-stroke-val', 'strokeWidth', 'px');
+    bindSlider('cf-length', 'cf-length-val', 'length', 'x');
+    bindSlider('cf-density', 'cf-density-val', 'density', 'x');
+    bindSlider('cf-opacity', 'cf-opacity-val', 'opacity', '');
+  </script>
+</body>
+</html>

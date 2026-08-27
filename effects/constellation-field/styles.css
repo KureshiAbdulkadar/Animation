@@ -1,0 +1,254 @@
+/* Constellation Field Styles */
+:root {
+  --cf-bg-dark: #07090e;
+  --cf-bg-light: #f4f6fa;
+  --cf-surface-dark: rgba(13, 17, 26, 0.85);
+  --cf-surface-light: rgba(255, 255, 255, 0.88);
+  --cf-border-dark: rgba(255, 255, 255, 0.12);
+  --cf-border-light: rgba(0, 0, 0, 0.12);
+  --cf-text-dark: #e8ecf4;
+  --cf-text-light: #161a22;
+  --cf-text-muted-dark: #8692a6;
+  --cf-text-muted-light: #647082;
+  --cf-accent: #00ffd2;
+  --cf-accent-rgb: 0, 255, 210;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: var(--cf-bg-dark);
+  color: var(--cf-text-dark);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+body.light-mode {
+  background-color: var(--cf-bg-light);
+  color: var(--cf-text-light);
+}
+
+.effect-frame {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.cf-canvas-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+.cf-canvas-container canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Floating HUD Toolbar */
+.cf-hud-panel {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 320px;
+  max-height: calc(100vh - 40px);
+  background: var(--cf-surface-dark);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--cf-border-dark);
+  border-radius: 12px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.4);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body.light-mode .cf-hud-panel {
+  background: var(--cf-surface-light);
+  border-color: var(--cf-border-light);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.08);
+}
+
+.cf-hud-panel.minimized .cf-hud-content {
+  display: none;
+}
+
+.cf-hud-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--cf-border-dark);
+  cursor: pointer;
+  user-select: none;
+}
+
+body.light-mode .cf-hud-header {
+  border-bottom-color: var(--cf-border-light);
+}
+
+.cf-hud-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cf-accent);
+}
+
+.cf-toggle-btn {
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 6px;
+  transition: transform 0.3s ease;
+}
+
+.cf-hud-panel.minimized .cf-toggle-btn {
+  transform: rotate(180deg);
+}
+
+.cf-hud-content {
+  padding: 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.cf-control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cf-control-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--cf-text-muted-dark);
+}
+
+body.light-mode .cf-control-label-row {
+  color: var(--cf-text-muted-light);
+}
+
+.cf-select {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-family: inherit;
+  font-weight: 500;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--cf-border-dark);
+  color: inherit;
+  outline: none;
+  cursor: pointer;
+}
+
+body.light-mode .cf-select {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: var(--cf-border-light);
+}
+
+.cf-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.15);
+  outline: none;
+  cursor: pointer;
+}
+
+body.light-mode .cf-slider {
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.cf-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--cf-accent);
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(var(--cf-accent-rgb), 0.6);
+}
+
+.cf-palette-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.cf-color-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.cf-color-btn.active {
+  border-color: #ffffff;
+  transform: scale(1.15);
+  box-shadow: 0 0 10px rgba(var(--cf-accent-rgb), 0.5);
+}
+
+body.light-mode .cf-color-btn.active {
+  border-color: #161a22;
+}
+
+/* Badge Footer */
+.cf-hud-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 10px;
+  border-top: 1px solid var(--cf-border-dark);
+  font-size: 10px;
+  color: var(--cf-text-muted-dark);
+}
+
+body.light-mode .cf-hud-footer {
+  border-top-color: var(--cf-border-light);
+  color: var(--cf-text-muted-light);
+}
+
+.cf-pill {
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(var(--cf-accent-rgb), 0.12);
+  color: var(--cf-accent);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}

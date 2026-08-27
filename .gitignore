@@ -1,0 +1,9 @@
+# Dependencies
+node_modules/
+.DS_Store
+
+# Production build output
+dist/
+
+# Local env files
+.env*.local

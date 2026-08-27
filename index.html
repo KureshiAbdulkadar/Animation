@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Data Pixel Arc - Full-Screen Ambient Visualizer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app-container">
+    <!-- Full-screen drawing Canvas -->
+    <canvas id="predictive-canvas"></canvas>
+
+    <!-- Technical alignment grid overlay -->
+    <div class="tech-grid-overlay"></div>
+
+    <!-- Always-open Control Card -->
+    <aside class="controls-panel" id="controls-panel">
+
+      <!-- Card Header (non-clickable, decorative) -->
+      <div class="panel-header">
+        <div class="panel-title">
+          <span class="icon">⚡</span>
+          <h3>AMBIE-VIS // HUD</h3>
+        </div>
+        <div class="panel-badge">LIVE</div>
+      </div>
+
+      <!-- Card Body -->
+      <div class="panel-content">
+
+        <!-- Design Preset Dropdown -->
+        <div class="control-group">
+          <label for="design-preset">Visual Preset</label>
+          <select id="design-preset" class="select-dropdown">
+            <option value="led-arch" selected>01. Classic LED Arch</option>
+            <option value="ghosting">02. Ghosting Flashlight</option>
+            <option value="snake-game">03. Retro Snake Grid</option>
+            <option value="gravity-matrix">04. Gravity Cascade</option>
+            <option value="dot-globe">05. 3D Dot Globe</option>
+            <option value="streamline-pinch">06. Converging Streams</option>
+            <option value="flow-field">07. Particle Flow-Field</option>
+            <option value="constellation-field">08. Constellation Field</option>
+            <option value="particle-wheel">09. Particle Orbit Wheel</option>
+            <option value="tech-boxes">10. Tech Boxes</option>
+            <option value="space-galaxy">11. Space Galaxy</option>
+            <option value="data-stream">12. Data Matrix</option>
+            <option value="wave-grid">13. Ocean Wave Grid</option>
+          </select>
+        </div>
+
+        <!-- Color Selector -->
+        <div class="control-group">
+          <label>Primary Accent</label>
+          <div class="color-picker-wrapper">
+            <input type="color" id="accent-picker" value="#00f066">
+            <input type="text" id="accent-hex" value="#00f066" maxlength="7" placeholder="#00f066">
+          </div>
+          <div class="presets-row">
+            <button class="preset-dot active" data-color="#00f066" style="--preset-color: #00f066;" title="Matrix Green"></button>
+            <button class="preset-dot" data-color="#39ff14" style="--preset-color: #39ff14;" title="Neon Lime"></button>
+            <button class="preset-dot" data-color="#00ffd2" style="--preset-color: #00ffd2;" title="Teal Glow"></button>
+            <button class="preset-dot" data-color="#88ff00" style="--preset-color: #88ff00;" title="Acid Green"></button>
+            <button class="preset-dot" data-color="#00bc4b" style="--preset-color: #00bc4b;" title="Forest LED"></button>
+            <button class="preset-dot" data-color="#7c3aed" style="--preset-color: #7c3aed;" title="Deep Purple"></button>
+            <button class="preset-dot" data-color="#f97316" style="--preset-color: #f97316;" title="Ember Orange"></button>
+          </div>
+        </div>
+
+        <!-- Density / Particle Size -->
+        <div class="control-group">
+          <div class="label-row">
+            <label for="pixel-size">Block Dimension</label>
+            <span class="value-display" id="pixel-size-value">4px</span>
+          </div>
+          <input type="range" id="pixel-size" min="2" max="16" value="4" step="1">
+        </div>
+
+        <!-- Arch Wave Thickness -->
+        <div class="control-group">
+          <div class="label-row">
+            <label for="arc-thickness">Wave Spread</label>
+            <span class="value-display" id="arc-thickness-value">120px</span>
+          </div>
+          <input type="range" id="arc-thickness" min="20" max="250" value="120" step="5">
+        </div>
+
+        <!-- Wave Glow Multiplier -->
+        <div class="control-group">
+          <div class="label-row">
+            <label for="glow-intensity">Glow Bloom</label>
+            <span class="value-display" id="glow-intensity-value">2.4x</span>
+          </div>
+          <input type="range" id="glow-intensity" min="0.5" max="5.0" value="2.4" step="0.1">
+        </div>
+
+        <!-- Animation Speed Slider -->
+        <div class="control-group">
+          <div class="label-row">
+            <label for="speed-range">Wave Speed</label>
+            <span class="value-display" id="speed-value">1.0x</span>
+          </div>
+          <input type="range" id="speed-range" min="0.1" max="4.0" value="1.0" step="0.1">
+        </div>
+
+        <!-- System Stats HUD -->
+        <div class="status-box">
+          <div class="stat-item">
+            <span class="stat-label">FPS</span>
+            <span class="stat-value" id="fps-counter">60</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">CELLS</span>
+            <span class="stat-value" id="particle-counter">0</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">DPR</span>
+            <span class="stat-value" id="dpr-counter">1.0</span>
+          </div>
+        </div>
+
+      </div>
+    </aside>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
