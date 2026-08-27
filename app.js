@@ -4,39 +4,22 @@
 
 (function () {
   // DOM Elements
-  const canvas = document.getElementById("predictive-canvas");
-  const ctx = canvas.getContext("2d");
+  let canvas, ctx;
   
   // HUD Elements
-  const designPreset = document.getElementById("design-preset");
-  const speedRange = document.getElementById("speed-range");
-  const speedValue = document.getElementById("speed-value");
-  const accentPicker = document.getElementById("accent-picker");
-  const accentHex = document.getElementById("accent-hex");
-  const presetDots = document.querySelectorAll(".preset-dot");
-  const pixelSizeSlider = document.getElementById("pixel-size");
-  const pixelSizeValue = document.getElementById("pixel-size-value");
-  const arcThicknessSlider = document.getElementById("arc-thickness");
-  const arcThicknessValue = document.getElementById("arc-thickness-value");
-  const glowIntensitySlider = document.getElementById("glow-intensity");
-  const glowIntensityValue = document.getElementById("glow-intensity-value");
+  let designPreset, speedRange, speedValue, accentPicker, accentHex, presetDots;
+  let pixelSizeSlider, pixelSizeValue, arcThicknessSlider, arcThicknessValue, glowIntensitySlider, glowIntensityValue;
   
   // System Stats
-  const fpsCounter = document.getElementById("fps-counter");
-  const particleCounter = document.getElementById("particle-counter");
-  const dprCounter = document.getElementById("dpr-counter");
+  let fpsCounter, particleCounter, dprCounter;
   
   // Interactive UI Panels
-  const controlsPanel = document.getElementById("controls-panel");
+  let controlsPanel;
 
   // State Variables
-  let presetMode = designPreset.value;
-  let speed = parseFloat(speedRange.value);
-  let color = accentPicker.value;
+  let presetMode, speed, color;
   const background = "#030704"; // Dark theme background
-  let pixelSize = parseInt(pixelSizeSlider.value, 10);
-  let arcThickness = parseInt(arcThicknessSlider.value, 10);
-  let glowIntensity = parseFloat(glowIntensitySlider.value);
+  let pixelSize, arcThickness, glowIntensity;
   
   let width = 0;
   let height = 0;
@@ -1858,49 +1841,10 @@
     // reserved for future shortcuts
   };
 
-  // Hook Up HUD Events
-  designPreset.addEventListener("change", (e) => {
-    presetMode = e.target.value;
-    if (presetMode === "snake-game") {
-      snakes = [];
-    } else if (presetMode === "gravity-matrix") {
-      gravityBlocks = [];
-      activationMap = {};
-    } else if (presetMode === "dot-globe") {
-      globePoints = [];
-    } else if (presetMode === "streamline-pinch") {
-      streamLines = [];
-      streamParticles = [];
-    } else if (presetMode === "flow-field") {
-      flowParticles = [];
-    } else if (presetMode === "constellation-field") {
-      constellationStars = [];
-    } else if (presetMode === "particle-wheel") {
-      wheelParticles = [];
-    } else if (presetMode === "tech-boxes") {
-      techBoxes = [];
-    } else if (presetMode === "space-galaxy") {
-      spaceStars = [];
-      shootingStars = [];
-      nebulaClouds = [];
-    } else if (presetMode === "data-stream") {
-      dataStreamBoxes = [];
-    } else if (presetMode === "wave-grid") {
-      waveDots = [];
-    } else if (presetMode === "pixel-build") {
-      pixelBuildBlocks = [];
-    }
-  });
-
-  speedRange.addEventListener("input", (e) => {
-    speed = parseFloat(e.target.value);
-    speedValue.textContent = `${speed.toFixed(1)}x`;
-  });
-
   const updateGlobalAccentColor = (newColor) => {
     color = newColor;
-    accentPicker.value = newColor;
-    accentHex.value = newColor;
+    if (accentPicker) accentPicker.value = newColor;
+    if (accentHex) accentHex.value = newColor;
     
     // Update CSS custom property values
     document.documentElement.style.setProperty("--accent-color", newColor);
@@ -1909,58 +1853,18 @@
     document.documentElement.style.setProperty("--accent-rgb", `${r}, ${g}, ${b}`);
 
     // Update presets indicator classes
-    presetDots.forEach(dot => {
-      if (dot.getAttribute("data-color").toLowerCase() === newColor.toLowerCase()) {
-        dot.classList.add("active");
-      } else {
-        dot.classList.remove("active");
-      }
-    });
+    if (presetDots) {
+      presetDots.forEach(dot => {
+        if (dot.getAttribute("data-color").toLowerCase() === newColor.toLowerCase()) {
+          dot.classList.add("active");
+        } else {
+          dot.classList.remove("active");
+        }
+      });
+    }
   };
 
-  accentPicker.addEventListener("input", (e) => {
-    updateGlobalAccentColor(e.target.value);
-  });
-  accentPicker.addEventListener("click", (e) => e.stopPropagation());
-  accentPicker.addEventListener("change", (e) => e.stopPropagation());
-
-  accentHex.addEventListener("change", (e) => {
-    e.stopPropagation();
-    let val = e.target.value;
-    if (!val.startsWith("#")) val = "#" + val;
-    if (/^#[0-9A-F]{6}$/i.test(val)) {
-      updateGlobalAccentColor(val);
-    } else {
-      accentHex.value = color;
-    }
-  });
-  accentHex.addEventListener("click", (e) => e.stopPropagation());
-
-  presetDots.forEach(dot => {
-    dot.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const selectedColor = dot.getAttribute("data-color");
-      updateGlobalAccentColor(selectedColor);
-    });
-  });
-
-  pixelSizeSlider.addEventListener("input", (e) => {
-    pixelSize = parseInt(e.target.value, 10);
-    pixelSizeValue.textContent = `${pixelSize}px`;
-  });
-
-  arcThicknessSlider.addEventListener("input", (e) => {
-    arcThickness = parseInt(e.target.value, 10);
-    arcThicknessValue.textContent = `${arcThickness}px`;
-  });
-
-  glowIntensitySlider.addEventListener("input", (e) => {
-    glowIntensity = parseFloat(e.target.value);
-    glowIntensityValue.textContent = `${glowIntensity.toFixed(1)}x`;
-  });
-
-  // Panel is always open — no toggle needed
-
+  // Hook Up HUD Events inside init
   const onCanvasClick = (e) => {
     if (presetMode === "snake-game") {
       const rect = canvas.getBoundingClientRect();
@@ -1985,6 +1889,120 @@
 
   // Initialize and load
   const init = () => {
+    // DOM Elements
+    canvas = document.getElementById("predictive-canvas");
+    ctx = canvas.getContext("2d");
+    
+    // HUD Elements
+    designPreset = document.getElementById("design-preset");
+    speedRange = document.getElementById("speed-range");
+    speedValue = document.getElementById("speed-value");
+    accentPicker = document.getElementById("accent-picker");
+    accentHex = document.getElementById("accent-hex");
+    presetDots = document.querySelectorAll(".preset-dot");
+    pixelSizeSlider = document.getElementById("pixel-size");
+    pixelSizeValue = document.getElementById("pixel-size-value");
+    arcThicknessSlider = document.getElementById("arc-thickness");
+    arcThicknessValue = document.getElementById("arc-thickness-value");
+    glowIntensitySlider = document.getElementById("glow-intensity");
+    glowIntensityValue = document.getElementById("glow-intensity-value");
+    
+    // System Stats
+    fpsCounter = document.getElementById("fps-counter");
+    particleCounter = document.getElementById("particle-counter");
+    dprCounter = document.getElementById("dpr-counter");
+    
+    // Interactive UI Panels
+    controlsPanel = document.getElementById("controls-panel");
+
+    // Initialize State Variables
+    presetMode = designPreset.value;
+    speed = parseFloat(speedRange.value);
+    color = accentPicker.value;
+    pixelSize = parseInt(pixelSizeSlider.value, 10);
+    arcThickness = parseInt(arcThicknessSlider.value, 10);
+    glowIntensity = parseFloat(glowIntensitySlider.value);
+
+    // Setup event listeners
+    designPreset.addEventListener("change", (e) => {
+      presetMode = e.target.value;
+      if (presetMode === "snake-game") {
+        snakes = [];
+      } else if (presetMode === "gravity-matrix") {
+        gravityBlocks = [];
+        activationMap = {};
+      } else if (presetMode === "dot-globe") {
+        globePoints = [];
+      } else if (presetMode === "streamline-pinch") {
+        streamLines = [];
+        streamParticles = [];
+      } else if (presetMode === "flow-field") {
+        flowParticles = [];
+      } else if (presetMode === "constellation-field") {
+        constellationStars = [];
+      } else if (presetMode === "particle-wheel") {
+        wheelParticles = [];
+      } else if (presetMode === "tech-boxes") {
+        techBoxes = [];
+      } else if (presetMode === "space-galaxy") {
+        spaceStars = [];
+        shootingStars = [];
+        nebulaClouds = [];
+      } else if (presetMode === "data-stream") {
+        dataStreamBoxes = [];
+      } else if (presetMode === "wave-grid") {
+        waveDots = [];
+      } else if (presetMode === "pixel-build") {
+        pixelBuildBlocks = [];
+      }
+    });
+
+    speedRange.addEventListener("input", (e) => {
+      speed = parseFloat(e.target.value);
+      speedValue.textContent = `${speed.toFixed(1)}x`;
+    });
+
+    accentPicker.addEventListener("input", (e) => {
+      updateGlobalAccentColor(e.target.value);
+    });
+    accentPicker.addEventListener("click", (e) => e.stopPropagation());
+    accentPicker.addEventListener("change", (e) => e.stopPropagation());
+
+    accentHex.addEventListener("change", (e) => {
+      e.stopPropagation();
+      let val = e.target.value;
+      if (!val.startsWith("#")) val = "#" + val;
+      if (/^#[0-9A-F]{6}$/i.test(val)) {
+        updateGlobalAccentColor(val);
+      } else {
+        accentHex.value = color;
+      }
+    });
+    accentHex.addEventListener("click", (e) => e.stopPropagation());
+
+    presetDots.forEach(dot => {
+      dot.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const selectedColor = dot.getAttribute("data-color");
+        updateGlobalAccentColor(selectedColor);
+      });
+    });
+
+    pixelSizeSlider.addEventListener("input", (e) => {
+      pixelSize = parseInt(e.target.value, 10);
+      pixelSizeValue.textContent = `${pixelSize}px`;
+    });
+
+    arcThicknessSlider.addEventListener("input", (e) => {
+      arcThickness = parseInt(e.target.value, 10);
+      arcThicknessValue.textContent = `${arcThickness}px`;
+    });
+
+    glowIntensitySlider.addEventListener("input", (e) => {
+      glowIntensity = parseFloat(e.target.value);
+      glowIntensityValue.textContent = `${glowIntensity.toFixed(1)}x`;
+    });
+
     window.addEventListener("resize", resize);
     window.addEventListener("mousemove", onMouseMove);
     window.addEventListener("mouseleave", onMouseLeave);
@@ -2061,6 +2079,10 @@
     raf = requestAnimationFrame(draw);
   };
 
-  // Run initial loading
-  init();
+  // Run initial loading when DOM is ready
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
 })();
