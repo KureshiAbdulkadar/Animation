@@ -9,6 +9,7 @@
   // HUD Elements
   let designPreset, speedRange, speedValue, accentPicker, accentHex, presetDots;
   let pixelSizeSlider, pixelSizeValue, arcThicknessSlider, arcThicknessValue, glowIntensitySlider, glowIntensityValue;
+  let transparentBgCheckbox, exportHtmlBtn, exportJsBtn, exportWebmBtn, webmBtnText;
   
   // System Stats
   let fpsCounter, particleCounter, dprCounter;
@@ -152,14 +153,17 @@
 
   let lastPatternPreset = "";
   let lastPatternPixelSize = 0;
+  let lastPatternTransparent = false;
   let gridPattern = null;
 
   const updateGridPattern = (preset, size) => {
-    if (preset === lastPatternPreset && size === lastPatternPixelSize && gridPattern) {
+    const transparent = (typeof transparentBgCheckbox !== "undefined" && transparentBgCheckbox) ? transparentBgCheckbox.checked : false;
+    if (preset === lastPatternPreset && size === lastPatternPixelSize && transparent === lastPatternTransparent && gridPattern) {
       return;
     }
     lastPatternPreset = preset;
     lastPatternPixelSize = size;
+    lastPatternTransparent = transparent;
 
     const pitch = (preset === "ghosting") ? 16 : (preset === "gravity-matrix") ? 12 : size;
     const gap = (preset === "ghosting") ? 4 : (preset === "gravity-matrix") ? 2 : 1;
@@ -170,9 +174,13 @@
     patternCanvas.height = pitch;
     const pCtx = patternCanvas.getContext("2d");
 
-    // Background fill
-    pCtx.fillStyle = (preset === "ghosting") ? "#090A0B" : background;
-    pCtx.fillRect(0, 0, pitch, pitch);
+    // Background fill (transparent or solid)
+    if (transparent) {
+      pCtx.clearRect(0, 0, pitch, pitch);
+    } else {
+      pCtx.fillStyle = (preset === "ghosting") ? "#090A0B" : background;
+      pCtx.fillRect(0, 0, pitch, pitch);
+    }
 
     // Inactive square fill
     pCtx.fillStyle = (preset === "ghosting" || preset === "snake-game" || preset === "gravity-matrix") 
@@ -834,9 +842,14 @@
     }
 
     // Clear background
-    const currentBackground = (presetMode === "ghosting") ? "#090A0B" : background;
-    ctx.fillStyle = currentBackground;
-    ctx.fillRect(0, 0, width, height);
+    const transparent = (typeof transparentBgCheckbox !== "undefined" && transparentBgCheckbox) ? transparentBgCheckbox.checked : false;
+    if (transparent) {
+      ctx.clearRect(0, 0, width, height);
+    } else {
+      const currentBackground = (presetMode === "ghosting") ? "#090A0B" : background;
+      ctx.fillStyle = currentBackground;
+      ctx.fillRect(0, 0, width, height);
+    }
 
     const [baseR, baseG, baseB] = hexToRgb(color);
     let activeLEDCount = 0;
@@ -1043,9 +1056,17 @@
     if (presetMode === "flow-field") {
       if (flowParticles.length === 0) initFlowParticles();
 
-      // Paint translucent overlay to create long fading trails
-      ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
-      ctx.fillRect(0, 0, width, height);
+      // Paint translucent overlay to create long fading trails (fades out transparently if enabled)
+      if (transparent) {
+        ctx.save();
+        ctx.globalCompositeOperation = "destination-out";
+        ctx.fillStyle = "rgba(0, 0, 0, 0.08)";
+        ctx.fillRect(0, 0, width, height);
+        ctx.restore();
+      } else {
+        ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+        ctx.fillRect(0, 0, width, height);
+      }
 
       const targetX = mouse.x * width;
       const targetY = mouse.y * height;
@@ -1104,8 +1125,12 @@
     if (presetMode === "constellation-field") {
       if (constellationStars.length === 0) initConstellationStars();
 
-      ctx.fillStyle = "#07090e";
-      ctx.fillRect(0, 0, width, height);
+      if (transparent) {
+        ctx.clearRect(0, 0, width, height);
+      } else {
+        ctx.fillStyle = "#07090e";
+        ctx.fillRect(0, 0, width, height);
+      }
 
       const targetX = mouse.x * width;
       const targetY = mouse.y * height;
@@ -1183,8 +1208,12 @@
       if (wheelParticles.length === 0) initWheelParticles();
 
       // Clear pitch dark background
-      ctx.fillStyle = "#000000";
-      ctx.fillRect(0, 0, width, height);
+      if (transparent) {
+        ctx.clearRect(0, 0, width, height);
+      } else {
+        ctx.fillStyle = "#000000";
+        ctx.fillRect(0, 0, width, height);
+      }
 
       const cx = width / 2;
       const cy = height / 2;
@@ -1238,8 +1267,12 @@
       if (techBoxes.length === 0) initTechBoxes();
 
       // Solid dark background
-      ctx.fillStyle = "#020406";
-      ctx.fillRect(0, 0, width, height);
+      if (transparent) {
+        ctx.clearRect(0, 0, width, height);
+      } else {
+        ctx.fillStyle = "#020406";
+        ctx.fillRect(0, 0, width, height);
+      }
 
       const mouseX = mouse.x * width;
       const mouseY = mouse.y * height;
@@ -1304,8 +1337,12 @@
       if (spaceStars.length === 0) initSpaceGalaxy();
 
       // Deep space background
-      ctx.fillStyle = "#000005";
-      ctx.fillRect(0, 0, width, height);
+      if (transparent) {
+        ctx.clearRect(0, 0, width, height);
+      } else {
+        ctx.fillStyle = "#000005";
+        ctx.fillRect(0, 0, width, height);
+      }
 
       // Nebula clouds — soft accent-colored blobs
       for (const nc of nebulaClouds) {
@@ -1424,8 +1461,12 @@
     if (presetMode === "data-stream") {
       if (dataStreamBoxes.length === 0) initDataStream();
       
-      ctx.fillStyle = "#010204";
-      ctx.fillRect(0, 0, width, height);
+      if (transparent) {
+        ctx.clearRect(0, 0, width, height);
+      } else {
+        ctx.fillStyle = "#010204";
+        ctx.fillRect(0, 0, width, height);
+      }
 
       // Smooth slow-motion transition: 3.5x default -> 0.5x when cursor is active
       const isCursorActive = isTrackingMouse && (now - lastActivityTime < 2500);
@@ -1498,8 +1539,12 @@
     if (presetMode === "wave-grid") {
       if (waveDots.length === 0) initWaveGrid();
       
-      ctx.fillStyle = "#010103";
-      ctx.fillRect(0, 0, width, height);
+      if (transparent) {
+        ctx.clearRect(0, 0, width, height);
+      } else {
+        ctx.fillStyle = "#010103";
+        ctx.fillRect(0, 0, width, height);
+      }
 
       const mouseX = mouse.x * width;
       const mouseY = mouse.y * height;
@@ -1546,8 +1591,12 @@
     if (presetMode === "pixel-build") {
       if (pixelBuildBlocks.length === 0) initPixelBuild();
 
-      ctx.fillStyle = "#010203";
-      ctx.fillRect(0, 0, width, height);
+      if (transparent) {
+        ctx.clearRect(0, 0, width, height);
+      } else {
+        ctx.fillStyle = "#010203";
+        ctx.fillRect(0, 0, width, height);
+      }
 
       const mouseX = mouse.x * width;
       const mouseY = mouse.y * height;
@@ -1872,6 +1921,499 @@
     // reserved for future shortcuts
   };
 
+  // ── Standalone exports code generator ─────────────────────────────
+  const getPresetCode = (preset) => {
+    switch (preset) {
+      case "led-arch":
+        return `
+      // Loop through LED grid coordinates
+      const pitch = pixelSize;
+      const gap = 1;
+      const drawSize = pitch - gap;
+      const cols = Math.floor(width / pitch);
+      const rows = Math.floor(height / pitch);
+      const offsetX = (width - cols * pitch) / 2;
+      const offsetY = (height - rows * pitch) / 2;
+      
+      const cx = width * 0.5;
+      const cy = height * 0.78;
+      const baseRadius = Math.min(width, height) * 0.58;
+
+      ctx.beginPath();
+      let hasInactive = false;
+
+      for (let c = 0; c < cols; c++) {
+        const x = offsetX + c * pitch + pitch / 2;
+        for (let r = 0; r < rows; r++) {
+          const y = offsetY + r * pitch + pitch / 2;
+          
+          const dx = x - cx;
+          const dy = y - cy;
+          const distToCenter = Math.sqrt(dx * dx + dy * dy);
+          const angle = Math.atan2(dy, dx);
+
+          const baseWave = Math.sin(t * 1.2 + angle * 2.0) * 16;
+          const jitter = Math.sin(t * 8.5 + angle * 13.0) * 6;
+          const noise = Math.cos(t * 3.8 - angle * 5.0) * 11;
+          const targetRadius = baseRadius + baseWave + jitter + noise;
+          const distToArc = Math.abs(distToCenter - targetRadius);
+          const intensity = Math.pow(Math.max(0, 1 - distToArc / arcThickness), 2.2) * glowIntensity;
+
+          if (intensity < 0.015) {
+            ctx.rect(x - drawSize / 2, y - drawSize / 2, drawSize, drawSize);
+            hasInactive = true;
+            continue;
+          }
+
+          const rVal = Math.min(255, Math.floor(baseR * intensity));
+          const gVal = Math.min(255, Math.floor(baseG * intensity));
+          const bVal = Math.min(255, Math.floor(baseB * intensity));
+
+          ctx.fillStyle = "rgb(" + rVal + "," + gVal + "," + bVal + ")";
+          ctx.fillRect(x - drawSize / 2, y - drawSize / 2, drawSize, drawSize);
+        }
+      }
+
+      if (hasInactive) {
+        ctx.fillStyle = transparent ? "rgba(0, 20, 5, 0.03)" : "rgba(0, 20, 5, 0.15)";
+        ctx.fill();
+      }
+        `;
+      case "particle-wheel":
+        return `
+      // Central wheel constants
+      const cx = width / 2;
+      const cy = height / 2;
+      const minDim = Math.min(width, height);
+      const innerVoid = minDim * 0.20;
+
+      // Initialize particles once
+      if (!window.wheelParticles) {
+        window.wheelParticles = [];
+        const count = 750;
+        const coreR = minDim * 0.27;
+        const randn = () => {
+          let u = 0, v = 0;
+          while (u === 0) u = Math.random();
+          while (v === 0) v = Math.random();
+          return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+        };
+        for (let i = 0; i < count; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          let offsetR = Math.random() < 0.82 ? randn() * (minDim * 0.035) : randn() * (minDim * 0.14);
+          const r = Math.max(innerVoid + 2, coreR + offsetR);
+          window.wheelParticles.push({
+            r: r,
+            targetR: r,
+            vr: 0,
+            angle: angle,
+            angularSpeed: (0.0015 + Math.random() * 0.002) * (Math.random() < 0.5 ? 1 : -1),
+            size: 0.8 + Math.random() * 1.6,
+            twinkleSpeed: 0.8 + Math.random() * 1.5,
+            twinklePhase: Math.random() * Math.PI
+          });
+        }
+      }
+
+      // Render particles
+      for (let i = 0; i < window.wheelParticles.length; i++) {
+        const p = window.wheelParticles[i];
+        p.vr += (Math.random() - 0.5) * 0.08 * speed;
+        p.vr += (p.targetR - p.r) * 0.015 * speed;
+        p.vr *= 0.94;
+        p.r += p.vr * speed;
+        if (p.r < innerVoid) {
+          p.r = innerVoid + Math.random() * 2;
+          p.vr = Math.abs(p.vr);
+        }
+        p.angle += p.angularSpeed * speed;
+
+        const screenX = cx + Math.cos(p.angle) * p.r;
+        const screenY = cy + Math.sin(p.angle) * p.r;
+        const twinkle = 0.8 + 0.2 * Math.sin(time * 0.002 * p.twinkleSpeed + p.twinklePhase);
+        const pSize = p.size * twinkle * (pixelSize / 4);
+
+        ctx.fillStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + twinkle + ")";
+        ctx.beginPath();
+        ctx.arc(screenX, screenY, pSize, 0, Math.PI * 2);
+        ctx.fill();
+      }
+        `;
+      case "constellation-field":
+        return `
+      // Initialize stars once
+      if (!window.stars) {
+        window.stars = [];
+        const count = 180;
+        for (let i = 0; i < count; i++) {
+          window.stars.push({
+            x: Math.random() * width,
+            y: Math.random() * height,
+            vx: (Math.random() - 0.5) * 0.35,
+            vy: (Math.random() - 0.5) * 0.35,
+            radius: 0.8 + Math.random() * 1.6
+          });
+        }
+      }
+
+      // Update and draw
+      const maxDist = arcThickness * 1.1;
+      for (let s of window.stars) {
+        s.x += s.vx * speed;
+        s.y += s.vy * speed;
+        if (s.x < 0) s.x = width;
+        if (s.x > width) s.x = 0;
+        if (s.y < 0) s.y = height;
+        if (s.y > height) s.y = 0;
+
+        ctx.fillStyle = "#ffffff";
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Connections
+      ctx.lineWidth = 0.65;
+      for (let i = 0; i < window.stars.length; i++) {
+        const s1 = window.stars[i];
+        for (let j = i + 1; j < window.stars.length; j++) {
+          const s2 = window.stars[j];
+          const dx = s1.x - s2.x;
+          const dy = s1.y - s2.y;
+          const d = Math.sqrt(dx * dx + dy * dy);
+          if (d < maxDist) {
+            const alpha = (1.0 - d / maxDist) * 0.28;
+            ctx.strokeStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + alpha + ")";
+            ctx.beginPath();
+            ctx.moveTo(s1.x, s1.y);
+            ctx.lineTo(s2.x, s2.y);
+            ctx.stroke();
+          }
+        }
+      }
+        `;
+      default:
+        return `
+      const pitch = pixelSize;
+      const gap = 1;
+      const drawSize = pitch - gap;
+      const cols = Math.floor(width / pitch);
+      const rows = Math.floor(height / pitch);
+      const offsetX = (width - cols * pitch) / 2;
+      const offsetY = (height - rows * pitch) / 2;
+      
+      const cx = width * 0.5;
+      const cy = height * 0.5;
+
+      for (let c = 0; c < cols; c++) {
+        const x = offsetX + c * pitch + pitch / 2;
+        for (let r = 0; r < rows; r++) {
+          const y = offsetY + r * pitch + pitch / 2;
+          
+          const dx = x - cx;
+          const dy = y - cy;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          const intensity = Math.max(0, Math.sin(dist * 0.05 - t * 3.0));
+
+          const rVal = Math.min(255, Math.floor(baseR * intensity));
+          const gVal = Math.min(255, Math.floor(baseG * intensity));
+          const bVal = Math.min(255, Math.floor(baseB * intensity));
+
+          ctx.fillStyle = "rgb(" + rVal + "," + gVal + "," + bVal + ")";
+          ctx.fillRect(x - drawSize / 2, y - drawSize / 2, drawSize, drawSize);
+        }
+      }
+        `;
+    }
+  };
+
+  const copyJsModuleCode = () => {
+    const preset = presetMode;
+    const cleanPresetName = preset.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join("");
+    const isTransparent = transparentBgCheckbox ? transparentBgCheckbox.checked : false;
+
+    let codeStr = `/**
+ * Standalone Canvas 2D Visualizer: ${cleanPresetName}
+ * Primary Accent Color: ${color}
+ * Throttled to 90 FPS
+ */
+export class ${cleanPresetName}Visualizer {
+  constructor(canvas, options = {}) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext("2d");
+    this.color = options.color || "${color}";
+    this.speed = options.speed || ${speed};
+    this.pixelSize = options.pixelSize || ${pixelSize};
+    this.arcThickness = options.arcThickness || ${arcThickness};
+    this.glowIntensity = options.glowIntensity || ${glowIntensity};
+    this.transparent = options.transparent !== undefined ? options.transparent : ${isTransparent};
+    
+    this.width = 0;
+    this.height = 0;
+    this.raf = 0;
+    this.lastFrameTime = performance.now();
+    this.fpsInterval = 1000 / 90;
+    
+    this.init();
+  }
+
+  init() {
+    this.resize = this.resize.bind(this);
+    this.draw = this.draw.bind(this);
+    window.addEventListener("resize", this.resize);
+    this.resize();
+    this.raf = requestAnimationFrame(this.draw);
+  }
+
+  resize() {
+    this.width = window.innerWidth;
+    this.height = window.innerHeight;
+    const dpr = window.devicePixelRatio || 1;
+    this.canvas.width = this.width * dpr;
+    this.canvas.height = this.height * dpr;
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  draw(time) {
+    const now = performance.now();
+    const elapsedFrame = now - this.lastFrameTime;
+    if (elapsedFrame < this.fpsInterval) {
+      this.raf = requestAnimationFrame(this.draw);
+      return;
+    }
+    this.lastFrameTime = now - (elapsedFrame % this.fpsInterval);
+
+    const ctx = this.ctx;
+    const width = this.width;
+    const height = this.height;
+
+    // Clear background
+    if (this.transparent) {
+      ctx.clearRect(0, 0, width, height);
+    } else {
+      ctx.fillStyle = "#030704";
+      ctx.fillRect(0, 0, width, height);
+    }
+
+    const t = time * 0.001 * this.speed;
+    const [baseR, baseG, baseB] = this.hexToRgb(this.color);
+    const speed = this.speed;
+    const pixelSize = this.pixelSize;
+    const arcThickness = this.arcThickness;
+    const glowIntensity = this.glowIntensity;
+    const transparent = this.transparent;
+
+    ${getPresetCode(preset).trim()}
+
+    this.raf = requestAnimationFrame(this.draw);
+  }
+
+  hexToRgb(hex) {
+    const val = hex.replace("#", "");
+    return [
+      parseInt(val.substring(0, 2), 16),
+      parseInt(val.substring(2, 4), 16),
+      parseInt(val.substring(4, 6), 16)
+    ];
+  }
+
+  destroy() {
+    cancelAnimationFrame(this.raf);
+    window.removeEventListener("resize", this.resize);
+  }
+}`;
+
+    navigator.clipboard.writeText(codeStr)
+      .then(() => alert(`Clean ES Module class code for ${cleanPresetName} copied to clipboard!`))
+      .catch(err => {
+        console.error("Could not copy text: ", err);
+        alert("Clipboard copy failed. Standalone code generated:\n\n" + codeStr.substring(0, 200) + "...");
+      });
+  };
+
+  const downloadStandaloneHTML = () => {
+    const preset = presetMode;
+    const cleanPresetName = preset.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join("");
+    const isTransparent = transparentBgCheckbox ? transparentBgCheckbox.checked : false;
+
+    let htmlContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${cleanPresetName} - Standalone Visualizer</title>
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: ${isTransparent ? 'transparent' : '#030704'};
+    }
+    #visualizer-canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="visualizer-canvas"></canvas>
+  <script>
+    // Standalone Canvas visualizer code for ${cleanPresetName}
+    const canvas = document.getElementById("visualizer-canvas");
+    const ctx = canvas.getContext("2d");
+    
+    let width = window.innerWidth;
+    let height = window.innerHeight;
+    let raf = 0;
+    
+    const color = "${color}";
+    const speed = ${speed};
+    const pixelSize = ${pixelSize};
+    const arcThickness = ${arcThickness};
+    const glowIntensity = ${glowIntensity};
+    const transparent = ${isTransparent};
+
+    let lastFrameTime = performance.now();
+    const fpsInterval = 1000 / 90;
+
+    // Hex to RGB Helper
+    const hexToRgb = (hex) => {
+      const value = hex.replace("#", "");
+      return [
+        parseInt(value.substring(0, 2), 16),
+        parseInt(value.substring(2, 4), 16),
+        parseInt(value.substring(4, 6), 16)
+      ];
+    };
+
+    const resize = () => {
+      width = window.innerWidth;
+      height = window.innerHeight;
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    };
+
+    window.addEventListener("resize", resize);
+    resize();
+
+    // Render loop
+    const draw = (time) => {
+      const now = performance.now();
+      const elapsed = now - lastFrameTime;
+      if (elapsed < fpsInterval) {
+        raf = requestAnimationFrame(draw);
+        return;
+      }
+      lastFrameTime = now - (elapsed % fpsInterval);
+
+      if (transparent) {
+        ctx.clearRect(0, 0, width, height);
+      } else {
+        ctx.fillStyle = "#030704";
+        ctx.fillRect(0, 0, width, height);
+      }
+
+      const t = time * 0.001 * speed;
+      const [baseR, baseG, baseB] = hexToRgb(color);
+
+      ${getPresetCode(preset).trim()}
+
+      raf = requestAnimationFrame(draw);
+    };
+
+    raf = requestAnimationFrame(draw);
+  </script>
+</body>
+</html>`;
+
+    const blob = new Blob([htmlContent], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${preset}-standalone.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  let mediaRecorder = null;
+  let recordedChunks = [];
+  let isRecording = false;
+
+  const recordWebmVideo = () => {
+    if (isRecording) return;
+    isRecording = true;
+
+    recordedChunks = [];
+    if (webmBtnText) webmBtnText.textContent = "Recording (5s)...";
+    if (exportWebmBtn) {
+      exportWebmBtn.style.background = "rgba(220, 38, 38, 0.15)";
+      exportWebmBtn.style.borderColor = "rgba(220, 38, 38, 0.4)";
+    }
+
+    const stream = canvas.captureStream(60); 
+    
+    let options = { mimeType: "video/webm;codecs=vp9" };
+    if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+      options = { mimeType: "video/webm;codecs=vp8" };
+    }
+    if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+      options = { mimeType: "video/webm" };
+    }
+
+    try {
+      mediaRecorder = new MediaRecorder(stream, options);
+    } catch (e) {
+      console.error("MediaRecorder creation failed:", e);
+      alert("Transparent WebM recording is not supported in this browser. Try Chrome or Firefox!");
+      resetWebmButton();
+      return;
+    }
+
+    mediaRecorder.ondataavailable = (event) => {
+      if (event.data && event.data.size > 0) {
+        recordedChunks.push(event.data);
+      }
+    };
+
+    mediaRecorder.onstop = () => {
+      const blob = new Blob(recordedChunks, { type: "video/webm" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${presetMode}-transparent-visualizer.webm`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      resetWebmButton();
+    };
+
+    mediaRecorder.start();
+
+    // Stop recording after 5 seconds
+    setTimeout(() => {
+      if (mediaRecorder && mediaRecorder.state !== "inactive") {
+        mediaRecorder.stop();
+      }
+    }, 5000);
+  };
+
+  const resetWebmButton = () => {
+    isRecording = false;
+    if (webmBtnText) webmBtnText.textContent = "Record & Download WebM";
+    if (exportWebmBtn) {
+      exportWebmBtn.style.background = "rgba(255, 255, 255, 0.04)";
+      exportWebmBtn.style.borderColor = "rgba(255, 255, 255, 0.10)";
+    }
+  };
+
   const updateGlobalAccentColor = (newColor) => {
     color = newColor;
     if (accentPicker) accentPicker.value = newColor;
@@ -1945,6 +2487,13 @@
     
     // Interactive UI Panels
     controlsPanel = document.getElementById("controls-panel");
+
+    // Transparent Background and Developer Export Options
+    transparentBgCheckbox = document.getElementById("transparent-bg");
+    exportHtmlBtn = document.getElementById("export-html-btn");
+    exportJsBtn = document.getElementById("export-js-btn");
+    exportWebmBtn = document.getElementById("export-webm-btn");
+    webmBtnText = document.getElementById("webm-btn-text");
 
     // Initialize State Variables
     presetMode = designPreset.value;
@@ -2039,6 +2588,41 @@
     window.addEventListener("mouseleave", onMouseLeave);
     canvas.addEventListener("click", onCanvasClick);
     document.addEventListener("keydown", handleKeydown);
+
+    // Transparency Background Mode Change
+    if (transparentBgCheckbox) {
+      transparentBgCheckbox.addEventListener("change", (e) => {
+        if (e.target.checked) {
+          document.body.classList.add("transparent-mode");
+        } else {
+          document.body.classList.remove("transparent-mode");
+        }
+        // Recreate pattern using new transparency
+        updateGridPattern(presetMode, pixelSize);
+      });
+    }
+
+    // Code & Asset export listeners
+    if (exportHtmlBtn) {
+      exportHtmlBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        downloadStandaloneHTML();
+      });
+    }
+
+    if (exportJsBtn) {
+      exportJsBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        copyJsModuleCode();
+      });
+    }
+
+    if (exportWebmBtn) {
+      exportWebmBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        recordWebmVideo();
+      });
+    }
 
     // 3D drag handlers for Dot Globe and Converging Streams
     canvas.addEventListener("mousedown", (e) => {
