@@ -1649,9 +1649,9 @@
 
     // ══════════════════════════════════════════════════════════
 
-    // Dynamic coordinates based on mouse position
-    const cx = width * 0.5 + (mouse.x - 0.5) * width * 0.22;
-    const cy = height * 0.78 + (mouse.y - 0.5) * height * 0.12;
+    // Coordinates based on center (static for led-arch)
+    const cx = (presetMode === "led-arch") ? (width * 0.5) : (width * 0.5 + (mouse.x - 0.5) * width * 0.22);
+    const cy = (presetMode === "led-arch") ? (height * 0.78) : (height * 0.78 + (mouse.y - 0.5) * height * 0.12);
 
     const baseRadius = Math.min(width, height) * 0.58;
 
@@ -1818,9 +1818,12 @@
           }
         }
 
-        // Localized mouse flashlight glow
-        const distToMouse = Math.sqrt((x - mousePx) ** 2 + (y - mousePy) ** 2);
-        const mouseGlow = Math.pow(Math.max(0, 1 - distToMouse / 160), 3.0) * 0.55;
+        // Localized mouse flashlight glow (disabled for led-arch to remove cursor shades)
+        let mouseGlow = 0;
+        if (presetMode !== "led-arch") {
+          const distToMouse = Math.sqrt((x - mousePx) ** 2 + (y - mousePy) ** 2);
+          mouseGlow = Math.pow(Math.max(0, 1 - distToMouse / 160), 3.0) * 0.55;
+        }
 
         // Merge glowing components
         const finalIntensity = Math.max(intensity, mouseGlow);
