@@ -1900,8 +1900,19 @@
 
   // Mouse and Touch event listeners
   const updatePosition = (clientX, clientY) => {
-    mouse.tx = clientX / window.innerWidth;
-    mouse.ty = clientY / window.innerHeight;
+    if (canvas) {
+      const rect = canvas.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        mouse.tx = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+        mouse.ty = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
+      } else {
+        mouse.tx = clientX / window.innerWidth;
+        mouse.ty = clientY / window.innerHeight;
+      }
+    } else {
+      mouse.tx = clientX / window.innerWidth;
+      mouse.ty = clientY / window.innerHeight;
+    }
     isTrackingMouse = true;
     lastActivityTime = performance.now();
   };
@@ -2682,8 +2693,14 @@ const visualizer = new ${cleanPresetName}Visualizer(canvas, {
   const updateGlobalAccentColor = (newColor) => {
     color = newColor;
     if (accentPicker) accentPicker.value = newColor;
-    if (accentHex) accentHex.value = newColor;
+    if (accentHex) accentHex.value = newColor.toUpperCase();
     
+    // Update swatch preview
+    const accentSwatchPreview = document.getElementById("accent-swatch-preview");
+    if (accentSwatchPreview) {
+      accentSwatchPreview.style.backgroundColor = newColor;
+    }
+
     // Update CSS custom property values
     document.documentElement.style.setProperty("--accent-color", newColor);
     
@@ -2870,25 +2887,323 @@ const visualizer = new ${cleanPresetName}Visualizer(canvas, {
       });
     }
 
-    // Code & Asset export listeners
-    if (exportHtmlBtn) {
-      exportHtmlBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        downloadStandaloneHTML();
+    // Slider track fill helper
+    const updateSliderProgress = (slider) => {
+      if (!slider) return;
+      const min = parseFloat(slider.min) || 0;
+      const max = parseFloat(slider.max) || 100;
+      const val = parseFloat(slider.value) || 0;
+      const pct = Math.max(0, Math.min(100, ((val - min) / (max - min)) * 100));
+      slider.style.setProperty('--slider-progress', `${pct}%`);
+    };
+
+    [pixelSizeSlider, arcThicknessSlider, speedRange, glowIntensitySlider].forEach(slider => {
+      if (slider) {
+        updateSliderProgress(slider);
+        slider.addEventListener("input", () => updateSliderProgress(slider));
+      }
+    });
+
+    // Preset Tiles Grid Selection
+    const presetTiles = document.querySelectorAll(".preset-tile");
+    const syncPresetTile = (val) => {
+      presetTiles.forEach(tile => {
+        if (tile.dataset.preset === val) {
+          tile.classList.add("active");
+        } else {
+          tile.classList.remove("active");
+        }
+      });
+    };
+
+    presetTiles.forEach(tile => {
+      tile.addEventListener("click", () => {
+        const p = tile.dataset.preset;
+        syncPresetTile(p);
+        if (designPreset && designPreset.value !== p) {
+          designPreset.value = p;
+          designPreset.dispatchEvent(new Event("change"));
+        }
+      });
+    });
+
+    designPreset.addEventListener("change", (e) => {
+      syncPresetTile(e.target.value);
+    });
+
+    // Collapsible Sections
+    const sectionHeaders = document.querySelectorAll(".section-header-btn");
+    sectionHeaders.forEach(btn => {
+      btn.addEventListener("click", () => {
+        const section = btn.closest(".collapsible-section");
+        if (!section) return;
+        const isCollapsed = section.classList.toggle("collapsed");
+        section.classList.toggle("expanded", !isCollapsed);
+        btn.setAttribute("aria-expanded", isCollapsed ? "false" : "true");
+        const chevron = btn.querySelector(".chevron-icon");
+        if (chevron) {
+          chevron.textContent = isCollapsed ? "▶" : "▼";
+        }
+      });
+    });
+
+    // Panel Elements
+    const appLayout = document.getElementById("app-layout");
+    const panelPresets = document.getElementById("panel-presets");
+    const panelControls = document.getElementById("panel-controls");
+    const backdropOverlay = document.getElementById("backdrop-overlay");
+    const closeControlsBtn = document.getElementById("close-controls-btn");
+    const closePresetsBtn = document.getElementById("close-presets-btn");
+    const restoreControlsBtn = document.getElementById("restore-controls-btn");
+    const togglePresetsBtn = document.getElementById("toggle-presets-btn");
+    const toggleControlsBtn = document.getElementById("toggle-controls-btn");
+
+    // Drawer helpers
+    const closeAllDrawers = () => {
+      if (panelPresets) panelPresets.classList.remove("drawer-open");
+      if (panelControls) panelControls.classList.remove("drawer-open");
+      if (backdropOverlay) backdropOverlay.classList.remove("active");
+      setTimeout(resize, 260);
+    };
+
+    if (backdropOverlay) {
+      backdropOverlay.addEventListener("click", closeAllDrawers);
+    }
+
+    if (togglePresetsBtn) {
+      togglePresetsBtn.addEventListener("click", () => {
+        const isOpen = panelPresets && panelPresets.classList.contains("drawer-open");
+        closeAllDrawers();
+        if (!isOpen && panelPresets) {
+          panelPresets.classList.add("drawer-open");
+          if (backdropOverlay) backdropOverlay.classList.add("active");
+          setTimeout(resize, 260);
+        }
       });
     }
 
-    if (exportJsBtn) {
-      exportJsBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        copyJsModuleCode();
+    if (toggleControlsBtn) {
+      toggleControlsBtn.addEventListener("click", () => {
+        const isOpen = panelControls && panelControls.classList.contains("drawer-open");
+        closeAllDrawers();
+        if (!isOpen && panelControls) {
+          panelControls.classList.add("drawer-open");
+          if (backdropOverlay) backdropOverlay.classList.add("active");
+          setTimeout(resize, 260);
+        }
       });
     }
 
+    if (closePresetsBtn) {
+      closePresetsBtn.addEventListener("click", closeAllDrawers);
+    }
+
+    if (closeControlsBtn) {
+      closeControlsBtn.addEventListener("click", () => {
+        if (panelControls && panelControls.classList.contains("drawer-open")) {
+          closeAllDrawers();
+        } else if (appLayout) {
+          appLayout.classList.add("controls-collapsed");
+          setTimeout(resize, 260);
+        }
+      });
+    }
+
+    if (restoreControlsBtn) {
+      restoreControlsBtn.addEventListener("click", () => {
+        if (appLayout) appLayout.classList.remove("controls-collapsed");
+        setTimeout(resize, 260);
+      });
+    }
+
+    // Bottom Bar UI Toggle (hide/show side panels)
+    const uiVisibilityToggle = document.getElementById("ui-visibility-toggle");
+    if (uiVisibilityToggle) {
+      uiVisibilityToggle.addEventListener("change", (e) => {
+        if (appLayout) {
+          if (e.target.checked) {
+            appLayout.classList.remove("ui-hidden");
+          } else {
+            appLayout.classList.add("ui-hidden");
+          }
+          setTimeout(resize, 260);
+        }
+      });
+    }
+
+    // Bottom Bar Background Dropdown
+    const bgModeSelect = document.getElementById("bg-mode-select");
+    if (bgModeSelect) {
+      bgModeSelect.addEventListener("change", (e) => {
+        const isTransparent = (e.target.value === "transparent");
+        if (transparentBgCheckbox) {
+          transparentBgCheckbox.checked = isTransparent;
+          transparentBgCheckbox.dispatchEvent(new Event("change"));
+        }
+      });
+    }
+
+    // Toast feedback helper
+    const showToast = (msg) => {
+      let toast = document.querySelector(".ambie-toast");
+      if (!toast) {
+        toast = document.createElement("div");
+        toast.className = "ambie-toast";
+        document.body.appendChild(toast);
+      }
+      toast.textContent = msg;
+      toast.classList.add("visible");
+      clearTimeout(toast._timer);
+      toast._timer = setTimeout(() => {
+        toast.classList.remove("visible");
+      }, 2400);
+    };
+
+    // Top Bar Actions
+    const rateBtn = document.getElementById("rate-btn");
+    if (rateBtn) {
+      rateBtn.addEventListener("click", () => {
+        showToast("Thanks for rating mizo shaders! ★★★★★");
+      });
+    }
+
+    const shareBtn = document.getElementById("share-btn");
+    if (shareBtn) {
+      shareBtn.addEventListener("click", async () => {
+        if (navigator.clipboard) {
+          try {
+            await navigator.clipboard.writeText(window.location.href);
+            showToast("Link copied to clipboard!");
+            return;
+          } catch (err) {}
+        }
+        showToast("Share: " + window.location.href);
+      });
+    }
+
+    // Export Dropdown Menu (Anchored under Export button)
+    const exportDropdownWrapper = document.getElementById("export-dropdown-wrapper");
+    const topExportBtn = document.getElementById("top-export-btn");
+
+    const toggleExportDropdown = () => {
+      if (exportDropdownWrapper) {
+        const isOpen = exportDropdownWrapper.classList.toggle("open");
+        if (topExportBtn) topExportBtn.setAttribute("aria-expanded", isOpen ? "true" : "false");
+      }
+    };
+
+    const closeExportDropdown = () => {
+      if (exportDropdownWrapper) {
+        exportDropdownWrapper.classList.remove("open");
+        if (topExportBtn) topExportBtn.setAttribute("aria-expanded", "false");
+      }
+    };
+
+    if (topExportBtn) {
+      topExportBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        toggleExportDropdown();
+      });
+    }
+
+    document.addEventListener("click", (e) => {
+      if (exportDropdownWrapper && !exportDropdownWrapper.contains(e.target)) {
+        closeExportDropdown();
+      }
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        closeExportDropdown();
+      }
+    });
+
+    // 1. PNG Still Image Download
+    const exportPngBtn = document.getElementById("export-png-btn");
+    if (exportPngBtn) {
+      exportPngBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        closeExportDropdown();
+        if (!canvas) return;
+        const link = document.createElement("a");
+        link.download = `mizo-shader-${presetMode || "ambient"}.png`;
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+        showToast("PNG image downloaded!");
+      });
+    }
+
+    // 2. JSON Settings Download
+    const exportJsonBtn = document.getElementById("export-json-btn");
+    if (exportJsonBtn) {
+      exportJsonBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        closeExportDropdown();
+        const settings = {
+          name: "mizo-shaders",
+          preset: presetMode,
+          accentColor: color,
+          speed: speed,
+          blockSize: pixelSize,
+          waveSpread: arcThickness,
+          glowBloom: glowIntensity,
+          transparentBackground: transparentBgCheckbox ? transparentBgCheckbox.checked : false
+        };
+        const blob = new Blob([JSON.stringify(settings, null, 2)], { type: "application/json" });
+        const link = document.createElement("a");
+        link.download = `mizo-shader-${presetMode || "ambient"}-settings.json`;
+        link.href = URL.createObjectURL(blob);
+        link.click();
+        showToast("JSON settings downloaded!");
+      });
+    }
+
+    // 3. WebM 6s Video Recording
     if (exportWebmBtn) {
       exportWebmBtn.addEventListener("click", (e) => {
         e.stopPropagation();
+        closeExportDropdown();
         recordWebmVideo();
+      });
+    }
+
+    // 4. MP4 6s Video Recording
+    const exportMp4Btn = document.getElementById("export-mp4-btn");
+    if (exportMp4Btn) {
+      exportMp4Btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        closeExportDropdown();
+        recordWebmVideo();
+      });
+    }
+
+    // 5. GIF 3s Recording
+    const exportGifBtnItem = document.getElementById("export-gif-btn-item");
+    if (exportGifBtnItem) {
+      exportGifBtnItem.addEventListener("click", (e) => {
+        e.stopPropagation();
+        closeExportDropdown();
+        recordGifVideo();
+      });
+    }
+
+    // 6. Standalone HTML Code Download
+    if (exportHtmlBtn) {
+      exportHtmlBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        closeExportDropdown();
+        downloadStandaloneHTML();
+        showToast("Standalone HTML downloaded!");
+      });
+    }
+
+    // 7. Copy JS Module Code
+    if (exportJsBtn) {
+      exportJsBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        closeExportDropdown();
+        copyJsModuleCode();
+        showToast("JS Module copied to clipboard!");
       });
     }
 

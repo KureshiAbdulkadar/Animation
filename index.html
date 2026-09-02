@@ -19,161 +19,436 @@
       document.body.appendChild(div);
     });
   </script>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Data Pixel Arc - Full-Screen Ambient Visualizer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>mizo shaders — Ambient Visualizer & Shaders</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div id="app-container">
-    <!-- Full-screen drawing Canvas -->
-    <canvas id="predictive-canvas"></canvas>
+  <!-- Hidden legacy controls for full JS backward compatibility -->
+  <div style="display: none;" aria-hidden="true">
+    <select id="design-preset">
+      <option value="led-arch" selected>01. Classic LED Arch</option>
+      <option value="ghosting">02. Ghosting Flashlight</option>
+      <option value="snake-game">03. Retro Snake Grid</option>
+      <option value="gravity-matrix">04. Gravity Cascade</option>
+      <option value="dot-globe">05. 3D Dot Globe</option>
+      <option value="streamline-pinch">06. Converging Streams</option>
+      <option value="flow-field">07. Particle Flow-Field</option>
+      <option value="constellation-field">08. Constellation Field</option>
+      <option value="particle-wheel">09. Particle Orbit Wheel</option>
+      <option value="tech-boxes">10. Tech Boxes</option>
+      <option value="space-galaxy">11. Space Galaxy</option>
+      <option value="data-stream">12. Data Matrix</option>
+      <option value="wave-grid">13. Ocean Wave Grid</option>
+    </select>
+    <input type="checkbox" id="transparent-bg">
+    <input type="checkbox" id="ui-visibility-toggle" checked>
+    <button id="export-md-btn"></button>
+    <button id="export-gif-btn"><span id="gif-btn-text"></span></button>
+  </div>
 
-    <!-- Technical alignment grid overlay -->
-    <div class="tech-grid-overlay"></div>
-
-    <!-- Always-open Control Card -->
-    <aside class="controls-panel" id="controls-panel">
-
-      <!-- Card Header (non-clickable, decorative) -->
-      <div class="panel-header">
-        <div class="panel-title">
-          <span class="icon">⚡</span>
-          <h3>AMBIE-VIS // HUD</h3>
+  <div id="app-layout">
+    <!-- Top Bar -->
+    <header class="top-bar">
+      <div class="top-bar-left">
+        <div class="brand">
+          <span class="sparkle-glyph">✦</span>
+          <span class="brand-title">mizo shaders</span>
         </div>
-        <div class="panel-badge">LIVE</div>
       </div>
 
-      <!-- Card Body -->
-      <div class="panel-content">
+      <div class="top-bar-right">
+        <!-- Mobile/Tablet Drawer Toggle Buttons -->
+        <button type="button" class="action-pill outlined-pill mobile-toggle-btn" id="toggle-presets-btn">Presets</button>
+        <button type="button" class="action-pill outlined-pill mobile-toggle-btn" id="toggle-controls-btn">Controls</button>
 
-        <!-- Design Preset Dropdown -->
-        <div class="control-group">
-          <label for="design-preset">Visual Preset</label>
-          <select id="design-preset" class="select-dropdown">
-            <option value="led-arch" selected>01. Classic LED Arch</option>
-            <option value="ghosting">02. Ghosting Flashlight</option>
-            <option value="snake-game">03. Retro Snake Grid</option>
-            <option value="gravity-matrix">04. Gravity Cascade</option>
-            <option value="dot-globe">05. 3D Dot Globe</option>
-            <option value="streamline-pinch">06. Converging Streams</option>
-            <option value="flow-field">07. Particle Flow-Field</option>
-            <option value="constellation-field">08. Constellation Field</option>
-            <option value="particle-wheel">09. Particle Orbit Wheel</option>
-            <option value="tech-boxes">10. Tech Boxes</option>
-            <option value="space-galaxy">11. Space Galaxy</option>
-            <option value="data-stream">12. Data Matrix</option>
-            <option value="wave-grid">13. Ocean Wave Grid</option>
-          </select>
-        </div>
-
-        <!-- Color Selector -->
-        <div class="control-group">
-          <label>Primary Accent</label>
-          <div class="color-picker-wrapper">
-            <input type="color" id="accent-picker" value="#00f066">
-            <input type="text" id="accent-hex" value="#00f066" maxlength="7" placeholder="#00f066">
-          </div>
-          <div class="presets-row">
-            <button class="preset-dot active" data-color="#00f066" style="--preset-color: #00f066;" title="Matrix Green"></button>
-            <button class="preset-dot" data-color="#39ff14" style="--preset-color: #39ff14;" title="Neon Lime"></button>
-            <button class="preset-dot" data-color="#00ffd2" style="--preset-color: #00ffd2;" title="Teal Glow"></button>
-            <button class="preset-dot" data-color="#88ff00" style="--preset-color: #88ff00;" title="Acid Green"></button>
-            <button class="preset-dot" data-color="#00bc4b" style="--preset-color: #00bc4b;" title="Forest LED"></button>
-            <button class="preset-dot" data-color="#7c3aed" style="--preset-color: #7c3aed;" title="Deep Purple"></button>
-            <button class="preset-dot" data-color="#f97316" style="--preset-color: #f97316;" title="Ember Orange"></button>
+        <!-- Background Mode Selector (Moved to Navbar) -->
+        <div class="nav-control-item" title="Change canvas background mode">
+          <span class="nav-control-label">Background</span>
+          <div class="dropdown-wrapper">
+            <select id="bg-mode-select" class="bottom-select nav-select">
+              <option value="solid" selected>Solid Dark</option>
+              <option value="transparent">Transparent</option>
+            </select>
+            <span class="dropdown-arrow">▼</span>
           </div>
         </div>
 
-        <!-- Density / Particle Size -->
-        <div class="control-group">
-          <div class="label-row">
-            <label for="pixel-size">Block Dimension</label>
-            <span class="value-display" id="pixel-size-value">4px</span>
-          </div>
-          <input type="range" id="pixel-size" min="2" max="16" value="4" step="1">
-        </div>
+        <!-- Export Dropdown Button & Anchored Menu (matches reference) -->
+        <div class="export-dropdown-wrapper" id="export-dropdown-wrapper">
+          <button type="button" class="action-pill solid-pill" id="top-export-btn" aria-haspopup="true" aria-expanded="false">
+            Export
+          </button>
 
-        <!-- Arch Wave Thickness -->
-        <div class="control-group">
-          <div class="label-row">
-            <label for="arc-thickness">Wave Spread</label>
-            <span class="value-display" id="arc-thickness-value">120px</span>
-          </div>
-          <input type="range" id="arc-thickness" min="20" max="250" value="120" step="5">
-        </div>
-
-        <!-- Wave Glow Multiplier -->
-        <div class="control-group">
-          <div class="label-row">
-            <label for="glow-intensity">Glow Bloom</label>
-            <span class="value-display" id="glow-intensity-value">2.4x</span>
-          </div>
-          <input type="range" id="glow-intensity" min="0.5" max="5.0" value="2.4" step="0.1">
-        </div>
-
-        <!-- Animation Speed Slider -->
-        <div class="control-group">
-          <div class="label-row">
-            <label for="speed-range">Wave Speed</label>
-            <span class="value-display" id="speed-value">1.0x</span>
-          </div>
-          <input type="range" id="speed-range" min="0.1" max="4.0" value="1.0" step="0.1">
-        </div>
-
-        <!-- Background Mode -->
-        <div class="control-group">
-          <label for="transparent-bg">Canvas Background</label>
-          <div class="toggle-wrapper" style="display: flex; align-items: center; gap: 8px;">
-            <input type="checkbox" id="transparent-bg" style="cursor: pointer; width: 14px; height: 14px;">
-            <span style="font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary);">Transparent Background</span>
-          </div>
-        </div>
-
-        <!-- System Stats HUD -->
-        <div class="status-box">
-          <div class="stat-item">
-            <span class="stat-label">FPS</span>
-            <span class="stat-value" id="fps-counter">60</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">CELLS</span>
-            <span class="stat-value" id="particle-counter">0</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">DPR</span>
-            <span class="stat-value" id="dpr-counter">1.0</span>
-          </div>
-        </div>
-
-        <div class="panel-divider" style="background: rgba(255,255,255,0.08); height: 1px; margin: 8px -16px;"></div>
-
-        <!-- Export Actions -->
-        <div class="control-group">
-          <label>Developer Exports</label>
-          <div class="export-actions-wrapper" style="display: flex; flex-direction: column; gap: 8px; margin-top: 4px;">
-            <button id="export-html-btn" class="export-btn">
-              📥 <span>Download HTML Code</span>
+          <div class="export-dropdown-menu" id="export-dropdown-menu" role="menu" aria-label="Export options">
+            <button type="button" class="dropdown-menu-item" id="export-png-btn" role="menuitem">
+              <span>PNG still</span>
             </button>
-            <button id="export-js-btn" class="export-btn">
-              📋 <span>Copy JS Module Code</span>
+            <button type="button" class="dropdown-menu-item" id="export-json-btn" role="menuitem">
+              <span>JSON settings</span>
             </button>
-            <button id="export-webm-btn" class="export-btn">
-              🎥 <span id="webm-btn-text">Record & Download WebM</span>
+            <button type="button" class="dropdown-menu-item" id="export-webm-btn" role="menuitem">
+              <span id="webm-btn-text">WebM 6s</span>
             </button>
-            <button id="export-md-btn" class="export-btn">
-              📝 <span>Download MD Guide</span>
+            <button type="button" class="dropdown-menu-item" id="export-mp4-btn" role="menuitem">
+              <span>MP4 6s</span>
             </button>
-            <button id="export-gif-btn" class="export-btn">
-              🎨 <span id="gif-btn-text">Record & Download GIF</span>
+            <button type="button" class="dropdown-menu-item" id="export-gif-btn-item" role="menuitem">
+              <span id="gif-btn-text-item">GIF 3s</span>
+            </button>
+            <div class="dropdown-menu-divider"></div>
+            <button type="button" class="dropdown-menu-item" id="export-html-btn" role="menuitem">
+              <span>HTML Code</span>
+            </button>
+            <button type="button" class="dropdown-menu-item" id="export-js-btn" role="menuitem">
+              <span>Copy JS Module</span>
             </button>
           </div>
         </div>
-
       </div>
-    </aside>
+    </header>
+
+    <!-- Main Workspace: Left Panel, Canvas Card, Right Panel -->
+    <main class="main-content">
+      <!-- Backdrop overlay for mobile drawers -->
+      <div class="backdrop-overlay" id="backdrop-overlay"></div>
+
+      <!-- Left Panel: Presets (Cleanly dedicated to Visual Presets Grid) -->
+      <aside class="panel panel-left" id="panel-presets">
+        <div class="panel-card-header">
+          <div class="panel-card-title">
+            <span class="sparkle-glyph">✦</span>
+            <h2>Presets</h2>
+          </div>
+          <button type="button" class="panel-close-btn mobile-close-btn" id="close-presets-btn" aria-label="Close presets panel">×</button>
+        </div>
+
+        <div class="panel-scroll-body">
+          <!-- Section: VISUAL PRESETS -->
+          <div class="collapsible-section expanded" id="section-visual-presets">
+            <button type="button" class="section-header-btn" aria-expanded="true">
+              <span class="chevron-icon">▼</span>
+              <span class="section-title">VISUAL PRESETS</span>
+            </button>
+            <div class="section-content">
+              <div class="preset-tiles-grid" id="preset-tiles-grid">
+                <!-- 01. Classic LED Arch -->
+                <button type="button" class="preset-tile active" data-preset="led-arch">
+                  <div class="tile-icon">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M4 18a8 8 0 0 1 16 0"/>
+                      <path d="M7 18a5 5 0 0 1 10 0"/>
+                      <path d="M10 18a2 2 0 0 1 4 0"/>
+                    </svg>
+                  </div>
+                  <span class="tile-label">Classic Arch</span>
+                </button>
+
+                <!-- 02. Ghosting Flashlight -->
+                <button type="button" class="preset-tile" data-preset="ghosting">
+                  <div class="tile-icon">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <polygon points="9 6 15 6 20 20 4 20 9 6"/>
+                      <line x1="12" y1="6" x2="12" y2="2"/>
+                    </svg>
+                  </div>
+                  <span class="tile-label">Ghosting Beam</span>
+                </button>
+
+                <!-- 03. Retro Snake Grid -->
+                <button type="button" class="preset-tile" data-preset="snake-game">
+                  <div class="tile-icon">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M4 8h8a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H6a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h14"/>
+                      <circle cx="4" cy="8" r="1.5" fill="currentColor"/>
+                    </svg>
+                  </div>
+                  <span class="tile-label">Snake Grid</span>
+                </button>
+
+                <!-- 04. Gravity Cascade -->
+                <button type="button" class="preset-tile" data-preset="gravity-matrix">
+                  <div class="tile-icon">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="4" y="4" width="4" height="4" rx="1"/>
+                      <rect x="10" y="7" width="4" height="4" rx="1"/>
+                      <rect x="16" y="3" width="4" height="4" rx="1"/>
+                      <rect x="7" y="14" width="4" height="4" rx="1"/>
+                      <rect x="14" y="16" width="4" height="4" rx="1"/>
+                      <path d="M6 10v2M12 13v2M18 9v4"/>
+                    </svg>
+                  </div>
+                  <span class="tile-label">Gravity Matrix</span>
+                </button>
+
+                <!-- 05. 3D Dot Globe -->
+                <button type="button" class="preset-tile" data-preset="dot-globe">
+                  <div class="tile-icon">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="9"/>
+                      <ellipse cx="12" cy="12" rx="4" ry="9"/>
+                      <path d="M3 12h18"/>
+                      <path d="M5 7h14"/>
+                      <path d="M5 17h14"/>
+                    </svg>
+                  </div>
+                  <span class="tile-label">3D Globe</span>
+                </button>
+
+                <!-- 06. Converging Streams -->
+                <button type="button" class="preset-tile" data-preset="streamline-pinch">
+                  <div class="tile-icon">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M3 5c6 2 8 7 9 7s3-5 9-7"/>
+                      <path d="M3 19c6-2 8-7 9-7s3 5 9 7"/>
+                      <path d="M3 12h18"/>
+                    </svg>
+                  </div>
+                  <span class="tile-label">Streams</span>
+                </button>
+
+                <!-- 07. Particle Flow-Field -->
+                <button type="button" class="preset-tile" data-preset="flow-field">
+                  <div class="tile-icon">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M3 7c4-3 8 0 12-2 3-1.5 5 0 6 2"/>
+                      <path d="M3 13c5-1 8 4 13 1 3-2 4 1 5 1"/>
+                      <path d="M2 19c4 1 7-2 11 0 4 2 7-1 9-1"/>
+                    </svg>
+                  </div>
+                  <span class="tile-label">Flow Field</span>
+                </button>
+
+                <!-- 08. Constellation Field -->
+                <button type="button" class="preset-tile" data-preset="constellation-field">
+                  <div class="tile-icon">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="5" cy="8" r="1.5" fill="currentColor"/>
+                      <circle cx="12" cy="4" r="1.5" fill="currentColor"/>
+                      <circle cx="19" cy="9" r="1.5" fill="currentColor"/>
+                      <circle cx="8" cy="18" r="1.5" fill="currentColor"/>
+                      <circle cx="17" cy="17" r="1.5" fill="currentColor"/>
+                      <line x1="5" y1="8" x2="12" y2="4"/>
+                      <line x1="12" y1="4" x2="19" y2="9"/>
+                      <line x1="5" y1="8" x2="8" y2="18"/>
+                      <line x1="8" y1="18" x2="17" y2="17"/>
+                      <line x1="17" y1="17" x2="19" y2="9"/>
+                    </svg>
+                  </div>
+                  <span class="tile-label">Constellation</span>
+                </button>
+
+                <!-- 09. Particle Orbit Wheel -->
+                <button type="button" class="preset-tile" data-preset="particle-wheel">
+                  <div class="tile-icon">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="8" stroke-dasharray="3 3"/>
+                      <circle cx="12" cy="12" r="3"/>
+                      <circle cx="12" cy="4" r="1.5" fill="currentColor"/>
+                      <circle cx="20" cy="12" r="1.5" fill="currentColor"/>
+                      <circle cx="12" cy="20" r="1.5" fill="currentColor"/>
+                      <circle cx="4" cy="12" r="1.5" fill="currentColor"/>
+                    </svg>
+                  </div>
+                  <span class="tile-label">Orbit Wheel</span>
+                </button>
+
+                <!-- 10. Tech Boxes -->
+                <button type="button" class="preset-tile" data-preset="tech-boxes">
+                  <div class="tile-icon">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <polygon points="12 2 21 7 12 12 3 7"/>
+                      <polygon points="12 12 21 7 21 17 12 22"/>
+                      <polygon points="3 7 12 12 12 22 3 17"/>
+                    </svg>
+                  </div>
+                  <span class="tile-label">Tech Boxes</span>
+                </button>
+
+                <!-- 11. Space Galaxy -->
+                <button type="button" class="preset-tile" data-preset="space-galaxy">
+                  <div class="tile-icon">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="2" fill="currentColor"/>
+                      <path d="M12 10a2 2 0 0 1 2 2c0 2-2 4-4 4s-5-2-5-5 3-7 7-7 8 4 8 9-4 10-10 10"/>
+                    </svg>
+                  </div>
+                  <span class="tile-label">Galaxy</span>
+                </button>
+
+                <!-- 12. Data Matrix -->
+                <button type="button" class="preset-tile" data-preset="data-stream">
+                  <div class="tile-icon">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M6 3v18M12 3v18M18 3v18" stroke-dasharray="2 3"/>
+                      <circle cx="6" cy="7" r="1" fill="currentColor"/>
+                      <circle cx="12" cy="14" r="1" fill="currentColor"/>
+                      <circle cx="18" cy="10" r="1" fill="currentColor"/>
+                      <circle cx="6" cy="17" r="1" fill="currentColor"/>
+                    </svg>
+                  </div>
+                  <span class="tile-label">Data Matrix</span>
+                </button>
+
+                <!-- 13. Ocean Wave Grid -->
+                <button type="button" class="preset-tile" data-preset="wave-grid">
+                  <div class="tile-icon">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M2 17c4-3 8 2 12-2s6 3 8 0"/>
+                      <path d="M2 12c4-3 8 2 12-2s6 3 8 0"/>
+                      <path d="M2 7c4-3 8 2 12-2s6 3 8 0"/>
+                      <line x1="6" y1="5" x2="4" y2="19"/>
+                      <line x1="12" y1="4" x2="12" y2="18"/>
+                      <line x1="18" y1="5" x2="20" y2="19"/>
+                    </svg>
+                  </div>
+                  <span class="tile-label">Wave Grid</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Center: Canvas Frame (Full Height, No Bottom Bar) -->
+      <section class="center-stage">
+        <div class="canvas-frame-card" id="canvas-card">
+          <canvas id="predictive-canvas"></canvas>
+          <div class="tech-grid-overlay"></div>
+        </div>
+      </section>
+
+      <!-- Right Panel: Controls (Includes SHAPE, MOTION, PRIMARY ACCENT, STATS) -->
+      <aside class="panel panel-right" id="panel-controls">
+        <div class="panel-card-header">
+          <div class="panel-card-title">
+            <span class="sparkle-glyph">✦</span>
+            <h2>Controls</h2>
+          </div>
+          <button type="button" class="panel-close-btn" id="close-controls-btn" aria-label="Close controls panel">×</button>
+        </div>
+
+        <div class="panel-scroll-body">
+          <!-- Section: SHAPE -->
+          <div class="collapsible-section expanded" id="section-shape">
+            <button type="button" class="section-header-btn" aria-expanded="true">
+              <span class="chevron-icon">▼</span>
+              <span class="section-title">SHAPE</span>
+            </button>
+            <div class="section-content">
+              <div class="slider-field">
+                <div class="slider-label-row">
+                  <label for="pixel-size">Block Dimension</label>
+                  <span class="value-pill" id="pixel-size-value">4px</span>
+                </div>
+                <div class="slider-track-wrap">
+                  <input type="range" id="pixel-size" min="2" max="16" value="4" step="1" class="editor-slider">
+                </div>
+              </div>
+
+              <div class="slider-field">
+                <div class="slider-label-row">
+                  <label for="arc-thickness">Wave Spread</label>
+                  <span class="value-pill" id="arc-thickness-value">120px</span>
+                </div>
+                <div class="slider-track-wrap">
+                  <input type="range" id="arc-thickness" min="20" max="250" value="120" step="5" class="editor-slider">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section: MOTION -->
+          <div class="collapsible-section expanded" id="section-motion">
+            <button type="button" class="section-header-btn" aria-expanded="true">
+              <span class="chevron-icon">▼</span>
+              <span class="section-title">MOTION</span>
+            </button>
+            <div class="section-content">
+              <div class="slider-field">
+                <div class="slider-label-row">
+                  <label for="speed-range">Wave Speed</label>
+                  <span class="value-pill" id="speed-value">1.0x</span>
+                </div>
+                <div class="slider-track-wrap">
+                  <input type="range" id="speed-range" min="0.1" max="4.0" value="1.0" step="0.1" class="editor-slider">
+                </div>
+              </div>
+
+              <div class="slider-field">
+                <div class="slider-label-row">
+                  <label for="glow-intensity">Glow Bloom</label>
+                  <span class="value-pill" id="glow-intensity-value">2.4x</span>
+                </div>
+                <div class="slider-track-wrap">
+                  <input type="range" id="glow-intensity" min="0.5" max="5.0" value="2.4" step="0.1" class="editor-slider">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section: PRIMARY ACCENT (Moved to Developer Exports' Place) -->
+          <div class="collapsible-section expanded" id="section-primary-accent">
+            <button type="button" class="section-header-btn" aria-expanded="true">
+              <span class="chevron-icon">▼</span>
+              <span class="section-title">PRIMARY ACCENT</span>
+            </button>
+            <div class="section-content">
+              <div class="accent-color-row">
+                <div class="accent-swatch-wrapper" title="Choose color">
+                  <input type="color" id="accent-picker" value="#00f066" class="swatch-native-input">
+                  <div class="accent-swatch-preview" id="accent-swatch-preview" style="background-color: #00f066;"></div>
+                </div>
+                <input type="text" id="accent-hex" value="#00F066" maxlength="7" spellcheck="false" class="accent-hex-input">
+              </div>
+              <div class="swatches-palette-row">
+                <button type="button" class="preset-dot active" data-color="#00f066" style="--preset-color: #00f066;" title="Matrix Green"></button>
+                <button type="button" class="preset-dot" data-color="#39ff14" style="--preset-color: #39ff14;" title="Neon Lime"></button>
+                <button type="button" class="preset-dot" data-color="#00ffd2" style="--preset-color: #00ffd2;" title="Teal Glow"></button>
+                <button type="button" class="preset-dot" data-color="#88ff00" style="--preset-color: #88ff00;" title="Acid Green"></button>
+                <button type="button" class="preset-dot" data-color="#00bc4b" style="--preset-color: #00bc4b;" title="Forest LED"></button>
+                <button type="button" class="preset-dot" data-color="#7c3aed" style="--preset-color: #7c3aed;" title="Deep Purple"></button>
+                <button type="button" class="preset-dot" data-color="#f97316" style="--preset-color: #f97316;" title="Ember Orange"></button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section: STATS -->
+          <div class="collapsible-section expanded" id="section-stats">
+            <button type="button" class="section-header-btn" aria-expanded="true">
+              <span class="chevron-icon">▼</span>
+              <span class="section-title">STATS</span>
+            </button>
+            <div class="section-content">
+              <div class="stats-tiles-grid">
+                <div class="stat-tile">
+                  <span class="stat-tile-label">FPS</span>
+                  <span class="stat-tile-val" id="fps-counter">60</span>
+                </div>
+                <div class="stat-tile">
+                  <span class="stat-tile-label">CELLS</span>
+                  <span class="stat-tile-val" id="particle-counter">0</span>
+                </div>
+                <div class="stat-tile">
+                  <span class="stat-tile-label">DPR</span>
+                  <span class="stat-tile-val" id="dpr-counter">1.0</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Floating Restore Chevron for Controls Panel on Desktop -->
+      <button type="button" class="floating-restore-btn" id="restore-controls-btn" title="Open Controls" aria-label="Open Controls">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"/>
+        </svg>
+      </button>
+    </main>
   </div>
 
   <script type="module" src="app.js"></script>
