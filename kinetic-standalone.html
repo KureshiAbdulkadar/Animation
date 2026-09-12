@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D Kinetic Pin Matrix — Isometric Voxel Wave Sculpture (Standalone)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #040b14;
+      font-family: 'JetBrains Mono', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace;
+      color: #e2e8f0;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      user-select: none;
+    }
+
+    .kg-frame {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: radial-gradient(circle at 50% 50%, #0a182a 0%, #030810 100%);
+    }
+
+    .kg-canvas-container {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+
+    .kg-topbar {
+      position: absolute;
+      top: 20px;
+      left: 24px;
+      right: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 20;
+      pointer-events: none;
+    }
+
+    .kg-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(10, 24, 42, 0.78);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      padding: 8px 16px;
+      border-radius: 9999px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      pointer-events: auto;
+    }
+
+    .kg-brand-icon {
+      width: 18px;
+      height: 18px;
+      fill: #00f0ff;
+      filter: drop-shadow(0 0 6px rgba(0, 240, 255, 0.6));
+    }
+
+    .kg-brand-title {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      color: #f8fafc;
+    }
+
+    .kg-brand-tag {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #7dd3fc;
+      background: rgba(0, 240, 255, 0.12);
+      padding: 2px 8px;
+      border-radius: 12px;
+    }
+
+    .kg-topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      pointer-events: auto;
+    }
+
+    .kg-action-btn {
+      background: rgba(10, 24, 42, 0.78);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: #e2e8f0;
+      padding: 8px 14px;
+      border-radius: 9999px;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .kg-action-btn:hover {
+      background: rgba(24, 48, 78, 0.85);
+      border-color: rgba(255, 255, 255, 0.2);
+      color: #fff;
+      transform: translateY(-1px);
+    }
+
+    .kg-hud-panel {
+      position: absolute;
+      top: 80px;
+      right: 24px;
+      width: 320px;
+      max-height: calc(100vh - 120px);
+      background: rgba(10, 24, 42, 0.82);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .kg-hud-panel.collapsed {
+      height: 48px;
+    }
+
+    .kg-hud-panel.collapsed .kg-hud-content {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .kg-hud-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 18px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .kg-hud-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      color: #f1f5f9;
+      text-transform: uppercase;
+    }
+
+    .kg-hud-title span:first-child {
+      color: #00f0ff;
+    }
+
+    .kg-toggle-btn {
+      background: none;
+      border: none;
+      color: #94a3b8;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+
+    .kg-toggle-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+    }
+
+    .kg-hud-panel.collapsed .kg-toggle-btn svg {
+      transform: rotate(180deg);
+    }
+
+    .kg-hud-content {
+      padding: 16px 18px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      transition: opacity 0.2s;
+    }
+
+    .kg-hud-content::-webkit-scrollbar {
+      width: 4px;
+    }
+    .kg-hud-content::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 4px;
+    }
+
+    .kg-control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .kg-control-label-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: #94a3b8;
+      font-weight: 500;
+    }
+
+    .kg-val-badge {
+      font-family: inherit;
+      color: #f1f5f9;
+      font-size: 11px;
+      background: rgba(255, 255, 255, 0.06);
+      padding: 1px 6px;
+      border-radius: 4px;
+    }
+
+    .kg-select {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #f1f5f9;
+      padding: 7px 10px;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 12px;
+      outline: none;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+
+    .kg-select:focus {
+      border-color: rgba(0, 240, 255, 0.5);
+    }
+
+    .kg-slider {
+      width: 100%;
+      height: 4px;
+      -webkit-appearance: none;
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 2px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .kg-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #f8fafc;
+      box-shadow: 0 0 8px rgba(0, 0, 0, 0.6);
+      cursor: pointer;
+      transition: transform 0.1s, background 0.2s;
+    }
+
+    .kg-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+      background: #00f0ff;
+    }
+
+    .kg-palette-row {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 6px;
+    }
+
+    .kg-color-btn {
+      height: 24px;
+      border-radius: 6px;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .kg-color-btn:hover {
+      transform: translateY(-2px);
+    }
+
+    .kg-color-btn.active {
+      border-color: #ffffff;
+      box-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+    }
+
+    .kg-bottom-bar {
+      position: absolute;
+      bottom: 20px;
+      left: 24px;
+      right: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 20;
+      pointer-events: none;
+    }
+
+    .kg-status-pill {
+      font-size: 11px;
+      color: #64748b;
+      background: rgba(10, 24, 42, 0.65);
+      backdrop-filter: blur(10px);
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      pointer-events: auto;
+    }
+
+    @media (max-width: 768px) {
+      .kg-hud-panel {
+        top: auto;
+        bottom: 20px;
+        right: 16px;
+        left: 16px;
+        width: auto;
+        max-height: 60vh;
+      }
+      .kg-topbar {
+        top: 14px;
+        left: 16px;
+        right: 16px;
+      }
+      .kg-bottom-bar {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="kg-frame">
+    <div id="kg-container" class="kg-canvas-container"></div>
+
+    <header class="kg-topbar">
+      <div class="kg-brand">
+        <svg class="kg-brand-icon" viewBox="0 0 24 24">
+          <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"/>
+          <line x1="12" y1="22" x2="12" y2="12"/>
+          <polyline points="22 8.5 12 12 2 8.5"/>
+        </svg>
+        <span class="kg-brand-title">3D Kinetic Pin Matrix</span>
+        <span class="kg-brand-tag">Isometric Voxel Wave</span>
+      </div>
+
+      <div class="kg-topbar-actions">
+        <a href="index.html" class="kg-action-btn" title="Back to Shader Suite">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+          <span>All Shaders</span>
+        </a>
+        <button id="kg-shockwave-btn" class="kg-action-btn" title="Trigger 3D Pin Wave Bounce">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+          </svg>
+          <span>Pin Shockwave</span>
+        </button>
+        <button id="kg-snapshot-btn" class="kg-action-btn" title="Save Snapshot">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+          <span>Snapshot</span>
+        </button>
+      </div>
+    </header>
+
+    <aside class="kg-hud-panel" id="kg-hud">
+      <div class="kg-hud-header" id="kg-hud-header">
+        <div class="kg-hud-title">
+          <span>✦</span>
+          <span>3D Pin Matrix Controls</span>
+        </div>
+        <button class="kg-toggle-btn" id="kg-toggle" aria-label="Toggle Panel">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
+      </div>
+
+      <div class="kg-hud-content">
+        <div class="kg-control-group">
+          <div class="kg-control-label-row">
+            <span>3D Wave Topography</span>
+          </div>
+          <select id="kg-topography-select" class="kg-select">
+            <option value="radial-ripple" selected>1. 3D Radial Drop Ripple</option>
+            <option value="oceanic-swell">2. Rolling 3D Ocean Swell</option>
+            <option value="twin-vortex">3. Twin Helical Twister Towers</option>
+            <option value="equalizer-towers">4. Stepped 3D Equalizer Skyline</option>
+            <option value="liquid-hills">5. Organic Liquid Terrain</option>
+          </select>
+        </div>
+
+        <div class="kg-control-group">
+          <div class="kg-control-label-row">
+            <span>3D Pillar Geometry</span>
+          </div>
+          <select id="kg-shape-select" class="kg-select">
+            <option value="hex-prism" selected>1. Hexagonal 3D Prisms</option>
+            <option value="voxel-cube">2. Isometric Voxel Cubes</option>
+            <option value="cylinder">3. Cylindrical Pin Rods</option>
+          </select>
+        </div>
+
+        <div class="kg-control-group">
+          <div class="kg-control-label-row">
+            <span>Color Palette</span>
+          </div>
+          <div class="kg-palette-row">
+            <button class="kg-color-btn active" data-color="cyber-cyan" style="background: linear-gradient(135deg, #00f0ff, #004455);" title="Cyber Cyan"></button>
+            <button class="kg-color-btn" data-color="golden-amber" style="background: linear-gradient(135deg, #ffaa00, #6d3600);" title="Golden Amber"></button>
+            <button class="kg-color-btn" data-color="sunset-synth" style="background: linear-gradient(135deg, #ff0077, #4a0022);" title="Synth Sunset"></button>
+            <button class="kg-color-btn" data-color="matrix-emerald" style="background: linear-gradient(135deg, #00ff66, #005522);" title="Matrix Emerald"></button>
+            <button class="kg-color-btn" data-color="carbon-white" style="background: linear-gradient(135deg, #f8fafc, #334155);" title="Carbon & Chalk"></button>
+          </div>
+        </div>
+
+        <div class="kg-control-group">
+          <div class="kg-control-label-row">
+            <span>3D Height Extrusion</span>
+            <span class="kg-val-badge" id="kg-elev-val">75px</span>
+          </div>
+          <input type="range" id="kg-elev-slider" class="kg-slider" min="20" max="140" step="5" value="75">
+        </div>
+
+        <div class="kg-control-group">
+          <div class="kg-control-label-row">
+            <span>Pin Grid Pitch</span>
+            <span class="kg-val-badge" id="kg-pitch-val">22px</span>
+          </div>
+          <input type="range" id="kg-pitch-slider" class="kg-slider" min="14" max="36" step="1" value="22">
+        </div>
+
+        <div class="kg-control-group">
+          <div class="kg-control-label-row">
+            <span>Wave Speed</span>
+            <span class="kg-val-badge" id="kg-speed-val">1.0x</span>
+          </div>
+          <input type="range" id="kg-speed-slider" class="kg-slider" min="0.2" max="3.0" step="0.05" value="1.0">
+        </div>
+
+        <div class="kg-control-group">
+          <div class="kg-control-label-row">
+            <span>Wave Frequency</span>
+            <span class="kg-val-badge" id="kg-freq-val">1.0x</span>
+          </div>
+          <input type="range" id="kg-freq-slider" class="kg-slider" min="0.3" max="2.5" step="0.05" value="1.0">
+        </div>
+
+        <div class="kg-control-group">
+          <div class="kg-control-label-row">
+            <span>Illuminated Cap Core</span>
+          </div>
+          <select id="kg-glow-select" class="kg-select">
+            <option value="on" selected>Enabled (Glowing Neon Caps)</option>
+            <option value="off">Disabled (Matte Physical Pins)</option>
+          </select>
+        </div>
+      </div>
+    </aside>
+
+    <div class="kg-bottom-bar">
+      <div class="kg-status-pill">
+        <span>3D Isometric Kinetic Matrix • Depth-Sorted Pillars • Move Mouse to Push Pins</span>
+      </div>
+      <div class="kg-status-pill">
+        <span id="kg-fps-text">60 FPS • 3D Voxel Sculpture</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    class KineticGrid {
+      constructor(container, options = {}) {
+        this.container = typeof container === 'string' ? document.querySelector(container) : container;
+        if (!this.container) throw new Error('Invalid container element');
+
+        this.options = Object.assign({
+          topography: 'radial-ripple',
+          pillarShape: 'hex-prism',
+          gridCols: 32,
+          gridRows: 32,
+          pitch: 22,
+          maxElevation: 75,
+          waveSpeed: 1.0,
+          waveFrequency: 1.0,
+          colorScheme: 'cyber-cyan',
+          topCapGlow: true,
+          interactive: true,
+          mouseForce: 1.2,
+          reducedMotion: false,
+          dprCap: 2
+        }, options);
+
+        this.canvas = document.createElement('canvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.canvas.style.display = 'block';
+        this.canvas.style.width = '100%';
+        this.canvas.style.height = '100%';
+        this.container.appendChild(this.canvas);
+
+        this.width = 0;
+        this.height = 0;
+        this.dpr = 1;
+        this.rafId = null;
+        this.startTime = performance.now();
+        this.lastTime = this.startTime;
+        this.isRunning = false;
+
+        this.mouse = {
+          x: -9999, y: -9999, targetX: -9999, targetY: -9999, isHovering: false
+        };
+
+        this.shockwaves = [];
+
+        this.handleResize();
+        this.bindEvents();
+        this.start();
+      }
+
+      getPalette(scheme) {
+        switch (scheme) {
+          case 'golden-amber':
+            return {
+              bg: '#080c14', topFace: '#ffaa00', topCore: '#fff3c4', leftFace: '#c46800', rightFace: '#6d3600',
+              gridEdge: '#ffc107', glow: 'rgba(255, 170, 0, 0.45)', ambient: 'rgba(255, 170, 0, 0.08)'
+            };
+          case 'sunset-synth':
+            return {
+              bg: '#0a0512', topFace: '#ff0077', topCore: '#ffe0f0', leftFace: '#990048', rightFace: '#4a0022',
+              gridEdge: '#00f0ff', glow: 'rgba(255, 0, 119, 0.45)', ambient: 'rgba(255, 0, 119, 0.08)'
+            };
+          case 'matrix-emerald':
+            return {
+              bg: '#030a05', topFace: '#00ff66', topCore: '#e0ffec', leftFace: '#00aa44', rightFace: '#005522',
+              gridEdge: '#00ff66', glow: 'rgba(0, 255, 102, 0.45)', ambient: 'rgba(0, 255, 102, 0.08)'
+            };
+          case 'carbon-white':
+            return {
+              bg: '#090a0c', topFace: '#f8fafc', topCore: '#ffffff', leftFace: '#64748b', rightFace: '#334155',
+              gridEdge: '#cbd5e1', glow: 'rgba(255, 255, 255, 0.40)', ambient: 'rgba(255, 255, 255, 0.06)'
+            };
+          case 'cyber-cyan':
+          default:
+            return {
+              bg: '#040b14', topFace: '#00f0ff', topCore: '#dffbff', leftFace: '#008899', rightFace: '#004455',
+              gridEdge: '#38bdf8', glow: 'rgba(0, 240, 255, 0.45)', ambient: 'rgba(0, 240, 255, 0.08)'
+            };
+        }
+      }
+
+      calculateElevation(gx, gy, time) {
+        const topo = this.options.topography;
+        const speed = this.options.waveSpeed;
+        const freq = this.options.waveFrequency * 0.18;
+        const t = time * speed;
+        const r = Math.hypot(gx, gy);
+        const theta = Math.atan2(gy, gx);
+        let h = 0.5;
+
+        switch (topo) {
+          case 'radial-ripple': {
+            const ripple = Math.sin(r * freq * 2.2 - t * 3.0);
+            const damp = Math.exp(-r * 0.04);
+            const subHarmonic = Math.cos(r * freq * 1.1 - t * 1.5) * 0.3;
+            h = 0.5 + 0.5 * (ripple * (0.6 + 0.4 * damp) + subHarmonic);
+            break;
+          }
+          case 'oceanic-swell': {
+            const w1 = Math.sin(gx * freq * 0.9 + t * 1.8 + Math.cos(gy * freq * 0.6));
+            const w2 = Math.cos(gy * freq * 1.1 - t * 1.4 + Math.sin(gx * freq * 0.7));
+            const w3 = Math.sin((gx + gy) * freq * 0.8 + t * 2.2);
+            h = 0.5 + 0.5 * (w1 * 0.4 + w2 * 0.35 + w3 * 0.25);
+            break;
+          }
+          case 'twin-vortex': {
+            const spiral1 = Math.sin(theta * 4 - r * freq * 1.5 - t * 2.2);
+            const spiral2 = Math.cos(theta * 2 + r * freq * 0.8 + t * 1.6);
+            h = 0.5 + 0.5 * (spiral1 * 0.65 + spiral2 * 0.35);
+            break;
+          }
+          case 'equalizer-towers': {
+            const bx = Math.sin(gx * freq * 1.6 + t * 2.0);
+            const by = Math.cos(gy * freq * 1.6 - t * 1.8);
+            h = Math.floor(Math.max(0, (bx + by) * 0.5 + 0.5) * 6) / 6;
+            break;
+          }
+          case 'liquid-hills':
+          default: {
+            const qx = Math.sin(gx * freq + t * 0.8 + Math.cos(gy * freq));
+            const qy = Math.cos(gy * freq - t * 0.7 + Math.sin(gx * freq));
+            h = 0.5 + 0.5 * Math.sin(gx * freq * 1.8 + qx * 2.0 + t) * Math.cos(gy * freq * 1.8 + qy * 2.0 - t);
+            break;
+          }
+        }
+        return Math.max(0, Math.min(1, h));
+      }
+
+      bindEvents() {
+        this._onResize = () => this.handleResize();
+        window.addEventListener('resize', this._onResize);
+
+        this.canvas.addEventListener('mousemove', (e) => {
+          const rect = this.canvas.getBoundingClientRect();
+          this.mouse.targetX = e.clientX - rect.left;
+          this.mouse.targetY = e.clientY - rect.top;
+          this.mouse.isHovering = true;
+        });
+
+        this.canvas.addEventListener('mouseleave', () => {
+          this.mouse.targetX = -9999;
+          this.mouse.targetY = -9999;
+          this.mouse.isHovering = false;
+        });
+
+        this.canvas.addEventListener('mousedown', (e) => {
+          const rect = this.canvas.getBoundingClientRect();
+          this.triggerShockwave(e.clientX - rect.left, e.clientY - rect.top);
+        });
+
+        this.canvas.addEventListener('touchmove', (e) => {
+          if (!e.touches[0]) return;
+          const rect = this.canvas.getBoundingClientRect();
+          this.mouse.targetX = e.touches[0].clientX - rect.left;
+          this.mouse.targetY = e.touches[0].clientY - rect.top;
+          this.mouse.isHovering = true;
+        }, { passive: true });
+
+        this.canvas.addEventListener('touchend', () => {
+          this.mouse.targetX = -9999;
+          this.mouse.targetY = -9999;
+          this.mouse.isHovering = false;
+        });
+      }
+
+      triggerShockwave(originX, originY) {
+        this.shockwaves.push({
+          x: originX, y: originY,
+          radius: 0,
+          maxRadius: Math.max(this.width, this.height) * 0.75,
+          speed: 18,
+          force: 1.4 * this.options.mouseForce,
+          alpha: 1.0
+        });
+      }
+
+      handleResize() {
+        const rect = this.container.getBoundingClientRect();
+        this.width = rect.width || window.innerWidth;
+        this.height = rect.height || window.innerHeight;
+        this.dpr = Math.min(this.options.dprCap, window.devicePixelRatio || 1);
+        this.canvas.width = Math.floor(this.width * this.dpr);
+        this.canvas.height = Math.floor(this.height * this.dpr);
+      }
+
+      start() {
+        if (this.isRunning) return;
+        this.isRunning = true;
+        this.lastTime = performance.now();
+
+        const loop = (time) => {
+          if (!this.isRunning) return;
+          this.lastTime = time;
+          this.render((time - this.startTime) / 1000);
+          this.rafId = requestAnimationFrame(loop);
+        };
+        this.rafId = requestAnimationFrame(loop);
+      }
+
+      render(elapsed) {
+        const ctx = this.ctx;
+        ctx.save();
+        ctx.scale(this.dpr, this.dpr);
+
+        const palette = this.getPalette(this.options.colorScheme);
+
+        if (this.mouse.isHovering) {
+          this.mouse.x += (this.mouse.targetX - this.mouse.x) * 0.2;
+          this.mouse.y += (this.mouse.targetY - this.mouse.y) * 0.2;
+        } else {
+          this.mouse.x = -9999;
+          this.mouse.y = -9999;
+        }
+
+        for (let i = this.shockwaves.length - 1; i >= 0; i--) {
+          const sw = this.shockwaves[i];
+          sw.radius += sw.speed;
+          sw.alpha = 1.0 - (sw.radius / sw.maxRadius);
+          if (sw.radius >= sw.maxRadius) this.shockwaves.splice(i, 1);
+        }
+
+        ctx.fillStyle = palette.bg;
+        ctx.fillRect(0, 0, this.width, this.height);
+
+        const cx = this.width / 2;
+        const cy = this.height / 2;
+        const maxDim = Math.max(this.width, this.height);
+        const radGlow = ctx.createRadialGradient(cx, cy, 30, cx, cy, maxDim * 0.7);
+        radGlow.addColorStop(0, palette.ambient);
+        radGlow.addColorStop(1, 'transparent');
+        ctx.fillStyle = radGlow;
+        ctx.fillRect(0, 0, this.width, this.height);
+
+        const pitch = this.options.pitch;
+        const cols = this.options.gridCols;
+        const rows = this.options.gridRows;
+        const maxElev = this.options.maxElevation;
+        const shape = this.options.pillarShape;
+        const topGlow = this.options.topCapGlow;
+
+        const isoCos = 0.866025;
+        const isoSin = 0.500000;
+
+        const centerCol = (cols - 1) / 2;
+        const centerRow = (rows - 1) / 2;
+
+        const pillars = [];
+
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            const gx = (c - centerCol);
+            const gy = (r - centerRow);
+
+            const groundX = cx + (gx - gy) * pitch * isoCos;
+            const groundY = cy + (gx + gy) * pitch * isoSin + 40;
+
+            let wave = this.calculateElevation(gx, gy, elapsed);
+
+            if (this.mouse.isHovering) {
+              const mdx = groundX - this.mouse.x;
+              const mdy = groundY - this.mouse.y;
+              const mDist = Math.hypot(mdx, mdy);
+              const mRadius = 140;
+
+              if (mDist < mRadius) {
+                const mPower = (1 - mDist / mRadius) * this.options.mouseForce;
+                wave = Math.min(1.0, wave + mPower * 0.7);
+              }
+            }
+
+            for (const sw of this.shockwaves) {
+              const sDist = Math.hypot(groundX - sw.x, groundY - sw.y);
+              const delta = Math.abs(sDist - sw.radius);
+              if (delta < 50) {
+                const swPower = (1 - delta / 50) * sw.force * sw.alpha;
+                wave = Math.min(1.0, wave + swPower);
+              }
+            }
+
+            const elevationHeight = 6 + wave * maxElev;
+            const topY = groundY - elevationHeight;
+
+            pillars.push({
+              depth: r + c,
+              groundX, groundY, topY,
+              elevationHeight, wave,
+              radius: (pitch * 0.48)
+            });
+          }
+        }
+
+        pillars.sort((a, b) => a.depth - b.depth);
+
+        for (const p of pillars) {
+          const gx = p.groundX, gy = p.groundY, ty = p.topY, r = p.radius, wave = p.wave;
+
+          if (shape === 'voxel-cube') {
+            const s = r * 1.1, hw = s * 0.866, hh = s * 0.5;
+
+            ctx.beginPath();
+            ctx.moveTo(gx - hw, ty);
+            ctx.lineTo(gx, ty + hh);
+            ctx.lineTo(gx, gy + hh);
+            ctx.lineTo(gx - hw, gy);
+            ctx.closePath();
+            ctx.fillStyle = palette.leftFace;
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.moveTo(gx, ty + hh);
+            ctx.lineTo(gx + hw, ty);
+            ctx.lineTo(gx + hw, gy);
+            ctx.lineTo(gx, gy + hh);
+            ctx.closePath();
+            ctx.fillStyle = palette.rightFace;
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.moveTo(gx, ty - hh);
+            ctx.lineTo(gx + hw, ty);
+            ctx.lineTo(gx, ty + hh);
+            ctx.lineTo(gx - hw, ty);
+            ctx.closePath();
+            ctx.fillStyle = wave > 0.4 ? palette.topFace : palette.leftFace;
+            ctx.fill();
+
+            if (topGlow && wave > 0.65) {
+              ctx.fillStyle = palette.topCore;
+              ctx.beginPath();
+              ctx.arc(gx, ty, s * 0.3, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          } else if (shape === 'cylinder') {
+            const rx = r * 0.95, ry = r * 0.5;
+
+            ctx.beginPath();
+            ctx.moveTo(gx - rx, ty);
+            ctx.lineTo(gx - rx, gy);
+            ctx.ellipse(gx, gy, rx, ry, 0, Math.PI, 0, true);
+            ctx.lineTo(gx + rx, ty);
+            ctx.closePath();
+
+            const shaftGrad = ctx.createLinearGradient(gx - rx, 0, gx + rx, 0);
+            shaftGrad.addColorStop(0, palette.leftFace);
+            shaftGrad.addColorStop(0.5, palette.topFace);
+            shaftGrad.addColorStop(1, palette.rightFace);
+            ctx.fillStyle = shaftGrad;
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.ellipse(gx, ty, rx, ry, 0, 0, Math.PI * 2);
+            ctx.fillStyle = wave > 0.4 ? palette.topFace : palette.leftFace;
+            ctx.fill();
+
+            if (topGlow && wave > 0.65) {
+              ctx.fillStyle = palette.topCore;
+              ctx.beginPath();
+              ctx.ellipse(gx, ty, rx * 0.5, ry * 0.5, 0, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          } else {
+            const w = r * 0.95, dy = w * 0.55;
+
+            ctx.beginPath();
+            ctx.moveTo(gx - w, ty);
+            ctx.lineTo(gx, ty + dy);
+            ctx.lineTo(gx, gy + dy);
+            ctx.lineTo(gx - w, gy);
+            ctx.closePath();
+            ctx.fillStyle = palette.leftFace;
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.moveTo(gx, ty + dy);
+            ctx.lineTo(gx + w, ty);
+            ctx.lineTo(gx + w, gy);
+            ctx.lineTo(gx, gy + dy);
+            ctx.closePath();
+            ctx.fillStyle = palette.rightFace;
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.moveTo(gx, ty - dy);
+            ctx.lineTo(gx + w, ty);
+            ctx.lineTo(gx, ty + dy);
+            ctx.lineTo(gx - w, ty);
+            ctx.closePath();
+            ctx.fillStyle = wave > 0.4 ? palette.topFace : palette.leftFace;
+            ctx.fill();
+
+            ctx.strokeStyle = palette.gridEdge;
+            ctx.lineWidth = 0.8;
+            ctx.stroke();
+
+            if (topGlow && wave > 0.65) {
+              ctx.fillStyle = palette.topCore;
+              ctx.beginPath();
+              ctx.arc(gx, ty, w * 0.35, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
+        }
+
+        ctx.restore();
+      }
+
+      setOption(key, val) {
+        this.options[key] = val;
+      }
+    }
+
+    const visualizer = new KineticGrid('#kg-container', {
+      topography: 'radial-ripple',
+      pillarShape: 'hex-prism',
+      gridCols: 32,
+      gridRows: 32,
+      pitch: 22,
+      maxElevation: 75,
+      waveSpeed: 1.0,
+      waveFrequency: 1.0,
+      colorScheme: 'cyber-cyan',
+      topCapGlow: true
+    });
+
+    const hud = document.getElementById('kg-hud');
+    document.getElementById('kg-hud-header').addEventListener('click', () => {
+      hud.classList.toggle('collapsed');
+    });
+
+    document.getElementById('kg-topography-select').addEventListener('change', (e) => {
+      visualizer.setOption('topography', e.target.value);
+    });
+
+    document.getElementById('kg-shape-select').addEventListener('change', (e) => {
+      visualizer.setOption('pillarShape', e.target.value);
+    });
+
+    const colorBtns = document.querySelectorAll('.kg-color-btn');
+    colorBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        colorBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        visualizer.setOption('colorScheme', btn.dataset.color);
+      });
+    });
+
+    const elevSlider = document.getElementById('kg-elev-slider');
+    const elevVal = document.getElementById('kg-elev-val');
+    elevSlider.addEventListener('input', (e) => {
+      const v = parseInt(e.target.value, 10);
+      elevVal.textContent = v + 'px';
+      visualizer.setOption('maxElevation', v);
+    });
+
+    const pitchSlider = document.getElementById('kg-pitch-slider');
+    const pitchVal = document.getElementById('kg-pitch-val');
+    pitchSlider.addEventListener('input', (e) => {
+      const v = parseInt(e.target.value, 10);
+      pitchVal.textContent = v + 'px';
+      visualizer.setOption('pitch', v);
+    });
+
+    const speedSlider = document.getElementById('kg-speed-slider');
+    const speedVal = document.getElementById('kg-speed-val');
+    speedSlider.addEventListener('input', (e) => {
+      const v = parseFloat(e.target.value);
+      speedVal.textContent = v.toFixed(2) + 'x';
+      visualizer.setOption('waveSpeed', v);
+    });
+
+    const freqSlider = document.getElementById('kg-freq-slider');
+    const freqVal = document.getElementById('kg-freq-val');
+    freqSlider.addEventListener('input', (e) => {
+      const v = parseFloat(e.target.value);
+      freqVal.textContent = v.toFixed(2) + 'x';
+      visualizer.setOption('waveFrequency', v);
+    });
+
+    document.getElementById('kg-glow-select').addEventListener('change', (e) => {
+      visualizer.setOption('topCapGlow', e.target.value === 'on');
+    });
+
+    document.getElementById('kg-shockwave-btn').addEventListener('click', () => {
+      visualizer.triggerShockwave(visualizer.width / 2, visualizer.height / 2);
+    });
+
+    const fpsText = document.getElementById('kg-fps-text');
+    let frameCount = 0, lastFpsCalc = performance.now();
+    function fpsLoop() {
+      frameCount++;
+      const now = performance.now();
+      if (now - lastFpsCalc >= 1000) {
+        fpsText.textContent = `${frameCount} FPS • 3D Pin Sculpture`;
+        frameCount = 0;
+        lastFpsCalc = now;
+      }
+      requestAnimationFrame(fpsLoop);
+    }
+    fpsLoop();
+
+    document.getElementById('kg-snapshot-btn').addEventListener('click', () => {
+      const a = document.createElement('a');
+      a.download = '3d-kinetic-pin-matrix.png';
+      a.href = visualizer.canvas.toDataURL('image/png');
+      a.click();
+    });
+  </script>
+</body>
+</html>

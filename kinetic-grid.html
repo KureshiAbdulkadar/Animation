@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D Kinetic Pin Matrix — Isometric Voxel Wave Sculpture</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="effects/kinetic-grid/styles.css">
+</head>
+<body>
+  <div class="kg-frame">
+    <!-- Main Canvas Mount Target -->
+    <div id="kg-container" class="kg-canvas-container"></div>
+
+    <!-- Top Bar -->
+    <header class="kg-topbar">
+      <div class="kg-brand">
+        <svg class="kg-brand-icon" viewBox="0 0 24 24">
+          <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"/>
+          <line x1="12" y1="22" x2="12" y2="12"/>
+          <polyline points="22 8.5 12 12 2 8.5"/>
+        </svg>
+        <span class="kg-brand-title">3D Kinetic Pin Matrix</span>
+        <span class="kg-brand-tag">Isometric Voxel Wave</span>
+      </div>
+
+      <div class="kg-topbar-actions">
+        <a href="index.html" class="kg-action-btn" title="Back to Shader Suite">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+          <span>All Shaders</span>
+        </a>
+        <button id="kg-shockwave-btn" class="kg-action-btn" title="Trigger 3D Pin Wave Bounce">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+          </svg>
+          <span>Pin Shockwave</span>
+        </button>
+        <button id="kg-snapshot-btn" class="kg-action-btn" title="Save PNG Snapshot">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+          <span>Snapshot</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Floating HUD Control Panel -->
+    <aside class="kg-hud-panel" id="kg-hud">
+      <div class="kg-hud-header" id="kg-hud-header">
+        <div class="kg-hud-title">
+          <span>✦</span>
+          <span>3D Pin Matrix Controls</span>
+        </div>
+        <button class="kg-toggle-btn" id="kg-toggle" aria-label="Toggle Panel">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
+      </div>
+
+      <div class="kg-hud-content">
+        <!-- 3D Topography Wave Pattern -->
+        <div class="kg-control-group">
+          <div class="kg-control-label-row">
+            <span>3D Wave Topography</span>
+          </div>
+          <select id="kg-topography-select" class="kg-select">
+            <option value="radial-ripple" selected>1. 3D Radial Drop Ripple</option>
+            <option value="oceanic-swell">2. Rolling 3D Ocean Swell</option>
+            <option value="twin-vortex">3. Twin Helical Twister Towers</option>
+            <option value="equalizer-towers">4. Stepped 3D Equalizer Skyline</option>
+            <option value="liquid-hills">5. Organic Liquid Terrain</option>
+          </select>
+        </div>
+
+        <!-- Pillar 3D Geometry -->
+        <div class="kg-control-group">
+          <div class="kg-control-label-row">
+            <span>3D Pillar Geometry</span>
+          </div>
+          <select id="kg-shape-select" class="kg-select">
+            <option value="hex-prism" selected>1. Hexagonal 3D Prisms</option>
+            <option value="voxel-cube">2. Isometric Voxel Cubes</option>
+            <option value="cylinder">3. Cylindrical Pin Rods</option>
+          </select>
+        </div>
+
+        <!-- Color Palette -->
+        <div class="kg-control-group">
+          <div class="kg-control-label-row">
+            <span>Color Palette</span>
+          </div>
+          <div class="kg-palette-row">
+            <button class="kg-color-btn active" data-color="cyber-cyan" style="background: linear-gradient(135deg, #00f0ff, #004455);" title="Cyber Cyan"></button>
+            <button class="kg-color-btn" data-color="golden-amber" style="background: linear-gradient(135deg, #ffaa00, #6d3600);" title="Golden Amber"></button>
+            <button class="kg-color-btn" data-color="sunset-synth" style="background: linear-gradient(135deg, #ff0077, #4a0022);" title="Synth Sunset"></button>
+            <button class="kg-color-btn" data-color="matrix-emerald" style="background: linear-gradient(135deg, #00ff66, #005522);" title="Matrix Emerald"></button>
+            <button class="kg-color-btn" data-color="carbon-white" style="background: linear-gradient(135deg, #f8fafc, #334155);" title="Carbon & Chalk"></button>
+          </div>
+        </div>
+
+        <!-- Max Height Extrusion Slider -->
+        <div class="kg-control-group">
+          <div class="kg-control-label-row">
+            <span>3D Height Extrusion</span>
+            <span class="kg-val-badge" id="kg-elev-val">75px</span>
+          </div>
+          <input type="range" id="kg-elev-slider" class="kg-slider" min="20" max="140" step="5" value="75">
+        </div>
+
+        <!-- Pin Spacing Pitch Slider -->
+        <div class="kg-control-group">
+          <div class="kg-control-label-row">
+            <span>Pin Grid Pitch</span>
+            <span class="kg-val-badge" id="kg-pitch-val">22px</span>
+          </div>
+          <input type="range" id="kg-pitch-slider" class="kg-slider" min="14" max="36" step="1" value="22">
+        </div>
+
+        <!-- Speed Slider -->
+        <div class="kg-control-group">
+          <div class="kg-control-label-row">
+            <span>Wave Speed</span>
+            <span class="kg-val-badge" id="kg-speed-val">1.0x</span>
+          </div>
+          <input type="range" id="kg-speed-slider" class="kg-slider" min="0.2" max="3.0" step="0.05" value="1.0">
+        </div>
+
+        <!-- Frequency Slider -->
+        <div class="kg-control-group">
+          <div class="kg-control-label-row">
+            <span>Wave Frequency</span>
+            <span class="kg-val-badge" id="kg-freq-val">1.0x</span>
+          </div>
+          <input type="range" id="kg-freq-slider" class="kg-slider" min="0.3" max="2.5" step="0.05" value="1.0">
+        </div>
+
+        <!-- Top Cap Glow Toggle -->
+        <div class="kg-control-group">
+          <div class="kg-control-label-row">
+            <span>Illuminated Cap Core</span>
+          </div>
+          <select id="kg-glow-select" class="kg-select">
+            <option value="on" selected>Enabled (Glowing Neon Caps)</option>
+            <option value="off">Disabled (Matte Physical Pins)</option>
+          </select>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Bottom Status Bar -->
+    <div class="kg-bottom-bar">
+      <div class="kg-status-pill">
+        <span>3D Isometric Kinetic Matrix • Depth-Sorted Pillars • Move Mouse to Push Pins</span>
+      </div>
+      <div class="kg-status-pill">
+        <span id="kg-fps-text">60 FPS • 3D Voxel Sculpture</span>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { KineticGrid } from './effects/kinetic-grid/KineticGrid.js';
+
+    // Mount visualizer instance
+    const visualizer = new KineticGrid('#kg-container', {
+      topography: 'radial-ripple',
+      pillarShape: 'hex-prism',
+      gridCols: 32,
+      gridRows: 32,
+      pitch: 22,
+      maxElevation: 75,
+      waveSpeed: 1.0,
+      waveFrequency: 1.0,
+      colorScheme: 'cyber-cyan',
+      topCapGlow: true
+    });
+
+    // HUD Collapse toggle
+    const hud = document.getElementById('kg-hud');
+    const hudHeader = document.getElementById('kg-hud-header');
+    hudHeader.addEventListener('click', () => {
+      hud.classList.toggle('collapsed');
+    });
+
+    // Topography Selector
+    document.getElementById('kg-topography-select').addEventListener('change', (e) => {
+      visualizer.setOption('topography', e.target.value);
+    });
+
+    // Shape Selector
+    document.getElementById('kg-shape-select').addEventListener('change', (e) => {
+      visualizer.setOption('pillarShape', e.target.value);
+    });
+
+    // Palette Buttons
+    const colorBtns = document.querySelectorAll('.kg-color-btn');
+    colorBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        colorBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        visualizer.setOption('colorScheme', btn.dataset.color);
+      });
+    });
+
+    // Elevation Slider
+    const elevSlider = document.getElementById('kg-elev-slider');
+    const elevVal = document.getElementById('kg-elev-val');
+    elevSlider.addEventListener('input', (e) => {
+      const v = parseInt(e.target.value, 10);
+      elevVal.textContent = v + 'px';
+      visualizer.setOption('maxElevation', v);
+    });
+
+    // Pitch Slider
+    const pitchSlider = document.getElementById('kg-pitch-slider');
+    const pitchVal = document.getElementById('kg-pitch-val');
+    pitchSlider.addEventListener('input', (e) => {
+      const v = parseInt(e.target.value, 10);
+      pitchVal.textContent = v + 'px';
+      visualizer.setOption('pitch', v);
+    });
+
+    // Speed Slider
+    const speedSlider = document.getElementById('kg-speed-slider');
+    const speedVal = document.getElementById('kg-speed-val');
+    speedSlider.addEventListener('input', (e) => {
+      const v = parseFloat(e.target.value);
+      speedVal.textContent = v.toFixed(2) + 'x';
+      visualizer.setOption('waveSpeed', v);
+    });
+
+    // Frequency Slider
+    const freqSlider = document.getElementById('kg-freq-slider');
+    const freqVal = document.getElementById('kg-freq-val');
+    freqSlider.addEventListener('input', (e) => {
+      const v = parseFloat(e.target.value);
+      freqVal.textContent = v.toFixed(2) + 'x';
+      visualizer.setOption('waveFrequency', v);
+    });
+
+    // Glow Select
+    document.getElementById('kg-glow-select').addEventListener('change', (e) => {
+      visualizer.setOption('topCapGlow', e.target.value === 'on');
+    });
+
+    // Shockwave Button
+    document.getElementById('kg-shockwave-btn').addEventListener('click', () => {
+      visualizer.triggerShockwave(visualizer.width / 2, visualizer.height / 2);
+    });
+
+    // FPS Loop
+    const fpsText = document.getElementById('kg-fps-text');
+    let frameCount = 0, lastFpsCalc = performance.now();
+    function fpsLoop() {
+      frameCount++;
+      const now = performance.now();
+      if (now - lastFpsCalc >= 1000) {
+        fpsText.textContent = `${frameCount} FPS • 3D Pin Sculpture`;
+        frameCount = 0;
+        lastFpsCalc = now;
+      }
+      requestAnimationFrame(fpsLoop);
+    }
+    fpsLoop();
+
+    // Snapshot
+    document.getElementById('kg-snapshot-btn').addEventListener('click', () => {
+      const a = document.createElement('a');
+      a.download = '3d-kinetic-pin-matrix.png';
+      a.href = visualizer.canvas.toDataURL('image/png');
+      a.click();
+    });
+  </script>
+</body>
+</html>

@@ -43,6 +43,10 @@
       <option value="space-galaxy">11. Space Galaxy</option>
       <option value="data-stream">12. Data Matrix</option>
       <option value="wave-grid">13. Ocean Wave Grid</option>
+      <option value="nodejs-particles">14. Node.js Particles</option>
+      <option value="halftone-waves">15. Halftone Wave Grid</option>
+      <option value="kinetic-grid">16. Kinetic Grid Morph</option>
+      <option value="pixel-cascade">17. Pixel Game Wall Cascade</option>
     </select>
     <input type="checkbox" id="transparent-bg">
     <input type="checkbox" id="ui-visibility-toggle" checked>
@@ -306,6 +310,60 @@
                     </svg>
                   </div>
                   <span class="tile-label">Wave Grid</span>
+                </button>
+
+                <!-- 14. Node.js Particle Outline -->
+                <button type="button" class="preset-tile" data-preset="nodejs-particles">
+                  <div class="tile-icon">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <polygon points="12 2 21 7 21 17 12 22 3 17 3 7"/>
+                      <polyline points="12 2 12 12 21 17"/>
+                      <line x1="12" y1="12" x2="3" y2="17"/>
+                    </svg>
+                  </div>
+                  <span class="tile-label">Node.js</span>
+                </button>
+
+                <!-- 15. Halftone Wave Grid -->
+                <button type="button" class="preset-tile" data-preset="halftone-waves">
+                  <div class="tile-icon">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="5" cy="5" r="1.5" fill="currentColor"/>
+                      <circle cx="12" cy="5" r="2.5" fill="currentColor"/>
+                      <circle cx="19" cy="5" r="1.5" fill="currentColor"/>
+                      <circle cx="5" cy="12" r="2.5" fill="currentColor"/>
+                      <circle cx="12" cy="12" r="4" fill="currentColor"/>
+                      <circle cx="19" cy="12" r="2.5" fill="currentColor"/>
+                      <circle cx="5" cy="19" r="1.5" fill="currentColor"/>
+                      <circle cx="12" cy="19" r="2.5" fill="currentColor"/>
+                      <circle cx="19" cy="19" r="1.5" fill="currentColor"/>
+                    </svg>
+                  </div>
+                  <span class="tile-label">Halftone</span>
+                </button>
+
+                <!-- 16. Kinetic Grid Morph -->
+                <button type="button" class="preset-tile" data-preset="kinetic-grid">
+                  <div class="tile-icon">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z" fill="currentColor"/>
+                    </svg>
+                  </div>
+                  <span class="tile-label">Kinetic</span>
+                </button>
+
+                <!-- 17. Pixel Game Wall Cascade -->
+                <button type="button" class="preset-tile" data-preset="pixel-cascade">
+                  <div class="tile-icon">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="2" y="3" width="6" height="6" rx="1" fill="currentColor"/>
+                      <rect x="10" y="3" width="6" height="6" rx="1" fill="currentColor"/>
+                      <rect x="10" y="11" width="6" height="6" rx="1" fill="currentColor"/>
+                      <rect x="18" y="11" width="6" height="6" rx="1" fill="currentColor"/>
+                      <rect x="2" y="17" width="20" height="4" rx="1" fill="currentColor"/>
+                    </svg>
+                  </div>
+                  <span class="tile-label">Pixel Wall</span>
                 </button>
               </div>
             </div>

@@ -5,5 +5,17 @@ export default defineConfig({
   base: './',
   build: {
     outDir: 'dist',
+    rollupOptions: {
+      input: {
+        main: './index.html',
+        nodejsParticles: './nodejs-particles.html',
+        halftoneWaves: './halftone-waves.html',
+        kineticGrid: './kinetic-grid.html',
+        pixelCascade: './pixel-cascade.html',
+        constellation: './constellation.html',
+        ghosting: './ghosting.html',
+        pixelArt: './pixel-art.html'
+      }
+    }
   }
 });

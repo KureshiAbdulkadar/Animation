@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pixel Cascade — Retro Arcade Wall & Polyomino Builder</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="effects/pixel-cascade/styles.css">
+</head>
+<body>
+  <div class="pc-frame">
+    <!-- Main Canvas Mount Target -->
+    <div id="pc-container" class="pc-canvas-container"></div>
+
+    <!-- Top Bar -->
+    <header class="pc-topbar">
+      <div class="pc-brand">
+        <svg class="pc-brand-icon" viewBox="0 0 24 24">
+          <rect x="2" y="2" width="8" height="8" rx="1"/>
+          <rect x="14" y="2" width="8" height="8" rx="1"/>
+          <rect x="8" y="14" width="8" height="8" rx="1"/>
+          <rect x="14" y="14" width="8" height="8" rx="1"/>
+        </svg>
+        <span class="pc-brand-title">Pixel Wall Cascade</span>
+        <span class="pc-brand-tag">Retro Arcade Physics</span>
+      </div>
+
+      <div class="pc-topbar-actions">
+        <a href="index.html" class="pc-action-btn" title="Back to Shader Suite">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+          <span>All Shaders</span>
+        </a>
+        <button id="pc-blast-btn" class="pc-action-btn" title="Detonate Wall Explosive">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <span>Blast Wall</span>
+        </button>
+        <button id="pc-clear-btn" class="pc-action-btn" title="Reset Wall Foundation">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+          </svg>
+          <span>Clear Wall</span>
+        </button>
+        <button id="pc-snapshot-btn" class="pc-action-btn" title="Save PNG Snapshot">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+          <span>Snapshot</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Floating HUD Control Panel -->
+    <aside class="pc-hud-panel" id="pc-hud">
+      <div class="pc-hud-header" id="pc-hud-header">
+        <div class="pc-hud-title">
+          <span>✦</span>
+          <span>Pixel Wall Controls</span>
+        </div>
+        <button class="pc-toggle-btn" id="pc-toggle" aria-label="Toggle Panel">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
+      </div>
+
+      <div class="pc-hud-content">
+        <!-- Game Construction Mode -->
+        <div class="pc-control-group">
+          <div class="pc-control-label-row">
+            <span>Game Construction Mode</span>
+          </div>
+          <select id="pc-mode-select" class="pc-select">
+            <option value="tetris-wall" selected>1. Tetris Arcade Polyominos</option>
+            <option value="sand-cascade">2. Sandtris Granular Avalanche</option>
+            <option value="arcade-brick">3. Arcade Firewall Bricks</option>
+            <option value="pixel-skyline">4. Cyber Voxel Skyline Towers</option>
+          </select>
+        </div>
+
+        <!-- Color Palette -->
+        <div class="pc-control-group">
+          <div class="pc-control-label-row">
+            <span>Retro 8-Bit / 16-Bit Palette</span>
+          </div>
+          <div class="pc-palette-row">
+            <button class="pc-color-btn active" data-color="retro-arcade" style="background: linear-gradient(135deg, #06b6d4, #f43f5e);" title="Cyan & Rose Duo"></button>
+            <button class="pc-color-btn" data-color="cyber-cyan" style="background: linear-gradient(135deg, #00f0ff, #0284c7);" title="Cyber Cyan Duo"></button>
+            <button class="pc-color-btn" data-color="neon-magenta" style="background: linear-gradient(135deg, #ff007f, #7928ca);" title="Neon Magenta & Violet"></button>
+            <button class="pc-color-btn" data-color="matrix" style="background: linear-gradient(135deg, #00ff41, #007a1c);" title="Matrix Emerald Duo"></button>
+            <button class="pc-color-btn" data-color="amber-gold" style="background: linear-gradient(135deg, #ffb703, #ea580c);" title="Amber & Fiery Orange"></button>
+            <button class="pc-color-btn" data-color="monochrome" style="background: linear-gradient(135deg, #ffffff, #475569);" title="Ice White & Slate"></button>
+          </div>
+        </div>
+
+        <!-- Block Dimension Slider -->
+        <div class="pc-control-group">
+          <div class="pc-control-label-row">
+            <span>Block Pixel Size</span>
+            <span class="pc-val-badge" id="pc-blocksize-val">16px</span>
+          </div>
+          <input type="range" id="pc-blocksize-slider" class="pc-slider" min="10" max="32" step="2" value="16">
+        </div>
+
+        <!-- Drop Speed Multiplier -->
+        <div class="pc-control-group">
+          <div class="pc-control-label-row">
+            <span>Drop Speed (Top → Down)</span>
+            <span class="pc-val-badge" id="pc-speed-val">1.0x</span>
+          </div>
+          <input type="range" id="pc-speed-slider" class="pc-slider" min="0.3" max="3.0" step="0.1" value="1.0">
+        </div>
+
+        <!-- Spawn Density Slider -->
+        <div class="pc-control-group">
+          <div class="pc-control-label-row">
+            <span>Block Spawn Rate</span>
+            <span class="pc-val-badge" id="pc-spawn-val">1.0x</span>
+          </div>
+          <input type="range" id="pc-spawn-slider" class="pc-slider" min="0.3" max="3.0" step="0.1" value="1.0">
+        </div>
+
+        <!-- Auto Line Clear Laser Toggle -->
+        <div class="pc-control-group">
+          <div class="pc-control-label-row">
+            <span>Auto Laser Line Clears</span>
+          </div>
+          <select id="pc-clear-select" class="pc-select">
+            <option value="on" selected>Enabled (Dissolve Full Wall Rows)</option>
+            <option value="off">Disabled (Stack Wall To The Top)</option>
+          </select>
+        </div>
+
+        <!-- CRT Scanlines -->
+        <div class="pc-control-group">
+          <div class="pc-control-label-row">
+            <span>CRT Arcade Scanlines</span>
+          </div>
+          <select id="pc-scanlines-select" class="pc-select">
+            <option value="on" selected>Enabled (Retro Monitor Lines)</option>
+            <option value="off">Disabled (Clean Sharp Pixels)</option>
+          </select>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Bottom Status Bar -->
+    <div class="pc-bottom-bar">
+      <div class="pc-status-pill">
+        <span>Continuous Top → Down Block Cascade • Mouse Steers • Click to Blast Wall</span>
+      </div>
+      <div class="pc-status-pill">
+        <span id="pc-fps-text">60 FPS • Retro Game Engine</span>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { PixelCascade } from './effects/pixel-cascade/PixelCascade.js';
+
+    // Mount visualizer instance
+    const visualizer = new PixelCascade('#pc-container', {
+      gameMode: 'tetris-wall',
+      blockSize: 16,
+      dropSpeed: 1.0,
+      spawnRate: 1.0,
+      colorScheme: 'retro-arcade',
+      autoLineClear: true,
+      scanlines: true,
+      interactive: true,
+      mouseRadius: 100
+    });
+
+    // HUD Collapse toggle
+    const hud = document.getElementById('pc-hud');
+    const hudHeader = document.getElementById('pc-hud-header');
+    hudHeader.addEventListener('click', () => {
+      hud.classList.toggle('collapsed');
+    });
+
+    // Mode Selector
+    document.getElementById('pc-mode-select').addEventListener('change', (e) => {
+      visualizer.setOption('gameMode', e.target.value);
+    });
+
+    // Palette Buttons
+    const colorBtns = document.querySelectorAll('.pc-color-btn');
+    colorBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        colorBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        visualizer.setOption('colorScheme', btn.dataset.color);
+      });
+    });
+
+    // Block Size Slider
+    const blockSizeSlider = document.getElementById('pc-blocksize-slider');
+    const blockSizeVal = document.getElementById('pc-blocksize-val');
+    blockSizeSlider.addEventListener('input', (e) => {
+      const v = parseInt(e.target.value, 10);
+      blockSizeVal.textContent = v + 'px';
+      visualizer.setOption('blockSize', v);
+    });
+
+    // Speed Slider
+    const speedSlider = document.getElementById('pc-speed-slider');
+    const speedVal = document.getElementById('pc-speed-val');
+    speedSlider.addEventListener('input', (e) => {
+      const v = parseFloat(e.target.value);
+      speedVal.textContent = v.toFixed(1) + 'x';
+      visualizer.setOption('dropSpeed', v);
+    });
+
+    // Spawn Rate Slider
+    const spawnSlider = document.getElementById('pc-spawn-slider');
+    const spawnVal = document.getElementById('pc-spawn-val');
+    spawnSlider.addEventListener('input', (e) => {
+      const v = parseFloat(e.target.value);
+      spawnVal.textContent = v.toFixed(1) + 'x';
+      visualizer.setOption('spawnRate', v);
+    });
+
+    // Line Clears
+    document.getElementById('pc-clear-select').addEventListener('change', (e) => {
+      visualizer.setOption('autoLineClear', e.target.value === 'on');
+    });
+
+    // Scanlines
+    document.getElementById('pc-scanlines-select').addEventListener('change', (e) => {
+      visualizer.setOption('scanlines', e.target.value === 'on');
+    });
+
+    // Blast Button
+    document.getElementById('pc-blast-btn').addEventListener('click', () => {
+      visualizer.triggerShockwave(visualizer.width / 2, visualizer.height * 0.85);
+    });
+
+    // Clear Wall Button
+    document.getElementById('pc-clear-btn').addEventListener('click', () => {
+      visualizer.clearWall();
+    });
+
+    // FPS Loop
+    const fpsText = document.getElementById('pc-fps-text');
+    let frameCount = 0, lastFpsCalc = performance.now();
+    function fpsLoop() {
+      frameCount++;
+      const now = performance.now();
+      if (now - lastFpsCalc >= 1000) {
+        fpsText.textContent = `${frameCount} FPS • Retro Game Engine`;
+        frameCount = 0;
+        lastFpsCalc = now;
+      }
+      requestAnimationFrame(fpsLoop);
+    }
+    fpsLoop();
+
+    // Snapshot
+    document.getElementById('pc-snapshot-btn').addEventListener('click', () => {
+      const a = document.createElement('a');
+      a.download = 'pixel-wall-cascade.png';
+      a.href = visualizer.canvas.toDataURL('image/png');
+      a.click();
+    });
+  </script>
+</body>
+</html>

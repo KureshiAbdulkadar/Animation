@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Node.js — Authentic Pixel Art & Particle Matrix Visualizer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="effects/nodejs-particles/styles.css">
+</head>
+<body>
+  <div class="nj-frame">
+    <!-- Main Canvas Mount Target -->
+    <div id="nj-container" class="nj-canvas-container"></div>
+
+    <!-- Top Bar -->
+    <header class="nj-topbar">
+      <div class="nj-brand">
+        <svg class="nj-brand-node-icon" viewBox="0 0 24 24">
+          <path d="M12 2L2 7.8v11.4L12 25l10-5.8V7.8L12 2zm0 3.2l7.2 4.2v8.4L12 22l-7.2-4.2V9.4L12 5.2z"/>
+        </svg>
+        <span class="nj-brand-title">Node.js Pixel Matrix</span>
+        <span class="nj-brand-tag">Original 8-Bit / 3D Voxel</span>
+      </div>
+
+      <div class="nj-topbar-actions">
+        <a href="index.html" class="nj-action-btn" title="Back to Shader Suite">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+          <span>All Shaders</span>
+        </a>
+        <button id="nj-shockwave-btn" class="nj-action-btn" title="Trigger Click Shockwave">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+          <span>Shockwave</span>
+        </button>
+        <button id="nj-snapshot-btn" class="nj-action-btn" title="Save PNG Snapshot">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+          <span>Snapshot</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Floating HUD Control Panel -->
+    <aside class="nj-hud-panel" id="nj-hud">
+      <div class="nj-hud-header" id="nj-hud-header">
+        <div class="nj-hud-title">
+          <span>✦</span>
+          <span>Pixel Controls & Tuning</span>
+        </div>
+        <button class="nj-toggle-btn" id="nj-toggle" aria-label="Toggle Panel">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
+      </div>
+
+      <div class="nj-hud-content">
+        <!-- Logo Geometry Mode -->
+        <div class="nj-control-group">
+          <div class="nj-control-label-row">
+            <span>Official Logo Model</span>
+          </div>
+          <select id="nj-logo-mode" class="nj-select">
+            <option value="emblem" selected>1. Official 3D Faceted Hexagon Emblem</option>
+            <option value="wordmark">2. Official "node.js" Wordmark + Icon</option>
+            <option value="n-cutout">3. Iconic 'N' Hexagon Cutout</option>
+            <option value="voxel3d">4. 3D Isometric Voxel Node</option>
+          </select>
+        </div>
+
+        <!-- Pixel Render Style -->
+        <div class="nj-control-group">
+          <div class="nj-control-label-row">
+            <span>Pixel Render Style</span>
+          </div>
+          <select id="nj-pixel-style" class="nj-select">
+            <option value="square" selected>1. Crisp 8-Bit Square Pixel Art</option>
+            <option value="rounded">2. Rounded Digital Tiles</option>
+            <option value="phosphor">3. CRT Phosphor Glow</option>
+            <option value="voxel">4. 3D Isometric Voxels</option>
+            <option value="matrix">5. Matrix Code Glyphs</option>
+          </select>
+        </div>
+
+        <!-- Color Style Palette -->
+        <div class="nj-control-group">
+          <div class="nj-control-label-row">
+            <span>Color Palette</span>
+          </div>
+          <div class="nj-palette-row">
+            <button class="nj-color-btn active" data-color="official" style="background: linear-gradient(135deg, #83cd29, #215732);" title="Official Tri-Tone Green"></button>
+            <button class="nj-color-btn" data-color="emerald" style="background: linear-gradient(135deg, #4ade80, #065f46);" title="Cyber Emerald"></button>
+            <button class="nj-color-btn" data-color="matrix" style="background: linear-gradient(135deg, #00ff41, #005510);" title="Matrix Phosphor"></button>
+            <button class="nj-color-btn" data-color="gameboy" style="background: linear-gradient(135deg, #9bbc0f, #0f380f);" title="Retro GameBoy"></button>
+            <button class="nj-color-btn" data-color="synth" style="background: linear-gradient(135deg, #f43f5e, #06b6d4);" title="Synthwave Neon"></button>
+            <button class="nj-color-btn" data-color="silver" style="background: linear-gradient(135deg, #ffffff, #475569);" title="Graphite Silver"></button>
+            <button class="nj-color-btn" data-color="gold" style="background: linear-gradient(135deg, #fde047, #713f12);" title="Solar Gold"></button>
+          </div>
+        </div>
+
+        <!-- Pixel Pitch / Resolution Slider -->
+        <div class="nj-control-group">
+          <div class="nj-control-label-row">
+            <span>Pixel Size / Chunkiness</span>
+            <span class="nj-val-badge" id="nj-pitch-val">10px</span>
+          </div>
+          <input type="range" id="nj-pitch-slider" class="nj-slider" min="4" max="22" step="1" value="10">
+        </div>
+
+        <!-- Logo Size Slider -->
+        <div class="nj-control-group">
+          <div class="nj-control-label-row">
+            <span>Logo Scale</span>
+            <span class="nj-val-badge" id="nj-size-val">1.0x</span>
+          </div>
+          <input type="range" id="nj-size-slider" class="nj-slider" min="0.4" max="2.0" step="0.05" value="1.0">
+        </div>
+
+        <!-- Brightness Slider -->
+        <div class="nj-control-group">
+          <div class="nj-control-label-row">
+            <span>Brightness & Glow</span>
+            <span class="nj-val-badge" id="nj-glow-val">1.2x</span>
+          </div>
+          <input type="range" id="nj-glow-slider" class="nj-slider" min="0.4" max="2.5" step="0.1" value="1.2">
+        </div>
+
+        <!-- Sway Speed Slider -->
+        <div class="nj-control-group">
+          <div class="nj-control-label-row">
+            <span>Floating Sway Speed</span>
+            <span class="nj-val-badge" id="nj-sway-val">1.0x</span>
+          </div>
+          <input type="range" id="nj-sway-slider" class="nj-slider" min="0.0" max="3.0" step="0.1" value="1.0">
+        </div>
+
+        <!-- Mouse Scatter Force Slider -->
+        <div class="nj-control-group">
+          <div class="nj-control-label-row">
+            <span>Mouse Scatter Force</span>
+            <span class="nj-val-badge" id="nj-scatter-val">1.0x</span>
+          </div>
+          <input type="range" id="nj-scatter-slider" class="nj-slider" min="0.2" max="2.5" step="0.1" value="1.0">
+        </div>
+
+        <!-- Atmospheric Rain Slider -->
+        <div class="nj-control-group">
+          <div class="nj-control-label-row">
+            <span>Digital Pixel Rain</span>
+            <span class="nj-val-badge" id="nj-rain-val">1.0x</span>
+          </div>
+          <input type="range" id="nj-rain-slider" class="nj-slider" min="0.0" max="2.5" step="0.1" value="1.0">
+        </div>
+
+        <!-- Scanlines & Motion Options -->
+        <div class="nj-control-group">
+          <div class="nj-control-label-row">
+            <span>CRT Scanlines</span>
+          </div>
+          <select id="nj-scanline-select" class="nj-select">
+            <option value="on" selected>Enabled (Retro CRT Effect)</option>
+            <option value="off">Disabled (Clean Pixels)</option>
+          </select>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Bottom Status Bar -->
+    <div class="nj-bottom-bar">
+      <div class="nj-status-pill">
+        <span>Official Node.js Geometry • Magnetic Spring Physics • Click Canvas for Shockwave</span>
+      </div>
+      <div class="nj-status-pill">
+        <span id="nj-fps-text">60 FPS • Realtime Matrix</span>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { NodeJSParticles } from './effects/nodejs-particles/NodeJSParticles.js';
+
+    // Mount visualizer instance
+    const visualizer = new NodeJSParticles('#nj-container', {
+      logoMode: 'emblem',
+      pixelStyle: 'square',
+      pixelPitch: 10,
+      colorScheme: 'official',
+      logoSize: 1.0,
+      brightness: 1.2,
+      swaySpeed: 1.0,
+      rainIntensity: 1.0,
+      scanlines: true,
+      scatterForce: 1.0
+    });
+
+    // UI Binding
+    const hud = document.getElementById('nj-hud');
+    const hudHeader = document.getElementById('nj-hud-header');
+    hudHeader.addEventListener('click', () => {
+      hud.classList.toggle('collapsed');
+    });
+
+    // Logo Mode Selector
+    const modeSelect = document.getElementById('nj-logo-mode');
+    modeSelect.addEventListener('change', (e) => {
+      visualizer.setOption('logoMode', e.target.value);
+      updateFpsPill();
+    });
+
+    // Pixel Style Selector
+    const styleSelect = document.getElementById('nj-pixel-style');
+    styleSelect.addEventListener('change', (e) => {
+      visualizer.setOption('pixelStyle', e.target.value);
+    });
+
+    // Color Palette Buttons
+    const colorBtns = document.querySelectorAll('.nj-color-btn');
+    colorBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        colorBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        visualizer.setOption('colorScheme', btn.dataset.color);
+      });
+    });
+
+    // Pitch / Chunkiness Slider
+    const pitchSlider = document.getElementById('nj-pitch-slider');
+    const pitchVal = document.getElementById('nj-pitch-val');
+    pitchSlider.addEventListener('input', (e) => {
+      const v = parseInt(e.target.value, 10);
+      pitchVal.textContent = v + 'px';
+      visualizer.setOption('pixelPitch', v);
+      updateFpsPill();
+    });
+
+    // Size Slider
+    const sizeSlider = document.getElementById('nj-size-slider');
+    const sizeVal = document.getElementById('nj-size-val');
+    sizeSlider.addEventListener('input', (e) => {
+      const v = parseFloat(e.target.value);
+      sizeVal.textContent = v.toFixed(2) + 'x';
+      visualizer.setOption('logoSize', v);
+      updateFpsPill();
+    });
+
+    // Brightness Slider
+    const glowSlider = document.getElementById('nj-glow-slider');
+    const glowVal = document.getElementById('nj-glow-val');
+    glowSlider.addEventListener('input', (e) => {
+      const v = parseFloat(e.target.value);
+      glowVal.textContent = v.toFixed(1) + 'x';
+      visualizer.setOption('brightness', v);
+    });
+
+    // Sway Slider
+    const swaySlider = document.getElementById('nj-sway-slider');
+    const swayVal = document.getElementById('nj-sway-val');
+    swaySlider.addEventListener('input', (e) => {
+      const v = parseFloat(e.target.value);
+      swayVal.textContent = v.toFixed(1) + 'x';
+      visualizer.setOption('swaySpeed', v);
+    });
+
+    // Scatter Slider
+    const scatterSlider = document.getElementById('nj-scatter-slider');
+    const scatterVal = document.getElementById('nj-scatter-val');
+    scatterSlider.addEventListener('input', (e) => {
+      const v = parseFloat(e.target.value);
+      scatterVal.textContent = v.toFixed(1) + 'x';
+      visualizer.setOption('scatterForce', v);
+    });
+
+    // Rain Slider
+    const rainSlider = document.getElementById('nj-rain-slider');
+    const rainVal = document.getElementById('nj-rain-val');
+    rainSlider.addEventListener('input', (e) => {
+      const v = parseFloat(e.target.value);
+      rainVal.textContent = v.toFixed(1) + 'x';
+      visualizer.setOption('rainIntensity', v);
+      visualizer.initRain();
+    });
+
+    // Scanlines Select
+    const scanlineSelect = document.getElementById('nj-scanline-select');
+    scanlineSelect.addEventListener('change', (e) => {
+      visualizer.setOption('scanlines', e.target.value === 'on');
+    });
+
+    // Shockwave Button
+    document.getElementById('nj-shockwave-btn').addEventListener('click', () => {
+      visualizer.triggerShockwave(0, 0);
+    });
+
+    // FPS & Pixel status tracker
+    const fpsText = document.getElementById('nj-fps-text');
+    let frameCount = 0;
+    let lastFpsCalc = performance.now();
+    let currentFps = 60;
+
+    function updateFpsPill() {
+      const count = visualizer.pixels ? visualizer.pixels.length : 0;
+      fpsText.textContent = `${currentFps} FPS • ${count.toLocaleString()} Pixels`;
+    }
+
+    function fpsLoop() {
+      frameCount++;
+      const now = performance.now();
+      if (now - lastFpsCalc >= 1000) {
+        currentFps = frameCount;
+        frameCount = 0;
+        lastFpsCalc = now;
+        updateFpsPill();
+      }
+      requestAnimationFrame(fpsLoop);
+    }
+    fpsLoop();
+
+    // Snapshot export button
+    document.getElementById('nj-snapshot-btn').addEventListener('click', () => {
+      const link = document.createElement('a');
+      link.download = 'nodejs-pixel-logo.png';
+      link.href = visualizer.canvas.toDataURL('image/png');
+      link.click();
+    });
+  </script>
+</body>
+</html>

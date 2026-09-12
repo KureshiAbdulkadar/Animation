@@ -108,6 +108,20 @@
   const PIXEL_BUILD_GAP = 3;
   const PIXEL_BUILD_PITCH = PIXEL_BUILD_SIZE + PIXEL_BUILD_GAP;
 
+  // Node.js Pixel Art / LED Matrix state variables
+  let nodejsPixelBlocks = [];
+  let nodejsParticles = [];
+  let nodejsRain = [];
+  let nodejsSparks = [];
+
+  // Pixel Cascade Wall state variables
+  let cascadeGrid = [];
+  let cascadeFalling = [];
+  let cascadeSparks = [];
+  let cascadeCols = 0;
+  let cascadeRows = 0;
+  let cascadeInitialized = false;
+
   const mouse = {
     x: 0.5,
     y: 0.5,
@@ -735,6 +749,127 @@
     }
 
     pixelBuildIndex = 0;
+  };
+
+  // ── Node.js Pixel Art / LED Matrix Preset helpers ──────────
+  const initNodeJSPreset = () => {
+    nodejsPixelBlocks = [];
+    nodejsParticles = [];
+    nodejsRain = [];
+    nodejsSparks = [];
+
+    // Adaptive pixel grid pitch based on screen and pixelSize
+    const nodePitch = Math.max(12, Math.min(26, Math.floor(pixelSize * 1.05)));
+    const nodeGap = Math.max(1, Math.floor(nodePitch * 0.16));
+    const nodeBlockSize = nodePitch - nodeGap;
+
+    const logoCols = 30;
+    const logoRows = 34;
+    const gridPixelWidth = logoCols * nodePitch;
+    const gridPixelHeight = logoRows * nodePitch;
+
+    const offsetX = (width - gridPixelWidth) / 2;
+    const offsetY = (height - gridPixelHeight) / 2;
+
+    const centerC = (logoCols - 1) / 2;
+    const centerR = (logoRows - 1) / 2;
+
+    for (let r = 0; r < logoRows; r++) {
+      for (let c = 0; c < logoCols; c++) {
+        const nx = (c - centerC) / (logoCols * 0.44);
+        const ny = (r - centerR) / (logoRows * 0.44);
+
+        // Pointy-top regular hexagon distance field
+        const qx = Math.abs(nx) * 0.866025 + Math.abs(ny) * 0.5;
+        const qy = Math.abs(ny);
+        const dHex = Math.max(qx, qy);
+
+        if (dHex <= 0.98) {
+          const isOuterRim = dHex >= 0.78;
+          
+          // Official Node.js 3-facet division
+          // 1. Top Facet: Upper region (light lime green #83cd29)
+          // 2. Left Facet: Lower-left region (mid green #43853d)
+          // 3. Right Facet: Lower-right region (dark pine green #215732)
+          let facetType = 1;
+          let facetFactor = 1.0;
+
+          // Official Node.js leaf notch corner on top facet
+          const isNotch = (nx > 0.25 && nx < 0.65 && ny < -0.35 && ny > -0.75);
+
+          // Central isometric dividing ridges
+          const isCenterRidge = Math.abs(nx) <= 0.055 && ny > 0;
+          const isTopLeftRidge = Math.abs(ny - (-nx * 0.577)) <= 0.065 && nx < 0;
+          const isTopRightRidge = Math.abs(ny - (nx * 0.577)) <= 0.065 && nx > 0;
+          const isRidge = isCenterRidge || isTopLeftRidge || isTopRightRidge;
+
+          if (ny <= 0 && (ny < -Math.abs(nx) * 0.577 || ny < 0 && Math.abs(nx) < 0.6)) {
+            facetType = 1; // Top facet (Brightest lime highlight #83cd29)
+            facetFactor = 1.35;
+          } else if (nx <= 0) {
+            facetType = 2; // Left facet (Mid emerald green #43853d)
+            facetFactor = 0.95;
+          } else {
+            facetType = 3; // Right facet (Deep forest green #215732)
+            facetFactor = 0.60;
+          }
+
+          let blockType = 'fill';
+          let baseBrightness = 0.40 * facetFactor;
+          let isCore = false;
+
+          if (isNotch) {
+            blockType = 'notch';
+            baseBrightness = 1.25;
+            isCore = true;
+          } else if (isRidge) {
+            blockType = 'ridge';
+            baseBrightness = 1.15;
+            isCore = true;
+          } else if (isOuterRim) {
+            blockType = 'rim';
+            baseBrightness = 0.95;
+            isCore = true;
+          }
+
+          const distFromCenter = Math.hypot(c - centerC, r - centerR);
+          const angle = Math.atan2(r - centerR, c - centerC);
+
+          nodejsPixelBlocks.push({
+            col: c,
+            row: r,
+            x: offsetX + c * nodePitch,
+            y: offsetY + r * nodePitch,
+            size: nodeBlockSize,
+            pitch: nodePitch,
+            blockType,
+            facetType,
+            facetFactor,
+            isCore,
+            baseBrightness,
+            distFromCenter,
+            angle,
+            currentScale: 1.0,
+            flash: 0,
+            liftZ: 0,
+            phase: Math.random() * Math.PI * 2
+          });
+        }
+      }
+    }
+
+    // Atmospheric diagonal pixel rain
+    for (let i = 0; i < 120; i++) {
+      nodejsRain.push({
+        x: (Math.random() - 0.2) * 1.4,
+        y: Math.random(),
+        z: 0.2 + Math.random() * 0.8,
+        length: 20 + Math.random() * 50,
+        speed: 0.5 + Math.random() * 0.8,
+        alpha: 0.06 + Math.random() * 0.18,
+        slant: -0.25 + (Math.random() - 0.5) * 0.05
+      });
+    }
   };
 
   const draw = (time) => {
@@ -1694,6 +1829,706 @@
     }
 
     // ══════════════════════════════════════════════════════════
+    //  15. NODE.JS PIXEL ART / LED MATRIX PRESET
+    // ══════════════════════════════════════════════════════════
+    if (presetMode === "nodejs-particles") {
+      if (nodejsPixelBlocks.length === 0) initNodeJSPreset();
+
+      if (transparent) {
+        ctx.clearRect(0, 0, width, height);
+      } else {
+        ctx.fillStyle = "#050709";
+        ctx.fillRect(0, 0, width, height);
+
+        const cxCenter = width * 0.5;
+        const cyCenter = height * 0.5;
+        const bgGlow = ctx.createRadialGradient(cxCenter, cyCenter, 20, cxCenter, cyCenter, Math.max(width, height) * 0.65);
+        bgGlow.addColorStop(0, `rgba(${Math.round(baseR * 0.12)}, ${Math.round(baseG * 0.18)}, ${Math.round(baseB * 0.12)}, 0.4)`);
+        bgGlow.addColorStop(0.5, "rgba(8, 12, 16, 0.25)");
+        bgGlow.addColorStop(1, "rgba(3, 5, 7, 0.95)");
+        ctx.fillStyle = bgGlow;
+        ctx.fillRect(0, 0, width, height);
+      }
+
+      const elapsed = time * 0.001;
+      const mouseX = mouse.x * width;
+      const mouseY = mouse.y * height;
+      const normMouseX = (mouse.x - 0.5) * 2;
+      const normMouseY = (mouse.y - 0.5) * 2;
+
+      // 1. Diagonal Matrix / Atmospheric Rain
+      if (nodejsRain.length > 0) {
+        ctx.save();
+        ctx.lineWidth = 1.0;
+        for (const r of nodejsRain) {
+          r.y += r.speed * 0.016 * speed;
+          if (r.y > 1.2) {
+            r.y = -0.15;
+            r.x = (Math.random() - 0.2) * 1.4;
+          }
+          const screenX = r.x * width;
+          const screenY = r.y * height;
+          const streakLen = r.length * (0.6 + r.z * 0.8);
+          const endX = screenX + streakLen * r.slant;
+          const endY = screenY + streakLen;
+
+          const grad = ctx.createLinearGradient(screenX, screenY, endX, endY);
+          const alpha = r.alpha * (0.4 + r.z * 0.6);
+          grad.addColorStop(0, "rgba(100, 220, 120, 0)");
+          grad.addColorStop(0.7, `rgba(${baseR}, ${baseG}, ${baseB}, ${alpha * 0.6})`);
+          grad.addColorStop(1, `rgba(220, 255, 230, ${alpha})`);
+
+          ctx.strokeStyle = grad;
+          ctx.beginPath();
+          ctx.moveTo(screenX, screenY);
+          ctx.lineTo(endX, endY);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      // 2. Floating Sway Translation
+      const swayX = Math.sin(elapsed * 0.85 * speed) * 12.0 + (normMouseX * 20.0);
+      const swayY = Math.cos(elapsed * 1.15 * speed) * 8.0 + (normMouseY * 15.0);
+
+      // 3. Draw Background Faint Grid Cells
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.025)";
+      ctx.lineWidth = 0.5;
+      for (const block of nodejsPixelBlocks) {
+        ctx.strokeRect(block.x + swayX, block.y + swayY, block.size, block.size);
+      }
+
+      // Energy scan wave progression
+      const waveFront = (elapsed * 3.0 * speed) % 50;
+
+      // 4. Render Active Pixel Blocks
+      for (const block of nodejsPixelBlocks) {
+        const bx = block.x + swayX;
+        const by = block.y + swayY;
+        const bCx = bx + block.size / 2;
+        const bCy = by + block.size / 2;
+
+        // Cursor proximity physics
+        const distToCursor = Math.hypot(mouseX - bCx, mouseY - bCy);
+        const cursorRadius = Math.max(arcThickness * 1.2, 120);
+        const isHovered = isTrackingMouse && distToCursor < cursorRadius;
+
+        if (isHovered) {
+          const force = 1 - distToCursor / cursorRadius;
+          block.flash = Math.max(block.flash, force * 0.85);
+          block.liftZ += (force * 12.0 - block.liftZ) * 0.2;
+        } else {
+          block.liftZ *= 0.88;
+        }
+
+        block.flash *= 0.92;
+        const targetScale = isHovered ? 1.15 : 1.0;
+        block.currentScale += (targetScale - block.currentScale) * 0.2;
+
+        // Scanning energy pulse
+        const distFromTop = block.row + block.col * 0.15;
+        const waveDelta = Math.abs((distFromTop % 25) - (waveFront % 25));
+        const scanPulse = Math.max(0, 1 - waveDelta / 3.0) * 0.45;
+
+        // Twinkle on rim & ridges
+        const twinkle = block.isCore ? Math.sin(elapsed * 4.0 + block.phase) * 0.15 : 0;
+
+        // Calculate combined brightness & alpha
+        const totalBrightness = Math.min(1.5, (block.baseBrightness + scanPulse + twinkle + block.flash) * (glowIntensity / 2.0));
+
+        const drawSize = block.size * block.currentScale;
+        const halfSize = drawSize / 2;
+        const drawX = bCx - halfSize;
+        const drawY = bCy - halfSize - block.liftZ;
+
+        // Color computation based on Node.js facet & type
+        let rVal, gVal, bVal;
+        if (block.blockType === "rim" || block.blockType === "ridge") {
+          // Bright glowing rim: chalk white to neon accent blend
+          rVal = Math.min(255, Math.round(240 * (1 - block.facetFactor * 0.3) + baseR * 0.6));
+          gVal = Math.min(255, Math.round(250 * (1 - block.facetFactor * 0.2) + baseG * 0.7));
+          bVal = Math.min(255, Math.round(240 * (1 - block.facetFactor * 0.3) + baseB * 0.6));
+        } else if (block.facetType === 1) {
+          // Highlight facet: vibrant neon green
+          rVal = Math.min(255, Math.round(baseR * 1.25));
+          gVal = Math.min(255, Math.round(baseG * 1.25));
+          bVal = Math.min(255, Math.round(baseB * 1.25));
+        } else if (block.facetType === 2) {
+          // Mid facet: classic node emerald
+          rVal = Math.round(baseR * 0.85);
+          gVal = Math.round(baseG * 0.85);
+          bVal = Math.round(baseB * 0.85);
+        } else {
+          // Shadow facet: deep forest node green
+          rVal = Math.round(baseR * 0.45);
+          gVal = Math.round(baseG * 0.45);
+          bVal = Math.round(baseB * 0.45);
+        }
+
+        // Draw Pixel Box Interior Fill
+        const fillAlpha = Math.max(0.12, Math.min(1.0, totalBrightness * 0.75));
+        ctx.fillStyle = `rgba(${rVal}, ${gVal}, ${bVal}, ${fillAlpha})`;
+        
+        // Crisp rounded pixel block
+        const radius = Math.min(3, drawSize * 0.18);
+        ctx.beginPath();
+        if (ctx.roundRect) {
+          ctx.roundRect(drawX, drawY, drawSize, drawSize, radius);
+        } else {
+          ctx.rect(drawX, drawY, drawSize, drawSize);
+        }
+        ctx.fill();
+
+        // Draw Glowing Pixel Border
+        const borderAlpha = Math.max(0.2, Math.min(1.0, totalBrightness * 0.95 + 0.1));
+        ctx.strokeStyle = `rgba(${rVal}, ${gVal}, ${bVal}, ${borderAlpha})`;
+        ctx.lineWidth = block.isCore ? 1.2 : 0.8;
+        ctx.stroke();
+
+        // High-intensity phosphor bloom for core pixels / hovering
+        if (totalBrightness > 0.85 && glowIntensity > 1.8) {
+          ctx.fillStyle = `rgba(${baseR}, ${baseG}, ${baseB}, ${totalBrightness * 0.14})`;
+          const bloomDim = drawSize * 2.2;
+          ctx.fillRect(bCx - bloomDim / 2, bCy - bloomDim / 2 - block.liftZ, bloomDim, bloomDim);
+        }
+
+        // Random Spark Generation on active edges
+        if (block.isCore && Math.random() < 0.008 * speed && nodejsSparks.length < 50) {
+          nodejsSparks.push({
+            x: bCx,
+            y: bCy - block.liftZ,
+            vx: (Math.random() - 0.5) * 1.5,
+            vy: -0.8 - Math.random() * 1.8,
+            life: 1.0,
+            decay: 0.02 + Math.random() * 0.03,
+            size: 1.5 + Math.random() * 1.5
+          });
+        }
+
+        activeLEDCount++;
+      }
+
+      // 5. Render Pixel Sparks
+      for (let i = nodejsSparks.length - 1; i >= 0; i--) {
+        const s = nodejsSparks[i];
+        s.x += s.vx;
+        s.y += s.vy;
+        s.life -= s.decay;
+
+        if (s.life <= 0) {
+          nodejsSparks.splice(i, 1);
+          continue;
+        }
+
+        ctx.fillStyle = `rgba(${baseR}, ${baseG}, ${baseB}, ${s.life * 0.9})`;
+        ctx.fillRect(s.x - s.size / 2, s.y - s.size / 2, s.size, s.size);
+      }
+
+      particleCounter.textContent = activeLEDCount.toLocaleString();
+      raf = requestAnimationFrame(draw);
+      return;
+    }
+
+    // ══════════════════════════════════════════════════════════
+    //  PRESET 15: HALFTONE WAVE GRID
+    // ══════════════════════════════════════════════════════════
+    if (presetMode === "halftone-waves") {
+      const pitch = Math.max(10, Math.min(36, pixelSize));
+      const cols = Math.ceil(width / pitch) + 2;
+      const rows = Math.ceil(height / pitch) + 2;
+      const startX = -pitch;
+      const startY = -pitch;
+
+      const minRadius = (pitch / 2) * 0.08;
+      const maxRadius = (pitch / 2) * 1.15;
+      const freq = 0.005 * (arcThickness / 100);
+      const elapsed = time * 0.001 * speed;
+
+      const mPx = mouse.x * width;
+      const mPy = mouse.y * height;
+      const mRadius = 160;
+
+      let activeDotCount = 0;
+
+      // Draw background ambient glow
+      const cx = width / 2;
+      const cy = height / 2;
+      const radGlow = ctx.createRadialGradient(cx, cy, 40, cx, cy, Math.max(width, height) * 0.6);
+      radGlow.addColorStop(0, `rgba(${baseR}, ${baseG}, ${baseB}, 0.12)`);
+      radGlow.addColorStop(1, "transparent");
+      ctx.fillStyle = radGlow;
+      ctx.fillRect(0, 0, width, height);
+      // Circus Starburst & Marquee Wave Synthesizer
+      const arms = 8;
+      const twist = 0.008;
+
+      for (let r = 0; r < rows; r++) {
+        const gridY = startY + r * pitch;
+        for (let c = 0; c < cols; c++) {
+          const gridX = startX + c * pitch;
+
+          // Starburst mathematics
+          const dx = gridX - cx;
+          const dy = gridY - cy;
+          const dist = Math.hypot(dx, dy);
+          const theta = Math.atan2(dy, dx);
+
+          const spiralAngle = theta * arms - dist * twist - elapsed * 1.8;
+          const spiralWave = Math.sin(spiralAngle);
+          const radialPulse = Math.cos(dist * 0.035 - elapsed * 2.2);
+          const diagWave = Math.sin(gridX * 0.015 + gridY * 0.015 + elapsed * 0.8);
+
+          let raw = spiralWave * 0.68 + radialPulse * 0.22 + diagWave * 0.10;
+          let wave = Math.pow(Math.max(0, Math.min(1, 0.5 + 0.5 * raw)), 1.4);
+
+          // Mouse inflation
+          if (isTrackingMouse) {
+            const mDist = Math.hypot(gridX - mPx, gridY - mPy);
+            if (mDist < mRadius) {
+              const mPower = (1 - mDist / mRadius) * 0.75;
+              wave = Math.min(1.0, wave + mPower * 0.55);
+            }
+          }
+
+          const dotRadius = minRadius + (maxRadius - minRadius) * wave;
+          if (dotRadius <= 0.4) continue;
+
+          // Glow for bright bulbs
+          if (wave > 0.65 && glowIntensity > 1.2) {
+            ctx.fillStyle = `rgba(${baseR}, ${baseG}, ${baseB}, 0.25)`;
+            ctx.beginPath();
+            ctx.arc(gridX, gridY, dotRadius * 1.8, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          // Main Bulb
+          const alpha = Math.max(0.25, Math.min(1.0, 0.35 + wave * 0.65 * (glowIntensity / 2.0)));
+          ctx.fillStyle = `rgba(${baseR}, ${baseG}, ${baseB}, ${alpha})`;
+          ctx.beginPath();
+          ctx.arc(gridX, gridY, dotRadius, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Illuminated Core
+          if (wave > 0.72) {
+            ctx.fillStyle = `rgba(255, 245, 200, ${(wave - 0.72) * 3.0})`;
+            ctx.beginPath();
+            ctx.arc(gridX, gridY, dotRadius * 0.45, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          activeDotCount++;
+        }
+      }
+
+      particleCounter.textContent = activeDotCount.toLocaleString();
+      raf = requestAnimationFrame(draw);
+      return;
+    }
+
+    // ══════════════════════════════════════════════════════════
+    //  PRESET 16: 3D ISOMETRIC KINETIC PIN MATRIX
+    // ══════════════════════════════════════════════════════════
+    if (presetMode === "kinetic-grid") {
+      const pitch = Math.max(16, Math.min(32, pixelSize * 1.1));
+      const cols = 26;
+      const rows = 26;
+      const maxElev = 65 * (glowIntensity / 2.0);
+      const elapsed = time * 0.001 * speed;
+
+      const mPx = mouse.x * width;
+      const mPy = mouse.y * height;
+      const mRadius = 150;
+
+      const cx = width / 2;
+      const cy = height / 2;
+
+      // Ambient radial glow
+      const radGlow = ctx.createRadialGradient(cx, cy, 30, cx, cy, Math.max(width, height) * 0.65);
+      radGlow.addColorStop(0, `rgba(${baseR}, ${baseG}, ${baseB}, 0.12)`);
+      radGlow.addColorStop(1, "transparent");
+      ctx.fillStyle = radGlow;
+      ctx.fillRect(0, 0, width, height);
+
+      const isoCos = 0.866025;
+      const isoSin = 0.500000;
+      const centerCol = (cols - 1) / 2;
+      const centerRow = (rows - 1) / 2;
+
+      const pillars = [];
+
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const gx = (c - centerCol);
+          const gy = (r - centerRow);
+
+          const groundX = cx + (gx - gy) * pitch * isoCos;
+          const groundY = cy + (gx + gy) * pitch * isoSin + 35;
+
+          const dist = Math.hypot(gx, gy);
+          const ripple = Math.sin(dist * 0.55 - elapsed * 3.0);
+          const damp = Math.exp(-dist * 0.05);
+          let wave = 0.5 + 0.5 * (ripple * (0.6 + 0.4 * damp));
+
+          // Mouse push
+          if (isTrackingMouse) {
+            const mDist = Math.hypot(groundX - mPx, groundY - mPy);
+            if (mDist < mRadius) {
+              const mPower = (1 - mDist / mRadius);
+              wave = Math.min(1.0, wave + mPower * 0.7);
+            }
+          }
+
+          const elevationHeight = 6 + wave * maxElev;
+          const topY = groundY - elevationHeight;
+
+          pillars.push({
+            depth: r + c,
+            groundX, groundY, topY,
+            wave,
+            w: (pitch * 0.46)
+          });
+        }
+      }
+
+      // Sort back-to-front
+      pillars.sort((a, b) => a.depth - b.depth);
+
+      // Render 3D Hexagonal Pillars
+      for (const p of pillars) {
+        const gx = p.groundX;
+        const gy = p.groundY;
+        const ty = p.topY;
+        const w = p.w;
+        const dy = w * 0.55;
+        const wave = p.wave;
+
+        // Left vertical face (shaded)
+        ctx.beginPath();
+        ctx.moveTo(gx - w, ty);
+        ctx.lineTo(gx, ty + dy);
+        ctx.lineTo(gx, gy + dy);
+        ctx.lineTo(gx - w, gy);
+        ctx.closePath();
+        ctx.fillStyle = `rgba(${Math.round(baseR * 0.55)}, ${Math.round(baseG * 0.55)}, ${Math.round(baseB * 0.55)}, 0.95)`;
+        ctx.fill();
+
+        // Right vertical face (darker shaded)
+        ctx.beginPath();
+        ctx.moveTo(gx, ty + dy);
+        ctx.lineTo(gx + w, ty);
+        ctx.lineTo(gx + w, gy);
+        ctx.lineTo(gx, gy + dy);
+        ctx.closePath();
+        ctx.fillStyle = `rgba(${Math.round(baseR * 0.28)}, ${Math.round(baseG * 0.28)}, ${Math.round(baseB * 0.28)}, 0.95)`;
+        ctx.fill();
+
+        // Top illuminated cap
+        ctx.beginPath();
+        ctx.moveTo(gx, ty - dy);
+        ctx.lineTo(gx + w, ty);
+        ctx.lineTo(gx, ty + dy);
+        ctx.lineTo(gx - w, ty);
+        ctx.closePath();
+        ctx.fillStyle = wave > 0.4 ? `rgba(${baseR}, ${baseG}, ${baseB}, 1.0)` : `rgba(${Math.round(baseR * 0.7)}, ${Math.round(baseG * 0.7)}, ${Math.round(baseB * 0.7)}, 0.8)`;
+        ctx.fill();
+
+        // Edge stroke
+        ctx.strokeStyle = `rgba(255, 255, 255, ${0.2 + wave * 0.5})`;
+        ctx.lineWidth = 0.6;
+        ctx.stroke();
+
+        // Core bright pip
+        if (wave > 0.65) {
+          ctx.fillStyle = `rgba(255, 255, 255, ${(wave - 0.65) * 2.8})`;
+          ctx.beginPath();
+          ctx.arc(gx, ty, w * 0.32, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      particleCounter.textContent = pillars.length.toLocaleString();
+      raf = requestAnimationFrame(draw);
+      return;
+    }
+
+    // ══════════════════════════════════════════════════════════
+    //  PRESET 17: PIXEL GAME WALL CASCADE
+    // ══════════════════════════════════════════════════════════
+    if (presetMode === "pixel-cascade") {
+      const pitch = Math.max(12, Math.min(28, pixelSize));
+      const cols = Math.floor(width / pitch);
+      const rows = Math.floor(height / pitch);
+      const curDt = Math.min((time - lastTime) / 1000, 0.05);
+
+      // Strict 2-Color Duotone Palette derived from active accent color
+      const secondaryColor = `rgb(${Math.round(baseR * 0.38 + 15)}, ${Math.round(baseG * 0.38 + 15)}, ${Math.round(baseB * 0.38 + 15)})`;
+      const palette = [color, secondaryColor];
+
+      if (!cascadeInitialized || cascadeCols !== cols || cascadeRows !== rows) {
+        cascadeCols = cols;
+        cascadeRows = rows;
+        cascadeGrid = [];
+        for (let r = 0; r < rows; r++) {
+          cascadeGrid[r] = new Array(cols).fill(null);
+        }
+        cascadeFalling = [];
+        cascadeSparks = [];
+        
+        const foundationRows = Math.min(5, Math.floor(rows * 0.2));
+        for (let r = rows - foundationRows; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            if (Math.random() < 0.65) {
+              cascadeGrid[r][c] = {
+                color: palette[Math.floor(Math.random() * palette.length)],
+                flash: 0
+              };
+            }
+          }
+        }
+        cascadeInitialized = true;
+      }
+
+      ctx.fillStyle = background || "#080c18";
+      ctx.fillRect(0, 0, width, height);
+
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.04)";
+      ctx.lineWidth = 0.5;
+      for (let c = 0; c <= cols; c++) {
+        ctx.beginPath();
+        ctx.moveTo(c * pitch, 0);
+        ctx.lineTo(c * pitch, height);
+        ctx.stroke();
+      }
+      for (let r = 0; r <= rows; r++) {
+        ctx.beginPath();
+        ctx.moveTo(0, r * pitch);
+        ctx.lineTo(width, r * pitch);
+        ctx.stroke();
+      }
+
+      const tetronimos = [
+        [[0, 0], [1, 0], [0, 1], [1, 1]],
+        [[0, 0], [-1, 0], [1, 0], [2, 0]],
+        [[0, 0], [-1, 0], [1, 0], [0, 1]],
+        [[0, 0], [1, 0], [0, 1], [-1, 1]],
+        [[0, 0], [-1, 0], [0, 1], [1, 1]],
+        [[0, 0], [-1, 0], [-1, 1], [1, 0]],
+        [[0, 0], [1, 0], [1, 1], [-1, 0]]
+      ];
+
+      if (Math.random() < 0.28 * speed && cascadeFalling.length < 35) {
+        const shape = tetronimos[Math.floor(Math.random() * tetronimos.length)];
+        const spawnCol = Math.floor(Math.random() * (cols - 2)) + 1;
+        const blockColor = palette[Math.floor(Math.random() * palette.length)];
+        cascadeFalling.push({
+          col: spawnCol,
+          y: -pitch * 3,
+          vy: (2.0 + Math.random() * 2.5) * speed,
+          color: blockColor,
+          shape
+        });
+      }
+
+      const mPx = mouse.x * width;
+      const mPy = mouse.y * height;
+
+      for (let i = cascadeFalling.length - 1; i >= 0; i--) {
+        const fb = cascadeFalling[i];
+        fb.y += fb.vy * 60 * curDt;
+
+        if (isTrackingMouse) {
+          const blockX = fb.col * pitch;
+          const dx = mPx - blockX;
+          const dy = mPy - fb.y;
+          if (Math.abs(dy) < 120 && Math.abs(dx) < 140) {
+            if (dx > 20 && fb.col < cols - 2 && Math.random() < 0.08) fb.col++;
+            else if (dx < -20 && fb.col > 1 && Math.random() < 0.08) fb.col--;
+          }
+        }
+
+        let hasCollided = false;
+        for (const [ox, oy] of fb.shape) {
+          const c = fb.col + ox;
+          const targetR = Math.floor((fb.y + oy * pitch + pitch) / pitch);
+
+          if (c < 0 || c >= cols) continue;
+          if (targetR >= rows) {
+            hasCollided = true;
+            break;
+          }
+          if (targetR >= 0 && cascadeGrid[targetR] && cascadeGrid[targetR][c]) {
+            hasCollided = true;
+            break;
+          }
+        }
+
+        if (hasCollided) {
+          const lockR = Math.floor(fb.y / pitch);
+          for (const [ox, oy] of fb.shape) {
+            const c = fb.col + ox;
+            const r = lockR + oy;
+            if (c >= 0 && c < cols && r >= 0 && r < rows && cascadeGrid[r]) {
+              cascadeGrid[r][c] = {
+                color: fb.color,
+                flash: 1.0
+              };
+              for (let k = 0; k < 3; k++) {
+                const angle = Math.random() * Math.PI * 2;
+                const spd = 1.5 + Math.random() * 4;
+                cascadeSparks.push({
+                  x: c * pitch + pitch / 2,
+                  y: r * pitch + pitch / 2,
+                  vx: Math.cos(angle) * spd,
+                  vy: Math.sin(angle) * spd - 2,
+                  color: fb.color,
+                  alpha: 1.0,
+                  size: 2 + Math.random() * 2.5,
+                  decay: 0.03 + Math.random() * 0.03
+                });
+              }
+            }
+          }
+          cascadeFalling.splice(i, 1);
+        }
+      }
+
+      // Real Physics Gravity Settlement: Blocks above empty gaps fall down
+      for (let r = rows - 2; r >= 0; r--) {
+        for (let c = 0; c < cols; c++) {
+          if (cascadeGrid[r] && cascadeGrid[r][c] && cascadeGrid[r + 1] && !cascadeGrid[r + 1][c]) {
+            cascadeGrid[r + 1][c] = cascadeGrid[r][c];
+            cascadeGrid[r][c] = null;
+          }
+        }
+      }
+
+      for (let r = 0; r < rows; r++) {
+        let isFull = true;
+        for (let c = 0; c < cols; c++) {
+          if (!cascadeGrid[r] || !cascadeGrid[r][c]) {
+            isFull = false;
+            break;
+          }
+        }
+        if (isFull) {
+          for (let c = 0; c < cols; c += 2) {
+            for (let k = 0; k < 3; k++) {
+              const angle = Math.random() * Math.PI * 2;
+              const spd = 2 + Math.random() * 6;
+              cascadeSparks.push({
+                x: c * pitch,
+                y: r * pitch + pitch / 2,
+                vx: Math.cos(angle) * spd,
+                vy: Math.sin(angle) * spd - 1,
+                color: '#ffffff',
+                alpha: 1.0,
+                size: 2 + Math.random() * 3,
+                decay: 0.04
+              });
+            }
+          }
+          for (let rowAbove = r; rowAbove > 0; rowAbove--) {
+            cascadeGrid[rowAbove] = [...cascadeGrid[rowAbove - 1]];
+          }
+          cascadeGrid[0] = new Array(cols).fill(null);
+        }
+      }
+
+      let topRowFilled = 0;
+      for (let c = 0; c < cols; c++) {
+        if (cascadeGrid[2] && cascadeGrid[2][c]) topRowFilled++;
+      }
+      if (topRowFilled > cols * 0.35) {
+        for (let r = 0; r < 6; r++) {
+          for (let c = 0; c < cols; c++) {
+            if (cascadeGrid[r] && cascadeGrid[r][c]) {
+              cascadeGrid[r][c] = null;
+            }
+          }
+        }
+      }
+
+      let activeBlockCount = 0;
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const b = cascadeGrid[r] ? cascadeGrid[r][c] : null;
+          if (!b) continue;
+
+          activeBlockCount++;
+          const bx = c * pitch;
+          const by = r * pitch;
+
+          ctx.fillStyle = b.flash > 0.1 ? "#ffffff" : b.color;
+          ctx.fillRect(bx + 1, by + 1, pitch - 2, pitch - 2);
+
+          ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
+          ctx.fillRect(bx + 1, by + 1, pitch - 2, 2);
+          ctx.fillRect(bx + 1, by + 1, 2, pitch - 2);
+
+          ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
+          ctx.fillRect(bx + 1, by + pitch - 3, pitch - 2, 2);
+          ctx.fillRect(bx + pitch - 3, by + 1, 2, pitch - 2);
+
+          if (b.flash > 0) b.flash *= 0.88;
+        }
+      }
+
+      for (const fb of cascadeFalling) {
+        for (const [ox, oy] of fb.shape) {
+          const bx = (fb.col + ox) * pitch;
+          const by = fb.y + oy * pitch;
+          if (bx < 0 || bx >= width || by > height) continue;
+
+          activeBlockCount++;
+          ctx.fillStyle = fb.color;
+          ctx.fillRect(bx + 1, by + 1, pitch - 2, pitch - 2);
+
+          ctx.fillStyle = "rgba(255, 255, 255, 0.55)";
+          ctx.fillRect(bx + 1, by + 1, pitch - 2, 2);
+          ctx.fillRect(bx + 1, by + 1, 2, pitch - 2);
+
+          ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
+          ctx.fillRect(bx + 1, by + pitch - 3, pitch - 2, 2);
+          ctx.fillRect(bx + pitch - 3, by + 1, 2, pitch - 2);
+        }
+      }
+
+      for (let i = cascadeSparks.length - 1; i >= 0; i--) {
+        const s = cascadeSparks[i];
+        s.x += s.vx;
+        s.y += s.vy;
+        s.vy += 0.18;
+        s.alpha -= s.decay;
+
+        if (s.alpha <= 0) {
+          cascadeSparks.splice(i, 1);
+        } else {
+          ctx.fillStyle = s.color;
+          ctx.globalAlpha = Math.max(0, s.alpha);
+          ctx.fillRect(s.x - s.size / 2, s.y - s.size / 2, s.size, s.size);
+        }
+      }
+      ctx.globalAlpha = 1.0;
+
+      if (isTrackingMouse) {
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(mPx, mPy, pitch * 3.5, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = "rgba(0, 0, 0, 0.22)";
+      for (let y = 0; y < height; y += 4) {
+        ctx.fillRect(0, y, width, 1.5);
+      }
+
+      particleCounter.textContent = activeBlockCount.toLocaleString();
+      raf = requestAnimationFrame(draw);
+      return;
+    }
+
+    // ══════════════════════════════════════════════════════════
     //  STANDARD GRID PRESETS
 
     // ══════════════════════════════════════════════════════════
@@ -2101,6 +2936,39 @@
             ctx.stroke();
           }
         }
+      }
+        `;
+      case "nodejs-particles":
+        return `
+      // Node.js 3D Particle Outline & Rain
+      const r = 135;
+      const swayX = Math.sin(t * 0.85 * speed) * 14.0;
+      const swayY = Math.cos(t * 1.15 * speed) * 9.0;
+      const rotY = Math.sin(t * 0.65 * speed) * 0.14;
+      const rotX = Math.cos(t * 0.85 * speed) * 0.08;
+      const cosX = Math.cos(rotX), sinX = Math.sin(rotX);
+      const cosY = Math.cos(rotY), sinY = Math.sin(rotY);
+      const cx = width * 0.5, cy = height * 0.5;
+      const responsiveScale = (Math.min(width, height) / 700) * (arcThickness / 100);
+      
+      // Draw Node.js Particle points
+      for (let i = 0; i < 3000; i++) {
+        const ang = (Math.floor(i / 500) * 60 - 30) * Math.PI / 180;
+        const progress = (i % 500) / 500;
+        const nextAng = ang + Math.PI / 3;
+        const x0 = (Math.cos(ang) * (1 - progress) + Math.cos(nextAng) * progress) * r * responsiveScale;
+        const y0 = (Math.sin(ang) * (1 - progress) + Math.sin(nextAng) * progress) * r * responsiveScale;
+        
+        const x1 = x0 * cosY;
+        const z1 = -x0 * sinY;
+        const y2 = y0 * cosX - z1 * sinX;
+        const z2 = y0 * sinX + z1 * cosX;
+        
+        const projX = cx + (x1 + swayX) * (550 / (550 + z2));
+        const projY = cy + (y2 + swayY) * (550 / (550 + z2));
+        
+        ctx.fillStyle = "rgba(" + baseR + "," + baseG + "," + baseB + ", 0.85)";
+        ctx.fillRect(projX, projY, 1.2, 1.2);
       }
         `;
       default:
@@ -2739,6 +3607,37 @@ const visualizer = new ${cleanPresetName}Visualizer(canvas, {
       const boundedR = Math.max(0, Math.min(rows - 1, clickR));
       
       snakes.push(createSnake(boundedC, boundedR));
+    } else if (presetMode === "pixel-cascade") {
+      const rect = canvas.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+      const pitch = Math.max(12, Math.min(28, pixelSize));
+      const targetC = Math.floor(clickX / pitch);
+      const targetR = Math.floor(clickY / pitch);
+      const radiusCells = 4;
+      for (let r = Math.max(0, targetR - radiusCells); r <= Math.min(cascadeRows - 1, targetR + radiusCells); r++) {
+        for (let c = Math.max(0, targetC - radiusCells); c <= Math.min(cascadeCols - 1, targetC + radiusCells); c++) {
+          const d = Math.hypot(c - targetC, r - targetR);
+          if (d <= radiusCells && cascadeGrid[r] && cascadeGrid[r][c]) {
+            const blockCol = cascadeGrid[r][c].color;
+            for (let k = 0; k < 4; k++) {
+              const angle = Math.random() * Math.PI * 2;
+              const spd = 2 + Math.random() * 5;
+              cascadeSparks.push({
+                x: c * pitch + pitch / 2,
+                y: r * pitch + pitch / 2,
+                vx: Math.cos(angle) * spd,
+                vy: Math.sin(angle) * spd - 2,
+                color: blockCol,
+                alpha: 1.0,
+                size: 2 + Math.random() * 3,
+                decay: 0.03 + Math.random() * 0.03
+              });
+            }
+            cascadeGrid[r][c] = null;
+          }
+        }
+      }
     }
   };
 
@@ -2819,6 +3718,16 @@ const visualizer = new ${cleanPresetName}Visualizer(canvas, {
         waveDots = [];
       } else if (presetMode === "pixel-build") {
         pixelBuildBlocks = [];
+      } else if (presetMode === "nodejs-particles") {
+        nodejsPixelBlocks = [];
+        nodejsSparks = [];
+        nodejsParticles = [];
+        nodejsRain = [];
+      } else if (presetMode === "pixel-cascade") {
+        cascadeInitialized = false;
+        cascadeGrid = [];
+        cascadeFalling = [];
+        cascadeSparks = [];
       }
     });
 
@@ -2856,6 +3765,11 @@ const visualizer = new ${cleanPresetName}Visualizer(canvas, {
     pixelSizeSlider.addEventListener("input", (e) => {
       pixelSize = parseInt(e.target.value, 10);
       pixelSizeValue.textContent = `${pixelSize}px`;
+      if (presetMode === "nodejs-particles") {
+        nodejsPixelBlocks = [];
+      } else if (presetMode === "pixel-cascade") {
+        cascadeInitialized = false;
+      }
     });
 
     arcThicknessSlider.addEventListener("input", (e) => {

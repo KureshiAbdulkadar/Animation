@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Circus Light Halftone — Radiant Starburst & Marquee Wave Grid</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="effects/halftone-waves/styles.css">
+</head>
+<body>
+  <div class="ht-frame">
+    <!-- Main Canvas Mount Target -->
+    <div id="ht-container" class="ht-canvas-container"></div>
+
+    <!-- Top Bar -->
+    <header class="ht-topbar">
+      <div class="ht-brand">
+        <svg class="ht-brand-icon" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="9" fill="none" stroke="#ff7700" stroke-width="2"/>
+          <circle cx="12" cy="12" r="3" fill="#ff7700"/>
+          <circle cx="12" cy="5" r="1.5" fill="#ff7700"/>
+          <circle cx="12" cy="19" r="1.5" fill="#ff7700"/>
+          <circle cx="5" cy="12" r="1.5" fill="#ff7700"/>
+          <circle cx="19" cy="12" r="1.5" fill="#ff7700"/>
+        </svg>
+        <span class="ht-brand-title">Circus Light Halftone</span>
+        <span class="ht-brand-tag">Starburst Marquee</span>
+      </div>
+
+      <div class="ht-topbar-actions">
+        <a href="index.html" class="ht-action-btn" title="Back to Shader Suite">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+          <span>All Shaders</span>
+        </a>
+        <button id="ht-shockwave-btn" class="ht-action-btn" title="Trigger Flash Shockwave">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <circle cx="12" cy="12" r="4"></circle>
+          </svg>
+          <span>Bulb Flash</span>
+        </button>
+        <button id="ht-snapshot-btn" class="ht-action-btn" title="Save PNG Snapshot">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+          <span>Snapshot</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Floating HUD Control Panel -->
+    <aside class="ht-hud-panel" id="ht-hud">
+      <div class="ht-hud-header" id="ht-hud-header">
+        <div class="ht-hud-title">
+          <span>✦</span>
+          <span>Circus Light Controls</span>
+        </div>
+        <button class="ht-toggle-btn" id="ht-toggle" aria-label="Toggle Panel">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
+      </div>
+
+      <div class="ht-hud-content">
+        <!-- Wave Pattern -->
+        <div class="ht-control-group">
+          <div class="ht-control-label-row">
+            <span>Wave & Starburst Mode</span>
+          </div>
+          <select id="ht-wave-pattern" class="ht-select">
+            <option value="circus-starburst" selected>1. Circus Starburst Pinwheel (Reference)</option>
+            <option value="radial-pulse">2. Hypnotic Marquee Rings</option>
+            <option value="wave-ribbons">3. Flowing Light Ribbons</option>
+            <option value="dual-vortex">4. Dual Counter-Vortex Hubs</option>
+            <option value="liquid-flow">5. Liquid Marquee Wave</option>
+          </select>
+        </div>
+
+        <!-- Color Palette -->
+        <div class="ht-control-group">
+          <div class="ht-control-label-row">
+            <span>Color Palette</span>
+          </div>
+          <div class="ht-palette-row">
+            <button class="ht-color-btn active" data-color="circus-amber" style="background: linear-gradient(135deg, #ff7700, #ffe082);" title="Circus Amber Orange (Original)"></button>
+            <button class="ht-color-btn" data-color="carnival-gold" style="background: linear-gradient(135deg, #ffb300, #fff9c4);" title="Carnival Gold"></button>
+            <button class="ht-color-btn" data-color="neon-coral" style="background: linear-gradient(135deg, #ff3d00, #ffccbc);" title="Neon Coral"></button>
+            <button class="ht-color-btn" data-color="vegas-cyan" style="background: linear-gradient(135deg, #00e5ff, #e0f7fa);" title="Vegas Cyan"></button>
+            <button class="ht-color-btn" data-color="broadway-magenta" style="background: linear-gradient(135deg, #f50057, #fce4ec);" title="Broadway Magenta"></button>
+            <button class="ht-color-btn" data-color="editorial" style="background: linear-gradient(135deg, #f8fafc, #94a3b8);" title="Monochrome Chalk"></button>
+          </div>
+        </div>
+
+        <!-- Starburst Arms Count -->
+        <div class="ht-control-group">
+          <div class="ht-control-label-row">
+            <span>Starburst Arms</span>
+            <span class="ht-val-badge" id="ht-arms-val">8 arms</span>
+          </div>
+          <input type="range" id="ht-arms-slider" class="ht-slider" min="4" max="16" step="1" value="8">
+        </div>
+
+        <!-- Spiral Twist Curvature -->
+        <div class="ht-control-group">
+          <div class="ht-control-label-row">
+            <span>Spiral Twist Curvature</span>
+            <span class="ht-val-badge" id="ht-twist-val">0.008</span>
+          </div>
+          <input type="range" id="ht-twist-slider" class="ht-slider" min="0.000" max="0.024" step="0.001" value="0.008">
+        </div>
+
+        <!-- Grid Spacing / Pitch Slider -->
+        <div class="ht-control-group">
+          <div class="ht-control-label-row">
+            <span>Bulb Spacing (Pitch)</span>
+            <span class="ht-val-badge" id="ht-pitch-val">14px</span>
+          </div>
+          <input type="range" id="ht-pitch-slider" class="ht-slider" min="8" max="28" step="1" value="14">
+        </div>
+
+        <!-- Speed Slider -->
+        <div class="ht-control-group">
+          <div class="ht-control-label-row">
+            <span>Rotation & Wave Speed</span>
+            <span class="ht-val-badge" id="ht-speed-val">1.0x</span>
+          </div>
+          <input type="range" id="ht-speed-slider" class="ht-slider" min="0.1" max="3.0" step="0.05" value="1.0">
+        </div>
+
+        <!-- Max Bulb Scale -->
+        <div class="ht-control-group">
+          <div class="ht-control-label-row">
+            <span>Max Bulb Size</span>
+            <span class="ht-val-badge" id="ht-scale-val">1.15x</span>
+          </div>
+          <input type="range" id="ht-scale-slider" class="ht-slider" min="0.5" max="1.6" step="0.05" value="1.15">
+        </div>
+
+        <!-- Contrast Curve -->
+        <div class="ht-control-group">
+          <div class="ht-control-label-row">
+            <span>Bulb Contrast / Sharpness</span>
+            <span class="ht-val-badge" id="ht-contrast-val">1.4x</span>
+          </div>
+          <input type="range" id="ht-contrast-slider" class="ht-slider" min="0.6" max="2.5" step="0.1" value="1.4">
+        </div>
+
+        <!-- Mouse Center Following Mode -->
+        <div class="ht-control-group">
+          <div class="ht-control-label-row">
+            <span>Starburst Origin Hub</span>
+          </div>
+          <select id="ht-origin-select" class="ht-select">
+            <option value="center" selected>Center Screen (Dynamic Sweep)</option>
+            <option value="mouse">Follow Mouse Cursor</option>
+          </select>
+        </div>
+
+        <!-- Bulb Glow Toggle -->
+        <div class="ht-control-group">
+          <div class="ht-control-label-row">
+            <span>Illuminated Filament Glow</span>
+          </div>
+          <select id="ht-glow-select" class="ht-select">
+            <option value="on" selected>Enabled (Luminous Glow & Core)</option>
+            <option value="off">Disabled (Flat Halftone Dots)</option>
+          </select>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Bottom Status Bar -->
+    <div class="ht-bottom-bar">
+      <div class="ht-status-pill">
+        <span>Circus Light Starburst Matrix • Glowing Amber Bulbs • Move Mouse or Click Canvas</span>
+      </div>
+      <div class="ht-status-pill">
+        <span id="ht-fps-text">60 FPS • Realtime Marquee</span>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { HalftoneWaves } from './effects/halftone-waves/HalftoneWaves.js';
+
+    // Mount visualizer instance
+    const visualizer = new HalftoneWaves('#ht-container', {
+      pattern: 'circus-starburst',
+      dotShape: 'circle',
+      gridPitch: 14,
+      armsCount: 8,
+      spiralTwist: 0.008,
+      maxDotScale: 1.15,
+      minDotScale: 0.05,
+      waveSpeed: 1.0,
+      contrast: 1.4,
+      colorScheme: 'circus-amber',
+      bulbGlow: true,
+      followMouseCenter: false
+    });
+
+    // HUD Collapse toggle
+    const hud = document.getElementById('ht-hud');
+    const hudHeader = document.getElementById('ht-hud-header');
+    hudHeader.addEventListener('click', () => {
+      hud.classList.toggle('collapsed');
+    });
+
+    // Pattern Selector
+    document.getElementById('ht-wave-pattern').addEventListener('change', (e) => {
+      visualizer.setOption('pattern', e.target.value);
+    });
+
+    // Palette Buttons
+    const colorBtns = document.querySelectorAll('.ht-color-btn');
+    colorBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        colorBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        visualizer.setOption('colorScheme', btn.dataset.color);
+      });
+    });
+
+    // Arms Slider
+    const armsSlider = document.getElementById('ht-arms-slider');
+    const armsVal = document.getElementById('ht-arms-val');
+    armsSlider.addEventListener('input', (e) => {
+      const v = parseInt(e.target.value, 10);
+      armsVal.textContent = v + ' arms';
+      visualizer.setOption('armsCount', v);
+    });
+
+    // Twist Slider
+    const twistSlider = document.getElementById('ht-twist-slider');
+    const twistVal = document.getElementById('ht-twist-val');
+    twistSlider.addEventListener('input', (e) => {
+      const v = parseFloat(e.target.value);
+      twistVal.textContent = v.toFixed(3);
+      visualizer.setOption('spiralTwist', v);
+    });
+
+    // Pitch Slider
+    const pitchSlider = document.getElementById('ht-pitch-slider');
+    const pitchVal = document.getElementById('ht-pitch-val');
+    pitchSlider.addEventListener('input', (e) => {
+      const v = parseInt(e.target.value, 10);
+      pitchVal.textContent = v + 'px';
+      visualizer.setOption('gridPitch', v);
+    });
+
+    // Speed Slider
+    const speedSlider = document.getElementById('ht-speed-slider');
+    const speedVal = document.getElementById('ht-speed-val');
+    speedSlider.addEventListener('input', (e) => {
+      const v = parseFloat(e.target.value);
+      speedVal.textContent = v.toFixed(2) + 'x';
+      visualizer.setOption('waveSpeed', v);
+    });
+
+    // Scale Slider
+    const scaleSlider = document.getElementById('ht-scale-slider');
+    const scaleVal = document.getElementById('ht-scale-val');
+    scaleSlider.addEventListener('input', (e) => {
+      const v = parseFloat(e.target.value);
+      scaleVal.textContent = v.toFixed(2) + 'x';
+      visualizer.setOption('maxDotScale', v);
+    });
+
+    // Contrast Slider
+    const contrastSlider = document.getElementById('ht-contrast-slider');
+    const contrastVal = document.getElementById('ht-contrast-val');
+    contrastSlider.addEventListener('input', (e) => {
+      const v = parseFloat(e.target.value);
+      contrastVal.textContent = v.toFixed(1) + 'x';
+      visualizer.setOption('contrast', v);
+    });
+
+    // Origin Select
+    document.getElementById('ht-origin-select').addEventListener('change', (e) => {
+      visualizer.setOption('followMouseCenter', e.target.value === 'mouse');
+    });
+
+    // Glow Select
+    document.getElementById('ht-glow-select').addEventListener('change', (e) => {
+      visualizer.setOption('bulbGlow', e.target.value === 'on');
+    });
+
+    // Shockwave Button
+    document.getElementById('ht-shockwave-btn').addEventListener('click', () => {
+      visualizer.triggerShockwave(visualizer.width / 2, visualizer.height / 2);
+    });
+
+    // FPS Loop
+    const fpsText = document.getElementById('ht-fps-text');
+    let frameCount = 0, lastFpsCalc = performance.now();
+    function fpsLoop() {
+      frameCount++;
+      const now = performance.now();
+      if (now - lastFpsCalc >= 1000) {
+        fpsText.textContent = `${frameCount} FPS • Circus Marquee Matrix`;
+        frameCount = 0;
+        lastFpsCalc = now;
+      }
+      requestAnimationFrame(fpsLoop);
+    }
+    fpsLoop();
+
+    // Snapshot
+    document.getElementById('ht-snapshot-btn').addEventListener('click', () => {
+      const a = document.createElement('a');
+      a.download = 'circus-light-starburst.png';
+      a.href = visualizer.canvas.toDataURL('image/png');
+      a.click();
+    });
+  </script>
+</body>
+</html>
