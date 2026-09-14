@@ -147,6 +147,7 @@
     wingFlex: 0
   };
   let flyingEagleVortex = [];
+  let flyingEagleSparks = [];
   let amberShockwaves = [];
 
   const mouse = {
@@ -3501,15 +3502,15 @@
     // reserved for future shortcuts
   };
 
-  // ── Standalone exports code generator ─────────────────────────────
+  // ── Standalone exports code generator for all 19 shaders ─────────
   const getPresetCode = (preset) => {
     switch (preset) {
       case "led-arch":
         return `
-      // Loop through LED grid coordinates
+      // 01. Classic LED Arch
       const pitch = pixelSize;
       const gap = 1;
-      const drawSize = pitch - gap;
+      const drawSize = Math.max(1, pitch - gap);
       const cols = Math.floor(width / pitch);
       const rows = Math.floor(height / pitch);
       const offsetX = (width - cols * pitch) / 2;
@@ -3559,139 +3560,344 @@
         ctx.fill();
       }
         `;
-      case "particle-wheel":
-        return `
-      // Central wheel constants
-      const cx = width / 2;
-      const cy = height / 2;
-      const minDim = Math.min(width, height);
-      const innerVoid = minDim * 0.20;
 
-      // Initialize particles once
-      if (!window.wheelParticles) {
-        window.wheelParticles = [];
-        const count = 750;
-        const coreR = minDim * 0.27;
-        const randn = () => {
-          let u = 0, v = 0;
-          while (u === 0) u = Math.random();
-          while (v === 0) v = Math.random();
-          return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
-        };
-        for (let i = 0; i < count; i++) {
-          const angle = Math.random() * Math.PI * 2;
-          let offsetR = Math.random() < 0.82 ? randn() * (minDim * 0.035) : randn() * (minDim * 0.14);
-          const r = Math.max(innerVoid + 2, coreR + offsetR);
-          window.wheelParticles.push({
-            r: r,
-            targetR: r,
-            vr: 0,
-            angle: angle,
-            angularSpeed: (0.0015 + Math.random() * 0.002) * (Math.random() < 0.5 ? 1 : -1),
-            size: 0.8 + Math.random() * 1.6,
-            twinkleSpeed: 0.8 + Math.random() * 1.5,
-            twinklePhase: Math.random() * Math.PI
-          });
+      case "ghosting":
+        return `
+      // 02. Ghosting Flashlight
+      const pitch = Math.max(10, pixelSize);
+      const cellSize = pitch - 4;
+      const cols = Math.floor(width / pitch);
+      const rows = Math.floor(height / pitch);
+      const offsetX = (width - cols * pitch) / 2;
+      const offsetY = (height - rows * pitch) / 2;
+      const mouseX = width * (0.5 + Math.sin(t * 0.8) * 0.3);
+      const mouseY = height * (0.5 + Math.cos(t * 0.6) * 0.2);
+      const radius = arcThickness * 1.6;
+
+      for (let c = 0; c < cols; c++) {
+        const x = offsetX + c * pitch + pitch / 2;
+        for (let r = 0; r < rows; r++) {
+          const y = offsetY + r * pitch + pitch / 2;
+          const dist = Math.hypot(x - mouseX, y - mouseY);
+          const beam = Math.max(0, 1 - dist / radius);
+          const intensity = Math.pow(beam, 1.8) * glowIntensity;
+
+          if (intensity > 0.02) {
+            ctx.fillStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + Math.min(1, intensity) + ")";
+            ctx.fillRect(x - cellSize / 2, y - cellSize / 2, cellSize, cellSize);
+          } else {
+            ctx.fillStyle = transparent ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.04)";
+            ctx.fillRect(x - cellSize / 2, y - cellSize / 2, cellSize, cellSize);
+          }
         }
       }
+        `;
 
-      // Render particles
-      for (let i = 0; i < window.wheelParticles.length; i++) {
-        const p = window.wheelParticles[i];
-        p.vr += (Math.random() - 0.5) * 0.08 * speed;
-        p.vr += (p.targetR - p.r) * 0.015 * speed;
-        p.vr *= 0.94;
-        p.r += p.vr * speed;
-        if (p.r < innerVoid) {
-          p.r = innerVoid + Math.random() * 2;
-          p.vr = Math.abs(p.vr);
+      case "snake-game":
+        return `
+      // 03. Retro Snake Grid
+      const pitch = Math.max(12, pixelSize);
+      const cols = Math.floor(width / pitch);
+      const rows = Math.floor(height / pitch);
+      const count = 28;
+      
+      for (let i = 0; i < count; i++) {
+        const progress = (i / count);
+        const snakeX = Math.floor((cols * 0.5 + Math.sin(t * 1.5 - progress * 4.0) * (cols * 0.35))) * pitch;
+        const snakeY = Math.floor((rows * 0.5 + Math.cos(t * 2.0 - progress * 3.0) * (rows * 0.3))) * pitch;
+        const alpha = (1.0 - progress * 0.8) * glowIntensity;
+        ctx.fillStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + Math.min(1, alpha) + ")";
+        ctx.fillRect(snakeX + 2, snakeY + 2, pitch - 4, pitch - 4);
+      }
+        `;
+
+      case "gravity-matrix":
+        return `
+      // 04. Gravity Cascade
+      const pitch = Math.max(10, pixelSize);
+      const cols = Math.floor(width / pitch);
+      const rows = Math.floor(height / pitch);
+      
+      for (let c = 0; c < cols; c++) {
+        const dropSpeed = 1.0 + (c % 7) * 0.3;
+        const headY = (t * 180 * dropSpeed + c * 43) % (height + 200) - 100;
+        const trailLen = 8;
+        for (let k = 0; k < trailLen; k++) {
+          const y = headY - k * pitch;
+          if (y >= 0 && y < height) {
+            const alpha = (1.0 - k / trailLen) * glowIntensity;
+            ctx.fillStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + Math.min(1, alpha) + ")";
+            ctx.fillRect(c * pitch + 1, Math.floor(y / pitch) * pitch + 1, pitch - 2, pitch - 2);
+          }
         }
-        p.angle += p.angularSpeed * speed;
+      }
+        `;
 
-        const screenX = cx + Math.cos(p.angle) * p.r;
-        const screenY = cy + Math.sin(p.angle) * p.r;
-        const twinkle = 0.8 + 0.2 * Math.sin(time * 0.002 * p.twinkleSpeed + p.twinklePhase);
-        const pSize = p.size * twinkle * (pixelSize / 4);
+      case "dot-globe":
+        return `
+      // 05. 3D Dot Globe
+      const cx = width * 0.5;
+      const cy = height * 0.5;
+      const globeRadius = Math.min(width, height) * 0.35 * (arcThickness / 120);
+      const rotY = t * 0.6;
+      const rotX = Math.sin(t * 0.4) * 0.3;
+      const latSteps = 16, lonSteps = 32;
 
-        ctx.fillStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + twinkle + ")";
+      for (let lat = -latSteps; lat <= latSteps; lat++) {
+        const theta = (lat / latSteps) * (Math.PI / 2);
+        const rRing = Math.cos(theta) * globeRadius;
+        const y0 = Math.sin(theta) * globeRadius;
+
+        for (let lon = 0; lon < lonSteps; lon++) {
+          const phi = (lon / lonSteps) * Math.PI * 2 + rotY;
+          const x0 = Math.sin(phi) * rRing;
+          const z0 = Math.cos(phi) * rRing;
+
+          const y1 = y0 * Math.cos(rotX) - z0 * Math.sin(rotX);
+          const z1 = y0 * Math.sin(rotX) + z0 * Math.cos(rotX);
+
+          if (z1 > -globeRadius * 0.2) {
+            const projX = cx + x0;
+            const projY = cy + y1;
+            const depth = (z1 + globeRadius) / (globeRadius * 2);
+            const dotSize = Math.max(0.8, (pixelSize / 4) * (0.6 + depth * 0.8));
+            const alpha = Math.min(1, (0.2 + depth * 0.8) * glowIntensity);
+
+            ctx.fillStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + alpha + ")";
+            ctx.beginPath();
+            ctx.arc(projX, projY, dotSize, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+      }
+        `;
+
+      case "streamline-pinch":
+        return `
+      // 06. Converging Streams
+      const numLines = 36;
+      const pinchX = width * (0.5 + Math.sin(t * 0.7) * 0.15);
+      const pinchY = height * 0.5;
+      const spread = arcThickness * 1.8;
+
+      ctx.lineWidth = Math.max(0.8, pixelSize / 8);
+      for (let i = 0; i < numLines; i++) {
+        const ratio = (i / numLines) - 0.5;
+        const startY = pinchY + ratio * height * 1.2;
+        const endY = pinchY + ratio * height * 1.2;
+
+        ctx.strokeStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + (0.25 + Math.abs(ratio) * 0.5) * glowIntensity + ")";
         ctx.beginPath();
-        ctx.arc(screenX, screenY, pSize, 0, Math.PI * 2);
+        ctx.moveTo(0, startY);
+        ctx.bezierCurveTo(pinchX - spread, startY, pinchX - 30, pinchY + ratio * 40, pinchX, pinchY);
+        ctx.bezierCurveTo(pinchX + 30, pinchY + ratio * 40, pinchX + spread, endY, width, endY);
+        ctx.stroke();
+      }
+        `;
+
+      case "flow-field":
+        return `
+      // 07. Particle Flow-Field
+      const count = 400;
+      const cx = width * 0.5, cy = height * 0.5;
+      
+      for (let i = 0; i < count; i++) {
+        const angleSeed = (i / count) * Math.PI * 2;
+        const radSeed = (Math.sin(i * 13.7 + t * 0.5) * 0.5 + 0.5) * Math.min(width, height) * 0.45;
+        const angle = angleSeed + Math.sin(radSeed * 0.02 - t * 1.5) * 1.4;
+        const px = cx + Math.cos(angle) * radSeed;
+        const py = cy + Math.sin(angle) * radSeed;
+        const pSize = (1.0 + (i % 3) * 0.8) * (pixelSize / 6);
+        const alpha = (0.3 + (i % 5) * 0.15) * glowIntensity;
+
+        ctx.fillStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + Math.min(1, alpha) + ")";
+        ctx.beginPath();
+        ctx.arc(px, py, pSize, 0, Math.PI * 2);
         ctx.fill();
       }
         `;
+
+      case "particle-wheel":
+        return `
+      // 09. Central Particle Orbit Wheel
+      const cx = width / 2;
+      const cy = height / 2;
+      const minDim = Math.min(width, height);
+      const innerVoid = minDim * 0.18;
+      const count = 600;
+
+      for (let i = 0; i < count; i++) {
+        const baseAngle = (i / count) * Math.PI * 2;
+        const speedFactor = 0.5 + (i % 7) * 0.2;
+        const angle = baseAngle + t * 0.6 * speedFactor;
+        const r = innerVoid + ((i * 37) % Math.floor(minDim * 0.32));
+        const px = cx + Math.cos(angle) * r;
+        const py = cy + Math.sin(angle) * r;
+        const twinkle = 0.6 + 0.4 * Math.sin(t * 4.0 + i);
+        const pSize = (0.8 + (i % 3) * 0.6) * twinkle * (pixelSize / 5);
+
+        ctx.fillStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + (twinkle * glowIntensity) + ")";
+        ctx.beginPath();
+        ctx.arc(px, py, Math.max(0.6, pSize), 0, Math.PI * 2);
+        ctx.fill();
+      }
+        `;
+
       case "constellation-field":
         return `
-      // Initialize stars once
-      if (!window.stars) {
-        window.stars = [];
-        const count = 180;
-        for (let i = 0; i < count; i++) {
-          window.stars.push({
-            x: Math.random() * width,
-            y: Math.random() * height,
-            vx: (Math.random() - 0.5) * 0.35,
-            vy: (Math.random() - 0.5) * 0.35,
-            radius: 0.8 + Math.random() * 1.6
-          });
-        }
-      }
-
-      // Update and draw
+      // 08. Constellation Field
+      const count = 120;
       const maxDist = arcThickness * 1.1;
-      for (let s of window.stars) {
-        s.x += s.vx * speed;
-        s.y += s.vy * speed;
-        if (s.x < 0) s.x = width;
-        if (s.x > width) s.x = 0;
-        if (s.y < 0) s.y = height;
-        if (s.y > height) s.y = 0;
+      const points = [];
+
+      for (let i = 0; i < count; i++) {
+        const px = ((i * 137.5 + t * 25 * (1 + (i % 3) * 0.2)) % width);
+        const py = ((i * 269.3 + Math.sin(t * 0.8 + i) * 40) % height);
+        points.push({ x: px, y: py });
 
         ctx.fillStyle = "#ffffff";
         ctx.beginPath();
-        ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
+        ctx.arc(px, py, Math.max(0.8, pixelSize / 8), 0, Math.PI * 2);
         ctx.fill();
       }
 
-      // Connections
-      ctx.lineWidth = 0.65;
-      for (let i = 0; i < window.stars.length; i++) {
-        const s1 = window.stars[i];
-        for (let j = i + 1; j < window.stars.length; j++) {
-          const s2 = window.stars[j];
-          const dx = s1.x - s2.x;
-          const dy = s1.y - s2.y;
+      ctx.lineWidth = 0.6;
+      for (let i = 0; i < points.length; i++) {
+        for (let j = i + 1; j < points.length; j++) {
+          const dx = points[i].x - points[j].x;
+          const dy = points[i].y - points[j].y;
           const d = Math.sqrt(dx * dx + dy * dy);
           if (d < maxDist) {
-            const alpha = (1.0 - d / maxDist) * 0.28;
+            const alpha = (1.0 - d / maxDist) * 0.35 * glowIntensity;
             ctx.strokeStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + alpha + ")";
             ctx.beginPath();
-            ctx.moveTo(s1.x, s1.y);
-            ctx.lineTo(s2.x, s2.y);
+            ctx.moveTo(points[i].x, points[i].y);
+            ctx.lineTo(points[j].x, points[j].y);
             ctx.stroke();
           }
         }
       }
         `;
+
+      case "tech-boxes":
+        return `
+      // 10. Tech Boxes
+      const pitch = Math.max(20, pixelSize * 1.4);
+      const cols = Math.floor(width / pitch);
+      const rows = Math.floor(height / pitch);
+      const cx = width * 0.5, cy = height * 0.5;
+
+      for (let c = 0; c < cols; c++) {
+        const x = c * pitch + pitch / 2;
+        for (let r = 0; r < rows; r++) {
+          const y = r * pitch + pitch / 2;
+          const d = Math.hypot(x - cx, y - cy);
+          const pulse = Math.sin(d * 0.03 - t * 3.0);
+          const boxSize = (pitch - 4) * Math.max(0.2, (pulse + 1) * 0.5);
+
+          if (pulse > 0.2) {
+            ctx.strokeStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + pulse * glowIntensity + ")";
+            ctx.lineWidth = 1.0;
+            ctx.strokeRect(x - boxSize / 2, y - boxSize / 2, boxSize, boxSize);
+          }
+        }
+      }
+        `;
+
+      case "space-galaxy":
+        return `
+      // 11. Space Galaxy
+      const cx = width * 0.5, cy = height * 0.5;
+      const arms = 3;
+      const count = 900;
+      const maxR = Math.min(width, height) * 0.45;
+
+      for (let i = 0; i < count; i++) {
+        const arm = i % arms;
+        const progress = Math.pow(i / count, 0.7);
+        const r = progress * maxR;
+        const armAngle = (arm * (Math.PI * 2 / arms));
+        const spiral = armAngle + progress * 4.5 + t * 0.5;
+        const spread = (Math.sin(i * 19.3) * 0.15) * r;
+        const px = cx + Math.cos(spiral) * (r + spread);
+        const py = cy + Math.sin(spiral) * (r + spread) * 0.65;
+        const alpha = (1.0 - progress * 0.7) * glowIntensity;
+
+        ctx.fillStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + Math.min(1, alpha) + ")";
+        ctx.beginPath();
+        ctx.arc(px, py, Math.max(0.6, (1.2 - progress * 0.6) * (pixelSize / 5)), 0, Math.PI * 2);
+        ctx.fill();
+      }
+        `;
+
+      case "data-stream":
+        return `
+      // 12. Data Matrix
+      const colWidth = Math.max(12, pixelSize);
+      const cols = Math.floor(width / colWidth);
+      
+      for (let c = 0; c < cols; c++) {
+        const colSpeed = 120 + (c % 9) * 30;
+        const headY = (t * colSpeed + c * 79) % (height + 300) - 100;
+        const streamLen = 14;
+
+        for (let k = 0; k < streamLen; k++) {
+          const y = headY - k * colWidth;
+          if (y >= 0 && y < height) {
+            const isHead = (k === 0);
+            const alpha = isHead ? 1.0 : ((1.0 - k / streamLen) * 0.85) * glowIntensity;
+            ctx.fillStyle = isHead ? "#ffffff" : ("rgba(" + baseR + "," + baseG + "," + baseB + "," + Math.min(1, alpha) + ")");
+            ctx.fillRect(c * colWidth + 2, y, colWidth - 4, colWidth - 2);
+          }
+        }
+      }
+        `;
+
+      case "wave-grid":
+        return `
+      // 13. Ocean Wave Grid
+      const pitch = Math.max(12, pixelSize);
+      const cols = Math.floor(width / pitch);
+      const rows = Math.floor(height / pitch);
+
+      for (let r = 0; r < rows; r++) {
+        ctx.beginPath();
+        ctx.strokeStyle = "rgba(" + baseR + "," + baseG + "," + baseB + ", 0.4)";
+        ctx.lineWidth = 0.8;
+        for (let c = 0; c < cols; c++) {
+          const x = c * pitch;
+          const wave = Math.sin(c * 0.2 + r * 0.15 - t * 2.5) * (arcThickness * 0.25);
+          const y = r * pitch + wave;
+          if (c === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+
+          const dotAlpha = Math.max(0, (wave / (arcThickness * 0.25))) * glowIntensity;
+          ctx.fillStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + dotAlpha + ")";
+          ctx.fillRect(x - 1.5, y - 1.5, 3, 3);
+        }
+        ctx.stroke();
+      }
+        `;
+
       case "nodejs-particles":
         return `
-      // Node.js 3D Particle Outline & Rain
+      // 14. Node.js 3D Particles
       const r = 135;
-      const swayX = Math.sin(t * 0.85 * speed) * 14.0;
-      const swayY = Math.cos(t * 1.15 * speed) * 9.0;
-      const rotY = Math.sin(t * 0.65 * speed) * 0.14;
-      const rotX = Math.cos(t * 0.85 * speed) * 0.08;
+      const swayX = Math.sin(t * 0.85) * 14.0;
+      const swayY = Math.cos(t * 1.15) * 9.0;
+      const rotY = Math.sin(t * 0.65) * 0.14;
+      const rotX = Math.cos(t * 0.85) * 0.08;
       const cosX = Math.cos(rotX), sinX = Math.sin(rotX);
       const cosY = Math.cos(rotY), sinY = Math.sin(rotY);
       const cx = width * 0.5, cy = height * 0.5;
-      const responsiveScale = (Math.min(width, height) / 700) * (arcThickness / 100);
+      const scale = (Math.min(width, height) / 700) * (arcThickness / 100);
       
-      // Draw Node.js Particle points
-      for (let i = 0; i < 3000; i++) {
-        const ang = (Math.floor(i / 500) * 60 - 30) * Math.PI / 180;
-        const progress = (i % 500) / 500;
+      for (let i = 0; i < 2800; i++) {
+        const ang = (Math.floor(i / 466) * 60 - 30) * Math.PI / 180;
+        const progress = (i % 466) / 466;
         const nextAng = ang + Math.PI / 3;
-        const x0 = (Math.cos(ang) * (1 - progress) + Math.cos(nextAng) * progress) * r * responsiveScale;
-        const y0 = (Math.sin(ang) * (1 - progress) + Math.sin(nextAng) * progress) * r * responsiveScale;
+        const x0 = (Math.cos(ang) * (1 - progress) + Math.cos(nextAng) * progress) * r * scale;
+        const y0 = (Math.sin(ang) * (1 - progress) + Math.sin(nextAng) * progress) * r * scale;
         
         const x1 = x0 * cosY;
         const z1 = -x0 * sinY;
@@ -3702,9 +3908,151 @@
         const projY = cy + (y2 + swayY) * (550 / (550 + z2));
         
         ctx.fillStyle = "rgba(" + baseR + "," + baseG + "," + baseB + ", 0.85)";
-        ctx.fillRect(projX, projY, 1.2, 1.2);
+        ctx.fillRect(projX, projY, 1.5, 1.5);
       }
         `;
+
+      case "halftone-waves":
+        return `
+      // 15. Halftone Wave Grid & Circus Starburst
+      const pitch = Math.max(10, Math.min(32, pixelSize));
+      const cols = Math.floor(width / pitch);
+      const rows = Math.floor(height / pitch);
+      const cx = width * 0.5, cy = height * 0.5;
+      const maxRadius = pitch * 0.45;
+      const arms = 8;
+
+      for (let r = 0; r < rows; r++) {
+        const y = r * pitch + pitch / 2;
+        for (let c = 0; c < cols; c++) {
+          const x = c * pitch + pitch / 2;
+          const dx = x - cx;
+          const dy = y - cy;
+          const dist = Math.hypot(dx, dy);
+          const angle = Math.atan2(dy, dx);
+          
+          const starburst = Math.sin(angle * arms + dist * 0.008 - t * 2.2);
+          const radial = Math.cos(dist * 0.04 - t * 3.0) * 0.5;
+          const density = Math.max(0, Math.min(1, (starburst + radial + 1.2) * 0.45));
+          const dotR = maxRadius * Math.pow(density, 1.4);
+
+          if (dotR > 0.8) {
+            ctx.fillStyle = density > 0.75 ? "#ffffff" : ("rgba(" + baseR + "," + baseG + "," + baseB + "," + (0.3 + density * 0.7) + ")");
+            ctx.beginPath();
+            ctx.arc(x, y, dotR, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+      }
+        `;
+
+      case "kinetic-grid":
+        return `
+      // 16. 3D Kinetic Grid Morph
+      const pitch = Math.max(16, pixelSize * 1.1);
+      const cols = 28, rows = 28;
+      const cx = width * 0.5, cy = height * 0.5;
+      const maxElev = 65 * (arcThickness / 120);
+
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const gx = (c - cols / 2);
+          const gy = (r - rows / 2);
+          const dist = Math.hypot(gx, gy);
+          const wave = (Math.sin(dist * 0.35 - t * 2.8) + 1) * 0.5;
+          const elevation = wave * maxElev;
+
+          const screenX = cx + (gx - gy) * pitch * 0.866;
+          const screenY = cy + (gx + gy) * pitch * 0.5 - elevation;
+
+          ctx.fillStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + (0.4 + wave * 0.6) * glowIntensity + ")";
+          ctx.beginPath();
+          ctx.arc(screenX, screenY, Math.max(1, (pitch * 0.28) * (0.6 + wave * 0.4)), 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+        `;
+
+      case "pixel-cascade":
+        return `
+      // 17. Pixel Game Wall Cascade
+      const pitch = Math.max(12, pixelSize);
+      const cols = Math.floor(width / pitch);
+      const rows = Math.floor(height / pitch);
+      
+      for (let c = 0; c < cols; c++) {
+        const colHeight = Math.floor((Math.sin(c * 0.4 + t * 1.2) * 0.3 + 0.5) * rows * 0.7);
+        for (let r = rows - colHeight; r < rows; r++) {
+          ctx.fillStyle = (r % 2 === 0) ? ("rgb(" + baseR + "," + baseG + "," + baseB + ")") : "#ffffff";
+          ctx.fillRect(c * pitch + 1, r * pitch + 1, pitch - 2, pitch - 2);
+        }
+      }
+        `;
+
+      case "flying-eagle":
+        return `
+      // 18. Cyber Flying Eagle
+      const pitch = Math.max(10, pixelSize);
+      const cols = Math.floor(width / pitch);
+      const rows = Math.floor(height / pitch);
+      const cx = width * 0.5;
+      const cy = height * 0.5 + Math.sin(t * 2.0) * 25;
+      const flap = Math.sin(t * 4.0);
+
+      for (let r = 0; r < rows; r++) {
+        const y = r * pitch + pitch / 2;
+        for (let c = 0; c < cols; c++) {
+          const x = c * pitch + pitch / 2;
+          const dx = Math.abs(x - cx);
+          const dy = y - cy;
+          const wingY = (dx * 0.35) * flap;
+          const distToWing = Math.hypot(dx - 120, dy - wingY);
+          const distToBody = Math.hypot(dx, dy);
+
+          let density = 0;
+          if (distToBody < 50) density = 1.0 - distToBody / 50;
+          if (distToWing < 90) density = Math.max(density, 1.0 - distToWing / 90);
+
+          if (density > 0.1) {
+            ctx.fillStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + density * glowIntensity + ")";
+            ctx.beginPath();
+            ctx.arc(x, y, Math.max(0.8, density * (pitch * 0.4)), 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+      }
+        `;
+
+      case "amber-dispersion":
+        return `
+      // 19. Amber Halftone Dispersion
+      const pitch = Math.max(10, Math.min(32, pixelSize));
+      const cols = Math.floor(width / pitch);
+      const rows = Math.floor(height / pitch);
+      const maxR = pitch * 0.46;
+
+      for (let r = 0; r < rows; r++) {
+        const v = r / rows;
+        const y = r * pitch + pitch / 2;
+        for (let c = 0; c < cols; c++) {
+          const u = c / cols;
+          const x = c * pitch + pitch / 2;
+          const wave1 = Math.sin(u * 7.0 + v * 5.0 - t * 2.8);
+          const wave2 = Math.cos(u * 11.0 - v * 7.0 + t * 2.0) * 0.45;
+          const diagonal = (1.0 - u * 0.6) * (0.4 + v * 0.8);
+          const density = Math.max(0, Math.min(1.0, (wave1 + wave2 + 1.5) * 0.38 * diagonal));
+
+          if (density > 0.08) {
+            const dotR = Math.max(0.6, maxR * Math.pow(density, 1.3));
+            ctx.fillStyle = density > 0.8 ? "#ffffff" : ("rgba(" + baseR + "," + baseG + "," + baseB + "," + (0.2 + density * 0.8) + ")");
+            ctx.beginPath();
+            ctx.arc(x, y, dotR, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+      }
+        `;
+
       default:
         return `
       const pitch = pixelSize;
@@ -3722,7 +4070,6 @@
         const x = offsetX + c * pitch + pitch / 2;
         for (let r = 0; r < rows; r++) {
           const y = offsetY + r * pitch + pitch / 2;
-          
           const dx = x - cx;
           const dy = y - cy;
           const dist = Math.sqrt(dx * dx + dy * dy);
@@ -4468,11 +4815,26 @@ const visualizer = new ${cleanPresetName}Visualizer(canvas, {
     glowIntensitySlider = document.getElementById("glow-intensity");
     glowIntensityValue = document.getElementById("glow-intensity-value");
     
-    // Custom Cutout Text Input
+    // Custom Cutout Text Input & Status Pill
     const wallTextInput = document.getElementById("wall-custom-text");
+    const wallTextStatus = document.getElementById("wall-text-status");
+    const wallTextGroup = document.getElementById("wall-text-group");
+
+    const updateWallTextGroupVisibility = () => {
+      if (wallTextGroup) {
+        wallTextGroup.style.display = (presetMode === "pixel-cascade") ? "block" : "none";
+      }
+      if (wallTextStatus && wallTextInput) {
+        wallTextStatus.textContent = (wallTextInput.value.trim().length > 0) ? "ACTIVE" : "VOID";
+      }
+    };
+
     if (wallTextInput) {
       wallTextInput.addEventListener("input", (e) => {
-        cascadeCustomText = e.target.value || "NODE JS";
+        cascadeCustomText = e.target.value.trim() || "NODE JS";
+        if (wallTextStatus) {
+          wallTextStatus.textContent = (e.target.value.trim().length > 0) ? "ACTIVE" : "VOID";
+        }
         cascadeInitialized = false;
         cascadeBuildComplete = false;
       });
@@ -4503,10 +4865,12 @@ const visualizer = new ${cleanPresetName}Visualizer(canvas, {
     pixelSize = parseInt(pixelSizeSlider.value, 10);
     arcThickness = parseInt(arcThicknessSlider.value, 10);
     glowIntensity = parseFloat(glowIntensitySlider.value);
+    updateWallTextGroupVisibility();
 
     // Setup event listeners
     designPreset.addEventListener("change", (e) => {
       presetMode = e.target.value;
+      updateWallTextGroupVisibility();
       if (presetMode === "snake-game") {
         snakes = [];
       } else if (presetMode === "gravity-matrix") {

@@ -1377,9 +1377,13 @@
 
     const hud = document.getElementById('pc-hud');
     const hudHeader = document.getElementById('pc-hud-header');
-    hudHeader.addEventListener('click', () => {
+    const toggleBtn = document.getElementById('pc-toggle');
+    const toggleHud = (e) => {
+      if (e) e.stopPropagation();
       hud.classList.toggle('collapsed');
-    });
+    };
+    hudHeader.addEventListener('click', toggleHud);
+    if (toggleBtn) toggleBtn.addEventListener('click', toggleHud);
 
     document.getElementById('pc-text-input').addEventListener('input', (e) => {
       visualizer.setOption('customText', e.target.value || 'NODE JS');

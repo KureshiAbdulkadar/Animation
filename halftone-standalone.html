@@ -899,9 +899,14 @@
     });
 
     const hud = document.getElementById('ht-hud');
-    document.getElementById('ht-hud-header').addEventListener('click', () => {
+    const hudHeader = document.getElementById('ht-hud-header');
+    const toggleBtn = document.getElementById('ht-toggle');
+    const toggleHud = (e) => {
+      if (e) e.stopPropagation();
       hud.classList.toggle('collapsed');
-    });
+    };
+    if (hudHeader) hudHeader.addEventListener('click', toggleHud);
+    if (toggleBtn) toggleBtn.addEventListener('click', toggleHud);
 
     document.getElementById('ht-wave-pattern').addEventListener('change', (e) => {
       visualizer.setOption('pattern', e.target.value);

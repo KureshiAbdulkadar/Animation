@@ -1048,9 +1048,13 @@
 
     const hud = document.getElementById('ad-hud');
     const hudHeader = document.getElementById('ad-hud-header');
-    hudHeader.addEventListener('click', () => {
+    const toggleBtn = document.getElementById('ad-toggle');
+    const toggleHud = (e) => {
+      if (e) e.stopPropagation();
       hud.classList.toggle('collapsed');
-    });
+    };
+    if (hudHeader) hudHeader.addEventListener('click', toggleHud);
+    if (toggleBtn) toggleBtn.addEventListener('click', toggleHud);
 
     const modeSelect = document.getElementById('ad-mode-select');
     modeSelect.addEventListener('change', (e) => {

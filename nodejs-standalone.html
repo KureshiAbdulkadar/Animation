@@ -1266,9 +1266,13 @@
     // UI Binding
     const hud = document.getElementById('nj-hud');
     const hudHeader = document.getElementById('nj-hud-header');
-    hudHeader.addEventListener('click', () => {
+    const toggleBtn = document.getElementById('nj-toggle');
+    const toggleHud = (e) => {
+      if (e) e.stopPropagation();
       hud.classList.toggle('collapsed');
-    });
+    };
+    if (hudHeader) hudHeader.addEventListener('click', toggleHud);
+    if (toggleBtn) toggleBtn.addEventListener('click', toggleHud);
 
     document.getElementById('nj-logo-mode').addEventListener('change', (e) => {
       visualizer.setOption('logoMode', e.target.value);

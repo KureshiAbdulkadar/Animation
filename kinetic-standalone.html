@@ -922,9 +922,14 @@
     });
 
     const hud = document.getElementById('kg-hud');
-    document.getElementById('kg-hud-header').addEventListener('click', () => {
+    const hudHeader = document.getElementById('kg-hud-header');
+    const toggleBtn = document.getElementById('kg-toggle');
+    const toggleHud = (e) => {
+      if (e) e.stopPropagation();
       hud.classList.toggle('collapsed');
-    });
+    };
+    if (hudHeader) hudHeader.addEventListener('click', toggleHud);
+    if (toggleBtn) toggleBtn.addEventListener('click', toggleHud);
 
     document.getElementById('kg-topography-select').addEventListener('change', (e) => {
       visualizer.setOption('topography', e.target.value);

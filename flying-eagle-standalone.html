@@ -1124,9 +1124,13 @@
 
     const hud = document.getElementById('fe-hud');
     const hudHeader = document.getElementById('fe-hud-header');
-    hudHeader.addEventListener('click', () => {
+    const toggleBtn = document.getElementById('fe-toggle');
+    const toggleHud = (e) => {
+      if (e) e.stopPropagation();
       hud.classList.toggle('collapsed');
-    });
+    };
+    if (hudHeader) hudHeader.addEventListener('click', toggleHud);
+    if (toggleBtn) toggleBtn.addEventListener('click', toggleHud);
 
     const modeSelect = document.getElementById('fe-mode-select');
     modeSelect.addEventListener('change', (e) => {
