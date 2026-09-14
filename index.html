@@ -47,6 +47,8 @@
       <option value="halftone-waves">15. Halftone Wave Grid</option>
       <option value="kinetic-grid">16. Kinetic Grid Morph</option>
       <option value="pixel-cascade">17. Pixel Game Wall Cascade</option>
+      <option value="flying-eagle">18. Cyber Flying Eagle</option>
+      <option value="amber-dispersion">19. Amber Halftone Dispersion</option>
     </select>
     <input type="checkbox" id="transparent-bg">
     <input type="checkbox" id="ui-visibility-toggle" checked>
@@ -365,6 +367,29 @@
                   </div>
                   <span class="tile-label">Pixel Wall</span>
                 </button>
+
+                <!-- 18. Cyber Flying Eagle -->
+                <button type="button" class="preset-tile" data-preset="flying-eagle">
+                  <div class="tile-icon">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M12 2L9.5 8.5L2 9.5L7.5 14.5L6 22L12 18.5L18 22L16.5 14.5L22 9.5L14.5 8.5L12 2Z"/>
+                    </svg>
+                  </div>
+                  <span class="tile-label">Flying Eagle</span>
+                </button>
+
+                <!-- 19. Amber Halftone Dispersion -->
+                <button type="button" class="preset-tile" data-preset="amber-dispersion">
+                  <div class="tile-icon">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="6" cy="18" r="3.5" fill="currentColor"/>
+                      <circle cx="12" cy="14" r="2.5" fill="currentColor"/>
+                      <circle cx="17" cy="9" r="1.8" fill="currentColor"/>
+                      <circle cx="20" cy="5" r="1" fill="currentColor"/>
+                    </svg>
+                  </div>
+                  <span class="tile-label">Amber FBM</span>
+                </button>
               </div>
             </div>
           </div>
@@ -400,10 +425,20 @@
               <div class="slider-field">
                 <div class="slider-label-row">
                   <label for="pixel-size">Block Dimension</label>
-                  <span class="value-pill" id="pixel-size-value">4px</span>
+                  <span class="value-pill" id="pixel-size-value">24px</span>
                 </div>
                 <div class="slider-track-wrap">
-                  <input type="range" id="pixel-size" min="2" max="16" value="4" step="1" class="editor-slider">
+                  <input type="range" id="pixel-size" min="8" max="32" value="24" step="1" class="editor-slider">
+                </div>
+              </div>
+
+              <div class="slider-field" id="wall-text-group">
+                <div class="slider-label-row">
+                  <label for="wall-custom-text">Wall Cutout Text</label>
+                  <span class="value-pill" id="wall-text-status">VOID</span>
+                </div>
+                <div class="slider-track-wrap">
+                  <input type="text" id="wall-custom-text" value="NODE JS" placeholder="Type name / word..." class="editor-input" style="width: 100%; background: rgba(0,0,0,0.45); border: 1px solid rgba(255,255,255,0.18); border-radius: 6px; padding: 7px 10px; color: #fff; font-family: inherit; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">
                 </div>
               </div>
 

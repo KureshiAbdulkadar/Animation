@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cyber Flying Eagle — Procedural 3D Avian Flight Dot Grid Matrix</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="effects/flying-eagle/styles.css">
+</head>
+<body>
+  <div class="fe-frame">
+    <!-- Main Canvas Mount Target -->
+    <div id="fe-container" class="fe-canvas-container"></div>
+
+    <!-- Top Bar -->
+    <header class="fe-topbar">
+      <div class="fe-brand">
+        <svg class="fe-brand-icon" viewBox="0 0 24 24">
+          <path d="M12 2L9.5 8.5L2 9.5L7.5 14.5L6 22L12 18.5L18 22L16.5 14.5L22 9.5L14.5 8.5L12 2Z"/>
+        </svg>
+        <span class="fe-brand-title">Cyber Flying Eagle</span>
+        <span class="fe-brand-tag">Procedural 3D Dot Matrix</span>
+      </div>
+
+      <div class="fe-topbar-actions">
+        <a href="index.html" class="fe-action-btn" title="Back to Shader Suite">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+          <span>All Shaders</span>
+        </a>
+        <button id="fe-swoop-btn" class="fe-action-btn" title="Trigger Supersonic Dive Swoop Strike">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+          </svg>
+          <span>Dive Swoop</span>
+        </button>
+        <button id="fe-reset-btn" class="fe-action-btn" title="Reset Flight Position">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+            <path d="M3 3v5h5"/>
+          </svg>
+          <span>Center Eagle</span>
+        </button>
+        <button id="fe-snapshot-btn" class="fe-action-btn" title="Save PNG Snapshot">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+          <span>Snapshot</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Floating HUD Control Panel -->
+    <aside class="fe-hud-panel" id="fe-hud">
+      <div class="fe-hud-header" id="fe-hud-header">
+        <div class="fe-hud-title">
+          <span>✦</span>
+          <span>Avian Flight Controls</span>
+        </div>
+        <button class="fe-toggle-btn" id="fe-toggle" aria-label="Toggle Panel">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
+      </div>
+
+      <div class="fe-hud-content">
+        <!-- Flight Mode -->
+        <div class="fe-control-group">
+          <div class="fe-control-label-row">
+            <span>Flight Kinematics Mode</span>
+          </div>
+          <select id="fe-mode-select" class="fe-select">
+            <option value="soaring-flapping" selected>1. Natural Soaring & Flapping</option>
+            <option value="active-flap">2. Continuous Rapid Flap</option>
+            <option value="gliding">3. Thermal Air Dihedral Glide</option>
+            <option value="dive-swoop">4. Supersonic Raptor Dive</option>
+          </select>
+        </div>
+
+        <!-- Color Palette -->
+        <div class="fe-control-group">
+          <div class="fe-control-label-row">
+            <span>Raptor Species & Palette</span>
+          </div>
+          <div class="fe-palette-row">
+            <button class="fe-color-btn active" data-color="golden-eagle" style="background: linear-gradient(135deg, #f59e0b, #d97706);" title="Golden Eagle (Amber & Bronze)"></button>
+            <button class="fe-color-btn" data-color="bald-eagle" style="background: linear-gradient(135deg, #f8fafc, #92400e);" title="American Bald Eagle (White & Plumage)"></button>
+            <button class="fe-color-btn" data-color="cyber-raptor" style="background: linear-gradient(135deg, #00f0ff, #ff007f);" title="Cyber Raptor (Neon Cyan & Magenta)"></button>
+            <button class="fe-color-btn" data-color="emerald-falcon" style="background: linear-gradient(135deg, #00ff88, #059669);" title="Emerald Falcon (Matrix Jade)"></button>
+            <button class="fe-color-btn" data-color="midnight-hawk" style="background: linear-gradient(135deg, #60a5fa, #4f46e5);" title="Midnight Hawk (Cobalt & Indigo)"></button>
+            <button class="fe-color-btn" data-color="crimson-phoenix" style="background: linear-gradient(135deg, #ff0055, #ff7700);" title="Crimson Phoenix (Flame & Ruby)"></button>
+          </div>
+        </div>
+
+        <!-- Grid Matrix Pitch Slider -->
+        <div class="fe-control-group">
+          <div class="fe-control-label-row">
+            <span>Dot Grid Matrix Pitch</span>
+            <span class="fe-val-badge" id="fe-pitch-val">14px</span>
+          </div>
+          <input type="range" id="fe-pitch-slider" class="fe-slider" min="8" max="28" step="1" value="14">
+        </div>
+
+        <!-- Eagle Scale Slider -->
+        <div class="fe-control-group">
+          <div class="fe-control-label-row">
+            <span>Wingspan Scale</span>
+            <span class="fe-val-badge" id="fe-scale-val">1.2x</span>
+          </div>
+          <input type="range" id="fe-scale-slider" class="fe-slider" min="0.6" max="2.2" step="0.1" value="1.2">
+        </div>
+
+        <!-- Flapping Frequency Slider -->
+        <div class="fe-control-group">
+          <div class="fe-control-label-row">
+            <span>Wing Stroke Frequency</span>
+            <span class="fe-val-badge" id="fe-flap-val">1.0x</span>
+          </div>
+          <input type="range" id="fe-flap-slider" class="fe-slider" min="0.4" max="3.0" step="0.1" value="1.0">
+        </div>
+
+        <!-- Vortex Trails & Thermals -->
+        <div class="fe-control-group">
+          <div class="fe-control-label-row">
+            <span>Wingtip Vortex Trails</span>
+          </div>
+          <select id="fe-trails-select" class="fe-select">
+            <option value="on" selected>Enabled (High Aero Density)</option>
+            <option value="off">Disabled (Clean Dot Matrix)</option>
+          </select>
+        </div>
+
+        <!-- CRT Scanlines -->
+        <div class="fe-control-group">
+          <div class="fe-control-label-row">
+            <span>CRT Scanline Overlay</span>
+          </div>
+          <select id="fe-scanlines-select" class="fe-select">
+            <option value="on" selected>Enabled (Retro Monitor Lines)</option>
+            <option value="off">Disabled (Clean Sharp Pixels)</option>
+          </select>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Bottom Status Bar -->
+    <div class="fe-bottom-bar">
+      <div class="fe-status-pill">
+        <span>Move Mouse to Guide Eagle Flight Path • Click Canvas for Supersonic Dive Swoop Strike</span>
+      </div>
+      <div class="fe-status-pill">
+        <span>60 FPS • Kinetic Avian Math</span>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { FlyingEagle } from './effects/flying-eagle/FlyingEagle.js';
+
+    const container = document.getElementById('fe-container');
+    const simulation = new FlyingEagle(container, {
+      flightMode: 'soaring-flapping',
+      colorScheme: 'golden-eagle',
+      gridPitch: 14,
+      eagleScale: 1.2,
+      flapSpeed: 1.0,
+      trailDensity: 1.0,
+      interactive: true,
+      scanlines: true
+    });
+
+    // Wire HUD Controls
+    const hud = document.getElementById('fe-hud');
+    const hudHeader = document.getElementById('fe-hud-header');
+    hudHeader.addEventListener('click', () => {
+      hud.classList.toggle('collapsed');
+    });
+
+    const modeSelect = document.getElementById('fe-mode-select');
+    modeSelect.addEventListener('change', (e) => {
+      simulation.options.flightMode = e.target.value;
+      if (e.target.value === 'dive-swoop') {
+        simulation.eagle.diveBurst = 1.0;
+      }
+    });
+
+    const pitchSlider = document.getElementById('fe-pitch-slider');
+    const pitchVal = document.getElementById('fe-pitch-val');
+    pitchSlider.addEventListener('input', (e) => {
+      const val = parseInt(e.target.value, 10);
+      pitchVal.textContent = val + 'px';
+      simulation.options.gridPitch = val;
+    });
+
+    const scaleSlider = document.getElementById('fe-scale-slider');
+    const scaleVal = document.getElementById('fe-scale-val');
+    scaleSlider.addEventListener('input', (e) => {
+      const val = parseFloat(e.target.value);
+      scaleVal.textContent = val.toFixed(1) + 'x';
+      simulation.options.eagleScale = val;
+    });
+
+    const flapSlider = document.getElementById('fe-flap-slider');
+    const flapVal = document.getElementById('fe-flap-val');
+    flapSlider.addEventListener('input', (e) => {
+      const val = parseFloat(e.target.value);
+      flapVal.textContent = val.toFixed(1) + 'x';
+      simulation.options.flapSpeed = val;
+    });
+
+    const trailsSelect = document.getElementById('fe-trails-select');
+    trailsSelect.addEventListener('change', (e) => {
+      simulation.options.trailDensity = e.target.value === 'on' ? 1.0 : 0.0;
+    });
+
+    const scanlinesSelect = document.getElementById('fe-scanlines-select');
+    scanlinesSelect.addEventListener('change', (e) => {
+      simulation.options.scanlines = e.target.value === 'on';
+    });
+
+    // Color Swatches
+    const colorBtns = document.querySelectorAll('.fe-color-btn');
+    colorBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        colorBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const color = btn.getAttribute('data-color');
+        simulation.options.colorScheme = color;
+      });
+    });
+
+    // Top Bar Actions
+    const swoopBtn = document.getElementById('fe-swoop-btn');
+    swoopBtn.addEventListener('click', () => {
+      simulation.eagle.diveBurst = 1.0;
+    });
+
+    const resetBtn = document.getElementById('fe-reset-btn');
+    resetBtn.addEventListener('click', () => {
+      simulation.resetEaglePosition();
+    });
+
+    const snapshotBtn = document.getElementById('fe-snapshot-btn');
+    snapshotBtn.addEventListener('click', () => {
+      const link = document.createElement('a');
+      link.download = `cyber-flying-eagle-${Date.now()}.png`;
+      link.href = simulation.canvas.toDataURL('image/png');
+      link.click();
+    });
+  </script>
+</body>
+</html>

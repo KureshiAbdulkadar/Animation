@@ -121,6 +121,33 @@
   let cascadeCols = 0;
   let cascadeRows = 0;
   let cascadeInitialized = false;
+  let cascadeNodeMask = [];
+  let cascadeCustomText = "NODE JS";
+  let cascadeComboBreaks = 0;
+  let cascadeComboTimer = 0;
+  let cascadeMegaFlash = 0;
+  let cascadeBuildComplete = false;
+  let cascadeTextFill = 0.0;
+
+  // Flying Eagle Dot Matrix state variables
+  let flyingEagleInitialized = false;
+  let flyingEagle = {
+    x: 0,
+    y: 0,
+    vx: 0,
+    vy: 0,
+    heading: -Math.PI / 2,
+    targetHeading: -Math.PI / 2,
+    bankAngle: 0,
+    pitchAngle: 0,
+    flapPhase: 0,
+    glideTimer: 0,
+    isGliding: false,
+    diveBurst: 0,
+    wingFlex: 0
+  };
+  let flyingEagleVortex = [];
+  let amberShockwaves = [];
 
   const mouse = {
     x: 0.5,
@@ -2255,14 +2282,42 @@
     //  PRESET 17: PIXEL GAME WALL CASCADE
     // ══════════════════════════════════════════════════════════
     if (presetMode === "pixel-cascade") {
-      const pitch = Math.max(12, Math.min(28, pixelSize));
+      const pitch = 24; // 24px Block Dimension
       const cols = Math.floor(width / pitch);
       const rows = Math.floor(height / pitch);
       const curDt = Math.min((time - lastTime) / 1000, 0.05);
 
-      // Strict 2-Color Duotone Palette derived from active accent color
-      const secondaryColor = `rgb(${Math.round(baseR * 0.38 + 15)}, ${Math.round(baseG * 0.38 + 15)}, ${Math.round(baseB * 0.38 + 15)})`;
-      const palette = [color, secondaryColor];
+      const PIXEL_FONT = {
+        'A': [" 111 ", "1   1", "1   1", "11111", "1   1", "1   1", "1   1"],
+        'B': ["1111 ", "1   1", "1   1", "1111 ", "1   1", "1   1", "1111 "],
+        'C': [" 1111", "1    ", "1    ", "1    ", "1    ", "1    ", " 1111"],
+        'D': ["1111 ", "1   1", "1   1", "1   1", "1   1", "1   1", "1111 "],
+        'E': ["11111", "1    ", "1    ", "1111 ", "1    ", "1    ", "11111"],
+        'F': ["11111", "1    ", "1    ", "1111 ", "1    ", "1    ", "1    "],
+        'G': [" 1111", "1    ", "1    ", "1 111", "1   1", "1   1", " 1111"],
+        'H': ["1   1", "1   1", "1   1", "11111", "1   1", "1   1", "1   1"],
+        'I': ["11111", "  1  ", "  1  ", "  1  ", "  1  ", "  1  ", "11111"],
+        'J': ["  111", "    1", "    1", "    1", "1   1", "1   1", " 111 "],
+        'K': ["1   1", "1  1 ", "1 1  ", "11   ", "1 1  ", "1  1 ", "1   1"],
+        'L': ["1    ", "1    ", "1    ", "1    ", "1    ", "1    ", "11111"],
+        'M': ["1   1", "11 11", "1 1 1", "1   1", "1   1", "1   1", "1   1"],
+        'N': ["1   1", "11  1", "1 1 1", "1  11", "1   1", "1   1", "1   1"],
+        'O': [" 111 ", "1   1", "1   1", "1   1", "1   1", "1   1", " 111 "],
+        'P': ["1111 ", "1   1", "1   1", "1111 ", "1    ", "1    ", "1    "],
+        'Q': [" 111 ", "1   1", "1   1", "1   1", "1 1 1", "1  1 ", " 11 1"],
+        'R': ["1111 ", "1   1", "1   1", "1111 ", "1  1 ", "1   1", "1   1"],
+        'S': [" 1111", "1    ", "1    ", " 111 ", "    1", "    1", "1111 "],
+        'T': ["11111", "  1  ", "  1  ", "  1  ", "  1  ", "  1  ", "  1  "],
+        'U': ["1   1", "1   1", "1   1", "1   1", "1   1", "1   1", " 111 "],
+        'V': ["1   1", "1   1", "1   1", "1   1", "1   1", " 1 1 ", "  1  "],
+        'W': ["1   1", "1   1", "1   1", "1 1 1", "1 1 1", "11 11", "1   1"],
+        'X': ["1   1", "1   1", " 1 1 ", "  1  ", " 1 1 ", "1   1", "1   1"],
+        'Y': ["1   1", "1   1", " 1 1 ", "  1  ", "  1  ", "  1  ", "  1  "],
+        'Z': ["11111", "    1", "   1 ", "  1  ", " 1   ", "1    ", "11111"],
+        '.': ["     ", "     ", "     ", "     ", "     ", " 11  ", " 11  "],
+        '-': ["     ", "     ", "     ", "11111", "     ", "     ", "     "],
+        ' ': ["     ", "     ", "     ", "     ", "     ", "     ", "     "]
+      };
 
       if (!cascadeInitialized || cascadeCols !== cols || cascadeRows !== rows) {
         cascadeCols = cols;
@@ -2274,18 +2329,66 @@
         cascadeFalling = [];
         cascadeSparks = [];
         
-        const foundationRows = Math.min(5, Math.floor(rows * 0.2));
+        // Build crisp pixel-font typography mask for high readability
+        cascadeNodeMask = [];
+        for (let r = 0; r < rows; r++) {
+          cascadeNodeMask[r] = new Uint8Array(cols);
+        }
+        
+        const cleanText = (cascadeCustomText || "NODE JS").trim().toUpperCase();
+        if (cleanText.length > 0) {
+          const baseW = cleanText.length * 6 - 1;
+          const maxScaleW = Math.max(1, Math.floor((cols - 4) / baseW));
+          const maxScaleH = Math.max(1, Math.floor((rows - 4) / 7));
+          const scale = Math.max(1, Math.min(maxScaleW, maxScaleH));
+
+          const charW = 5 * scale;
+          const spacing = 1 * scale;
+          const charH = 7 * scale;
+          const totalW = cleanText.length * (charW + spacing) - spacing;
+
+          const startX = Math.max(1, Math.floor((cols - totalW) / 2));
+          const startY = Math.max(1, Math.floor((rows - charH) / 2));
+
+          for (let i = 0; i < cleanText.length; i++) {
+            const ch = cleanText[i];
+            const glyph = PIXEL_FONT[ch] || PIXEL_FONT[' '];
+            const cX = startX + i * (charW + spacing);
+
+            for (let py = 0; py < 7; py++) {
+              const rowStr = glyph[py] || "     ";
+              for (let px = 0; px < 5; px++) {
+                if (rowStr[px] === '1') {
+                  for (let sy = 0; sy < scale; sy++) {
+                    for (let sx = 0; sx < scale; sx++) {
+                      const r = startY + py * scale + sy;
+                      const c = cX + px * scale + sx;
+                      if (r >= 0 && r < rows && c >= 0 && c < cols) {
+                        cascadeNodeMask[r][c] = 1;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        
+        // Initial solid foundation (only outside text void)
+        const foundationRows = Math.min(3, Math.floor(rows * 0.15));
         for (let r = rows - foundationRows; r < rows; r++) {
           for (let c = 0; c < cols; c++) {
-            if (Math.random() < 0.65) {
+            const isTextVoid = cascadeNodeMask[r] && cascadeNodeMask[r][c] === 1;
+            if (!isTextVoid && Math.random() < 0.6) {
               cascadeGrid[r][c] = {
-                color: palette[Math.floor(Math.random() * palette.length)],
+                color: color,
                 flash: 0
               };
             }
           }
         }
         cascadeInitialized = true;
+        cascadeTextFill = 0.0;
       }
 
       ctx.fillStyle = background || "#080c18";
@@ -2306,6 +2409,56 @@
         ctx.stroke();
       }
 
+      // 1. Draw Text Letters ("NODE JS") Cutout Boxes — Fills with solid glowing color when broken!
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          if (cascadeNodeMask[r] && cascadeNodeMask[r][c] === 1) {
+            const bx = c * pitch;
+            const by = r * pitch;
+
+            if (cascadeTextFill > 0.05) {
+              // FILLED TYPE: When broken, text box fills up with solid glowing color!
+              const fillAlpha = Math.min(1.0, cascadeTextFill * 1.3);
+              ctx.save();
+              ctx.globalAlpha = fillAlpha;
+
+              // Solid accent color block
+              ctx.fillStyle = color;
+              ctx.fillRect(bx + 1, by + 1, pitch - 2, pitch - 2);
+
+              // 3D Bevel Highlights
+              ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
+              ctx.fillRect(bx + 1, by + 1, pitch - 2, 2.5);
+              ctx.fillRect(bx + 1, by + 1, 2.5, pitch - 2);
+
+              ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
+              ctx.fillRect(bx + 1, by + pitch - 3.5, pitch - 2, 2.5);
+              ctx.fillRect(bx + pitch - 3.5, by + 1, 2.5, pitch - 2);
+
+              // Glowing border contour
+              ctx.strokeStyle = "#ffffff";
+              ctx.lineWidth = 1.0;
+              ctx.strokeRect(bx + 1.5, by + 1.5, pitch - 3, pitch - 3);
+
+              ctx.restore();
+            } else {
+              // INSET BADGE: Before break, dark void cutout
+              ctx.fillStyle = "rgba(4, 8, 18, 0.88)";
+              ctx.fillRect(bx + 1, by + 1, pitch - 2, pitch - 2);
+
+              // Glowing neon contour
+              ctx.strokeStyle = color;
+              ctx.lineWidth = 1.0;
+              ctx.strokeRect(bx + 1.5, by + 1.5, pitch - 3, pitch - 3);
+
+              // Center neon dot
+              ctx.fillStyle = color;
+              ctx.fillRect(bx + pitch / 2 - 1.5, by + pitch / 2 - 1.5, 3, 3);
+            }
+          }
+        }
+      }
+
       const tetronimos = [
         [[0, 0], [1, 0], [0, 1], [1, 1]],
         [[0, 0], [-1, 0], [1, 0], [2, 0]],
@@ -2313,20 +2466,62 @@
         [[0, 0], [1, 0], [0, 1], [-1, 1]],
         [[0, 0], [-1, 0], [0, 1], [1, 1]],
         [[0, 0], [-1, 0], [-1, 1], [1, 0]],
-        [[0, 0], [1, 0], [1, 1], [-1, 0]]
+        [[0, 0], [1, 0], [1, 1], [-1, 0]],
+        [[0, 0], [1, 0]],
+        [[0, 0]]
       ];
 
-      if (Math.random() < 0.28 * speed && cascadeFalling.length < 35) {
-        const shape = tetronimos[Math.floor(Math.random() * tetronimos.length)];
-        const spawnCol = Math.floor(Math.random() * (cols - 2)) + 1;
-        const blockColor = palette[Math.floor(Math.random() * palette.length)];
-        cascadeFalling.push({
-          col: spawnCol,
-          y: -pitch * 3,
-          vy: (2.0 + Math.random() * 2.5) * speed,
-          color: blockColor,
-          shape
-        });
+      // 2. Build Spawning: Only spawn blocks during initial build. STOP spawning once complete or when user breaks blocks!
+      let hasEmptySpot = false;
+      const needyCols = [];
+      const colGaps = {}; // c -> { lowestEmptyR, topGapR }
+      for (let c = 0; c < cols; c++) {
+        let lowestEmptyR = -1;
+        for (let r = rows - 1; r >= 0; r--) {
+          if (!cascadeGrid[r][c] && cascadeNodeMask[r][c] === 0) {
+            lowestEmptyR = r;
+            hasEmptySpot = true;
+            break;
+          }
+        }
+        if (lowestEmptyR !== -1) {
+          needyCols.push(c);
+          let topGapR = lowestEmptyR;
+          while (topGapR > 0 && !cascadeGrid[topGapR - 1][c] && cascadeNodeMask[topGapR - 1][c] === 0) {
+            topGapR--;
+          }
+          colGaps[c] = { lowestEmptyR, topGapR };
+        }
+      }
+
+      if (!hasEmptySpot) {
+        cascadeBuildComplete = true;
+      }
+
+      // Fast multi-block batch spawning ONLY while initial build is in progress
+      // When user breaks blocks, cascadeBuildComplete is true so NO new blocks fall down!
+      const spawnBatches = Math.min(8, Math.max(3, Math.floor(4.5 * speed)));
+      if (!cascadeBuildComplete && cascadeFalling.length < 60 && needyCols.length > 0) {
+        for (let b = 0; b < spawnBatches; b++) {
+          if (Math.random() < 0.95 * speed) {
+            const spawnCol = needyCols[Math.floor(Math.random() * needyCols.length)];
+            const gapInfo = colGaps[spawnCol];
+            const shape = tetronimos[Math.floor(Math.random() * tetronimos.length)];
+            
+            // If top is open, spawn above screen; if gap is under void/ceiling, spawn at gap entrance
+            const spawnY = (gapInfo && gapInfo.topGapR > 0) 
+              ? (gapInfo.topGapR - 1) * pitch 
+              : -pitch * (1 + Math.random() * 2);
+
+            cascadeFalling.push({
+              col: spawnCol,
+              y: spawnY,
+              vy: (9.0 + Math.random() * 9.0) * speed,
+              color: color,
+              shape
+            });
+          }
+        }
       }
 
       const mPx = mouse.x * width;
@@ -2341,50 +2536,64 @@
           const dx = mPx - blockX;
           const dy = mPy - fb.y;
           if (Math.abs(dy) < 120 && Math.abs(dx) < 140) {
-            if (dx > 20 && fb.col < cols - 2 && Math.random() < 0.08) fb.col++;
-            else if (dx < -20 && fb.col > 1 && Math.random() < 0.08) fb.col--;
+            if (dx > 20 && fb.col < cols - 2 && Math.random() < 0.12) fb.col++;
+            else if (dx < -20 && fb.col > 1 && Math.random() < 0.12) fb.col--;
           }
         }
 
         let hasCollided = false;
+        let lowestContactR = -1;
+
         for (const [ox, oy] of fb.shape) {
           const c = fb.col + ox;
-          const targetR = Math.floor((fb.y + oy * pitch + pitch) / pitch);
+          const nextR = Math.floor((fb.y + oy * pitch + pitch) / pitch);
 
           if (c < 0 || c >= cols) continue;
-          if (targetR >= rows) {
+
+          // Floor collision
+          if (nextR >= rows) {
             hasCollided = true;
+            lowestContactR = Math.max(lowestContactR, rows);
             break;
           }
-          if (targetR >= 0 && cascadeGrid[targetR] && cascadeGrid[targetR][c]) {
+
+          // Solid block collision below
+          if (nextR >= 0 && cascadeGrid[nextR] && cascadeGrid[nextR][c]) {
             hasCollided = true;
+            lowestContactR = Math.max(lowestContactR, nextR);
             break;
           }
         }
 
         if (hasCollided) {
-          const lockR = Math.floor(fb.y / pitch);
+          // Lock shape blocks accurately right above contact row
+          const baseLandingR = lowestContactR >= 0 ? lowestContactR - 1 : Math.floor(fb.y / pitch);
+
           for (const [ox, oy] of fb.shape) {
             const c = fb.col + ox;
-            const r = lockR + oy;
+            const r = baseLandingR + oy;
+
             if (c >= 0 && c < cols && r >= 0 && r < rows && cascadeGrid[r]) {
-              cascadeGrid[r][c] = {
-                color: fb.color,
-                flash: 1.0
-              };
-              for (let k = 0; k < 3; k++) {
-                const angle = Math.random() * Math.PI * 2;
-                const spd = 1.5 + Math.random() * 4;
-                cascadeSparks.push({
-                  x: c * pitch + pitch / 2,
-                  y: r * pitch + pitch / 2,
-                  vx: Math.cos(angle) * spd,
-                  vy: Math.sin(angle) * spd - 2,
-                  color: fb.color,
-                  alpha: 1.0,
-                  size: 2 + Math.random() * 2.5,
-                  decay: 0.03 + Math.random() * 0.03
-                });
+              const isTextVoid = cascadeNodeMask[r] && cascadeNodeMask[r][c] === 1;
+              if (!isTextVoid && !cascadeGrid[r][c]) {
+                cascadeGrid[r][c] = {
+                  color: color,
+                  flash: 1.0
+                };
+                for (let k = 0; k < 2; k++) {
+                  const angle = Math.random() * Math.PI * 2;
+                  const spd = 2.0 + Math.random() * 4;
+                  cascadeSparks.push({
+                    x: c * pitch + pitch / 2,
+                    y: r * pitch + pitch / 2,
+                    vx: Math.cos(angle) * spd,
+                    vy: Math.sin(angle) * spd - 2,
+                    color: color,
+                    alpha: 1.0,
+                    size: 2 + Math.random() * 2.5,
+                    decay: 0.04 + Math.random() * 0.03
+                  });
+                }
               }
             }
           }
@@ -2392,62 +2601,36 @@
         }
       }
 
-      // Real Physics Gravity Settlement: Blocks above empty gaps fall down
+      // 3. Real Physics Gravity & Lateral Avalanche Settlement
       for (let r = rows - 2; r >= 0; r--) {
         for (let c = 0; c < cols; c++) {
-          if (cascadeGrid[r] && cascadeGrid[r][c] && cascadeGrid[r + 1] && !cascadeGrid[r + 1][c]) {
-            cascadeGrid[r + 1][c] = cascadeGrid[r][c];
-            cascadeGrid[r][c] = null;
-          }
-        }
-      }
-
-      for (let r = 0; r < rows; r++) {
-        let isFull = true;
-        for (let c = 0; c < cols; c++) {
-          if (!cascadeGrid[r] || !cascadeGrid[r][c]) {
-            isFull = false;
-            break;
-          }
-        }
-        if (isFull) {
-          for (let c = 0; c < cols; c += 2) {
-            for (let k = 0; k < 3; k++) {
-              const angle = Math.random() * Math.PI * 2;
-              const spd = 2 + Math.random() * 6;
-              cascadeSparks.push({
-                x: c * pitch,
-                y: r * pitch + pitch / 2,
-                vx: Math.cos(angle) * spd,
-                vy: Math.sin(angle) * spd - 1,
-                color: '#ffffff',
-                alpha: 1.0,
-                size: 2 + Math.random() * 3,
-                decay: 0.04
-              });
-            }
-          }
-          for (let rowAbove = r; rowAbove > 0; rowAbove--) {
-            cascadeGrid[rowAbove] = [...cascadeGrid[rowAbove - 1]];
-          }
-          cascadeGrid[0] = new Array(cols).fill(null);
-        }
-      }
-
-      let topRowFilled = 0;
-      for (let c = 0; c < cols; c++) {
-        if (cascadeGrid[2] && cascadeGrid[2][c]) topRowFilled++;
-      }
-      if (topRowFilled > cols * 0.35) {
-        for (let r = 0; r < 6; r++) {
-          for (let c = 0; c < cols; c++) {
-            if (cascadeGrid[r] && cascadeGrid[r][c]) {
+          if (cascadeGrid[r] && cascadeGrid[r][c]) {
+            // Straight down gravity
+            if (cascadeGrid[r + 1] && !cascadeGrid[r + 1][c] && cascadeNodeMask[r + 1][c] === 0) {
+              cascadeGrid[r + 1][c] = cascadeGrid[r][c];
               cascadeGrid[r][c] = null;
             }
+            // Lateral avalanche around text voids or stacks
+            else if (cascadeGrid[r + 1] && (cascadeNodeMask[r + 1][c] === 1 || cascadeGrid[r + 1][c])) {
+              const canLeft = c > 0 && !cascadeGrid[r + 1][c - 1] && cascadeNodeMask[r + 1][c - 1] === 0 && !cascadeGrid[r][c - 1];
+              const canRight = c < cols - 1 && !cascadeGrid[r + 1][c + 1] && cascadeNodeMask[r + 1][c + 1] === 0 && !cascadeGrid[r][c + 1];
+              if (canLeft && canRight) {
+                const dir = Math.random() < 0.5 ? -1 : 1;
+                cascadeGrid[r + 1][c + dir] = cascadeGrid[r][c];
+                cascadeGrid[r][c] = null;
+              } else if (canLeft) {
+                cascadeGrid[r + 1][c - 1] = cascadeGrid[r][c];
+                cascadeGrid[r][c] = null;
+              } else if (canRight) {
+                cascadeGrid[r + 1][c + 1] = cascadeGrid[r][c];
+                cascadeGrid[r][c] = null;
+              }
+            }
           }
         }
       }
 
+      // 4. Render Solid Wall Blocks
       let activeBlockCount = 0;
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
@@ -2458,19 +2641,40 @@
           const bx = c * pitch;
           const by = r * pitch;
 
-          ctx.fillStyle = b.flash > 0.1 ? "#ffffff" : b.color;
+          ctx.fillStyle = b.flash > 0.1 ? "#ffffff" : color;
           ctx.fillRect(bx + 1, by + 1, pitch - 2, pitch - 2);
 
-          ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
-          ctx.fillRect(bx + 1, by + 1, pitch - 2, 2);
-          ctx.fillRect(bx + 1, by + 1, 2, pitch - 2);
+          // 3D Bevel Highlights
+          ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+          ctx.fillRect(bx + 1, by + 1, pitch - 2, 2.5);
+          ctx.fillRect(bx + 1, by + 1, 2.5, pitch - 2);
 
-          ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
-          ctx.fillRect(bx + 1, by + pitch - 3, pitch - 2, 2);
-          ctx.fillRect(bx + pitch - 3, by + 1, 2, pitch - 2);
+          ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
+          ctx.fillRect(bx + 1, by + pitch - 3.5, pitch - 2, 2.5);
+          ctx.fillRect(bx + pitch - 3.5, by + 1, 2.5, pitch - 2);
 
-          if (b.flash > 0) b.flash *= 0.88;
+          if (b.flash > 0) b.flash *= 0.85;
         }
+      }
+
+      // 5. Render Mega Shatter Combo Glow for the text
+      if (cascadeMegaFlash > 0.04) {
+        ctx.save();
+        ctx.fillStyle = color;
+        ctx.shadowColor = color;
+        ctx.shadowBlur = cascadeMegaFlash * 35;
+        ctx.globalAlpha = Math.min(1.0, cascadeMegaFlash);
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            if (cascadeNodeMask[r] && cascadeNodeMask[r][c] === 1) {
+              const bx = c * pitch;
+              const by = r * pitch;
+              ctx.fillRect(bx + 1, by + 1, pitch - 2, pitch - 2);
+            }
+          }
+        }
+        ctx.restore();
+        cascadeMegaFlash *= 0.93;
       }
 
       for (const fb of cascadeFalling) {
@@ -2527,6 +2731,536 @@
       raf = requestAnimationFrame(draw);
       return;
     }
+
+    // ══════════════════════════════════════════════════════════
+    //  PRESET 18: CYBER FLYING EAGLE DOT GRID MATRIX
+    // ══════════════════════════════════════════════════════════
+    if (presetMode === "flying-eagle") {
+      const curDt = Math.min((time - lastTime) / 1000, 0.05);
+      const curElapsed = (time - loadTime) / 1000;
+      const pitch = Math.max(10, Math.min(28, pixelSize));
+      const cols = Math.ceil(width / pitch);
+      const rows = Math.ceil(height / pitch);
+      const eg = flyingEagle;
+      const scale = 1.25;
+
+      if (!flyingEagleInitialized) {
+        eg.x = width * 0.5;
+        eg.y = height * 0.55;
+        eg.vx = 0;
+        eg.vy = -1;
+        eg.heading = -Math.PI / 2;
+        eg.targetHeading = -Math.PI / 2;
+        flyingEagleInitialized = true;
+      }
+
+      // 1. Target Guidance: Mouse or Figure-8 Autonomous Soar
+      let targetX, targetY;
+      if (isTrackingMouse) {
+        targetX = mouse.x * width;
+        targetY = mouse.y * height;
+      } else {
+        const t = curElapsed * 0.45;
+        const centerX = width * 0.5;
+        const centerY = height * 0.48;
+        targetX = centerX + Math.sin(t) * (width * 0.35);
+        targetY = centerY + Math.sin(t * 2) * (height * 0.22) * 0.5 + Math.cos(t * 0.8) * 30;
+      }
+
+      const dx = targetX - eg.x;
+      const dy = targetY - eg.y;
+      const distToTarget = Math.hypot(dx, dy);
+
+      if (distToTarget > 15) {
+        eg.targetHeading = Math.atan2(dy, dx);
+      }
+
+      let dHeading = eg.targetHeading - eg.heading;
+      while (dHeading > Math.PI) dHeading -= Math.PI * 2;
+      while (dHeading < -Math.PI) dHeading += Math.PI * 2;
+      eg.heading += dHeading * 3.5 * curDt;
+
+      const targetBank = Math.max(-0.65, Math.min(0.65, dHeading * 2.2));
+      eg.bankAngle += (targetBank - eg.bankAngle) * 5.0 * curDt;
+      eg.pitchAngle = Math.sin(eg.heading) * 0.35;
+
+      const baseSpeed = 175 * speed * (1.0 + eg.diveBurst * 1.5);
+      const forwardX = Math.cos(eg.heading) * baseSpeed;
+      const forwardY = Math.sin(eg.heading) * baseSpeed;
+
+      eg.vx += (forwardX - eg.vx) * 3.0 * curDt;
+      eg.vy += (forwardY - eg.vy) * 3.0 * curDt;
+
+      eg.x += eg.vx * curDt;
+      eg.y += eg.vy * curDt;
+
+      const margin = 50;
+      if (eg.x < margin) eg.x = margin;
+      if (eg.x > width - margin) eg.x = width - margin;
+      if (eg.y < margin) eg.y = margin;
+      if (eg.y > height - margin) eg.y = height - margin;
+
+      // Soaring vs Flapping kinematics
+      eg.glideTimer += curDt;
+      if (eg.glideTimer > 4.5) {
+        eg.isGliding = !eg.isGliding;
+        eg.glideTimer = 0;
+      }
+
+      if (!eg.isGliding) {
+        eg.flapPhase += Math.PI * 2 * 1.4 * speed * curDt;
+      } else {
+        eg.flapPhase += Math.sin(curElapsed * 2.0) * 0.3 * curDt;
+      }
+
+      if (eg.diveBurst > 0) {
+        eg.diveBurst = Math.max(0, eg.diveBurst - curDt * 1.2);
+      }
+
+      eg.wingFlex = Math.sin(eg.flapPhase) * 0.45;
+
+      // Wingtip Vortex particles
+      if (Math.random() < 0.85) {
+        const span = 110 * scale;
+        const wingCos = Math.cos(eg.heading + Math.PI / 2);
+        const wingSin = Math.sin(eg.heading + Math.PI / 2);
+
+        const tip1X = eg.x + wingCos * span;
+        const tip1Y = eg.y + wingSin * span;
+        const tip2X = eg.x - wingCos * span;
+        const tip2Y = eg.y - wingSin * span;
+
+        for (const [tx, ty] of [[tip1X, tip1Y], [tip2X, tip2Y]]) {
+          flyingEagleVortex.push({
+            x: tx,
+            y: ty,
+            vx: -eg.vx * 0.15 + (Math.random() - 0.5) * 15,
+            vy: -eg.vy * 0.15 + (Math.random() - 0.5) * 15,
+            alpha: 0.85,
+            size: 2.0 + Math.random() * 3.0,
+            color: color,
+            decay: 0.025 + Math.random() * 0.02
+          });
+        }
+      }
+
+      for (let i = flyingEagleVortex.length - 1; i >= 0; i--) {
+        const p = flyingEagleVortex[i];
+        p.x += p.vx * curDt;
+        p.y += p.vy * curDt;
+        p.alpha -= p.decay;
+        if (p.alpha <= 0) flyingEagleVortex.splice(i, 1);
+      }
+
+      for (let i = flyingEagleSparks.length - 1; i >= 0; i--) {
+        const s = flyingEagleSparks[i];
+        s.x += s.vx;
+        s.y += s.vy;
+        s.alpha -= s.decay;
+        if (s.alpha <= 0) flyingEagleSparks.splice(i, 1);
+      }
+
+      // 2. Anatomical Skeletal Nodes in 3D Screen Space
+      const headAngle = eg.heading;
+      const cosH = Math.cos(headAngle);
+      const sinH = Math.sin(headAngle);
+      const wingPerpCos = Math.cos(headAngle + Math.PI / 2);
+      const wingPerpSin = Math.sin(headAngle + Math.PI / 2);
+
+      const flapZ = eg.isGliding 
+        ? Math.sin(curElapsed * 1.5) * 0.08 - 0.12
+        : Math.sin(eg.flapPhase);
+
+      const bodyX = eg.x;
+      const bodyY = eg.y;
+
+      const headLen = 38 * scale;
+      const headX = bodyX + cosH * headLen;
+      const headY = bodyY + sinH * headLen;
+      const beakX = bodyX + cosH * (headLen + 18 * scale);
+      const beakY = bodyY + sinH * (headLen + 18 * scale);
+
+      const eyeSpread = 5.5 * scale;
+      const eye1X = headX + cosH * 4 * scale + wingPerpCos * eyeSpread;
+      const eye1Y = headY + sinH * 4 * scale + wingPerpSin * eyeSpread;
+      const eye2X = headX + cosH * 4 * scale - wingPerpCos * eyeSpread;
+      const eye2Y = headY + sinH * 4 * scale - wingPerpSin * eyeSpread;
+
+      const tailBaseLen = -28 * scale;
+      const tailBaseX = bodyX + cosH * tailBaseLen;
+      const tailBaseY = bodyY + sinH * tailBaseLen;
+      const tailTipLen = -56 * scale;
+      const tailTipX = bodyX + cosH * tailTipLen;
+      const tailTipY = bodyY + sinH * tailTipLen;
+
+      const wingSpan = 118 * scale;
+      const bankMult = eg.bankAngle;
+
+      const computeWing = (side) => {
+        const s = side;
+        const bankOffset = s * bankMult * 24 * scale;
+        const strokeZ = (flapZ * 38 + bankOffset) * scale;
+
+        const shX = bodyX + cosH * (6 * scale) + wingPerpCos * (14 * scale * s);
+        const shY = bodyY + sinH * (6 * scale) + wingPerpSin * (14 * scale * s);
+
+        const elX = bodyX + cosH * (-4 * scale) + wingPerpCos * (48 * scale * s);
+        const elY = bodyY + sinH * (-4 * scale) + wingPerpSin * (48 * scale * s) - strokeZ * 0.45;
+
+        const wrX = bodyX + cosH * (8 * scale) + wingPerpCos * (88 * scale * s);
+        const wrY = bodyY + sinH * (8 * scale) + wingPerpSin * (88 * scale * s) - strokeZ * 0.85;
+
+        const primaryFeathers = [];
+        for (let f = 0; f < 5; f++) {
+          const spreadAngle = (f - 2) * 0.12;
+          const featherLen = (wingSpan * 0.38) * (1.0 - f * 0.08);
+          const fCos = Math.cos(headAngle + Math.PI / 2 * s + spreadAngle);
+          const fSin = Math.sin(headAngle + Math.PI / 2 * s + spreadAngle);
+          primaryFeathers.push({
+            x: wrX + fCos * featherLen,
+            y: wrY + fSin * featherLen - strokeZ * (1.0 + f * 0.1)
+          });
+        }
+
+        return { shoulder: { x: shX, y: shY }, elbow: { x: elX, y: elY }, wrist: { x: wrX, y: wrY }, primaries: primaryFeathers };
+      };
+
+      const leftWing = computeWing(1);
+      const rightWing = computeWing(-1);
+
+      const distToSeg = (px, py, x1, y1, x2, y2) => {
+        const segDx = x2 - x1;
+        const segDy = y2 - y1;
+        const lenSq = segDx * segDx + segDy * segDy;
+        if (lenSq === 0) return Math.hypot(px - x1, py - y1);
+        let t = Math.max(0, Math.min(1, ((px - x1) * segDx + (py - y1) * segDy) / lenSq));
+        return Math.hypot(px - (x1 + t * segDx), py - (y1 + t * segDy));
+      };
+
+      let activeEagleDots = 0;
+
+      // 3. Render Optical Dot Matrix Grid Field
+      for (let r = 0; r < rows; r++) {
+        const gy = r * pitch + pitch / 2;
+        for (let c = 0; c < cols; c++) {
+          const gx = c * pitch + pitch / 2;
+
+          let dotColor = "rgba(255, 255, 255, 0.04)";
+          let dotRadius = 1.0;
+          let isEagleDot = false;
+          let luminance = 0;
+
+          // Body distance
+          const distBody = distToSeg(gx, gy, headX, headY, tailBaseX, tailBaseY);
+          const bodyThick = 18 * scale;
+          if (distBody < bodyThick) {
+            luminance = Math.max(luminance, 1.0 - distBody / bodyThick);
+            dotColor = color;
+            isEagleDot = true;
+          }
+
+          // Head & Beak
+          const distHead = Math.hypot(gx - headX, gy - headY);
+          if (distHead < 14 * scale) {
+            luminance = Math.max(luminance, 1.2 - distHead / (14 * scale));
+            dotColor = "#ffffff";
+            isEagleDot = true;
+          }
+          const distBeak = distToSeg(gx, gy, headX, headY, beakX, beakY);
+          if (distBeak < 6 * scale) {
+            luminance = Math.max(luminance, 1.4);
+            dotColor = "#f59e0b";
+            isEagleDot = true;
+          }
+
+          // Eyes
+          if (Math.hypot(gx - eye1X, gy - eye1Y) < 3.8 * scale || Math.hypot(gx - eye2X, gy - eye2Y) < 3.8 * scale) {
+            luminance = 2.0;
+            dotColor = "#fef08a";
+            isEagleDot = true;
+          }
+
+          // Tail
+          const distTail = distToSeg(gx, gy, tailBaseX, tailBaseY, tailTipX, tailTipY);
+          if (distTail < 18 * scale) {
+            luminance = Math.max(luminance, 0.9 - distTail / (18 * scale));
+            dotColor = color;
+            isEagleDot = true;
+          }
+
+          // Wings
+          for (const w of [leftWing, rightWing]) {
+            const dShEl = distToSeg(gx, gy, w.shoulder.x, w.shoulder.y, w.elbow.x, w.elbow.y);
+            if (dShEl < 16 * scale) {
+              luminance = Math.max(luminance, 1.0 - dShEl / (16 * scale));
+              dotColor = color;
+              isEagleDot = true;
+            }
+
+            const dElWr = distToSeg(gx, gy, w.elbow.x, w.elbow.y, w.wrist.x, w.wrist.y);
+            if (dElWr < 14 * scale) {
+              luminance = Math.max(luminance, 1.0 - dElWr / (14 * scale));
+              dotColor = color;
+              isEagleDot = true;
+            }
+
+            for (let f = 0; f < w.primaries.length; f++) {
+              const p = w.primaries[f];
+              const dFeather = distToSeg(gx, gy, w.wrist.x, w.wrist.y, p.x, p.y);
+              if (dFeather < 7.5 * scale) {
+                const featherLum = 1.0 - dFeather / (7.5 * scale);
+                if (featherLum > luminance) {
+                  luminance = featherLum;
+                  dotColor = (f === 0 || f === 4) ? "#ffffff" : color;
+                  isEagleDot = true;
+                }
+              }
+            }
+          }
+
+          if (isEagleDot) {
+            activeEagleDots++;
+            dotRadius = Math.max(1.5, Math.min(pitch * 0.46, 2.5 + luminance * 4.2 * scale));
+            ctx.fillStyle = dotColor;
+
+            if (glowIntensity > 1.0 && luminance > 0.8) {
+              ctx.shadowColor = dotColor;
+              ctx.shadowBlur = luminance * 10 * glowIntensity;
+            } else {
+              ctx.shadowBlur = 0;
+            }
+
+            ctx.beginPath();
+            ctx.arc(gx, gy, dotRadius, 0, Math.PI * 2);
+            ctx.fill();
+          } else {
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = "rgba(255, 255, 255, 0.04)";
+            ctx.beginPath();
+            ctx.arc(gx, gy, 0.8, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+      }
+
+      ctx.shadowBlur = 0;
+
+      // 4. Render Vortex Trail Particles
+      for (const p of flyingEagleVortex) {
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = Math.max(0, p.alpha);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1.0;
+
+      // 5. Render Sparks
+      for (const s of flyingEagleSparks) {
+        ctx.fillStyle = s.color;
+        ctx.globalAlpha = Math.max(0, s.alpha);
+        ctx.fillRect(s.x - s.size / 2, s.y - s.size / 2, s.size, s.size);
+      }
+      ctx.globalAlpha = 1.0;
+
+      // 6. Flight Target Cursor Reticle
+      if (isTrackingMouse) {
+        const mx = mouse.x * width;
+        const my = mouse.y * height;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.arc(mx, my, 16, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(mx - 22, my);
+        ctx.lineTo(mx - 8, my);
+        ctx.moveTo(mx + 8, my);
+        ctx.lineTo(mx + 22, my);
+        ctx.moveTo(mx, my - 22);
+        ctx.lineTo(mx, my - 8);
+        ctx.moveTo(mx, my + 8);
+        ctx.lineTo(mx, my + 22);
+        ctx.stroke();
+      }
+
+      // 7. CRT Retro Scanlines
+      ctx.fillStyle = "rgba(0, 0, 0, 0.22)";
+      for (let y = 0; y < height; y += 4) {
+        ctx.fillRect(0, y, width, 1.5);
+      }
+
+      particleCounter.textContent = activeEagleDots.toLocaleString();
+      raf = requestAnimationFrame(draw);
+      return;
+    }
+
+    // ══════════════════════════════════════════════════════════
+    //  PRESET 19: AMBER HALFTONE DISPERSION & ROLLING WAVES
+    // ══════════════════════════════════════════════════════════
+    if (presetMode === "amber-dispersion") {
+      const curDt = Math.min((time - lastTime) / 1000, 0.05);
+      const curElapsed = (time - loadTime) / 1000;
+      const pitch = Math.max(10, Math.min(32, pixelSize));
+      const cols = Math.ceil(width / pitch);
+      const rows = Math.ceil(height / pitch);
+      const maxRadius = (pitch / 2) * 0.94;
+      const t = curElapsed * 1.5 * speed;
+
+      // Update shockwaves
+      for (let i = amberShockwaves.length - 1; i >= 0; i--) {
+        const sw = amberShockwaves[i];
+        sw.radius += sw.speed * curDt;
+        sw.strength -= sw.decay * curDt;
+        if (sw.strength <= 0 || sw.radius >= sw.maxRadius) {
+          amberShockwaves.splice(i, 1);
+        }
+      }
+
+      // Fast inline 3D Perlin/Simplex permutation noise
+      const fastNoise3D = (x, y, z) => {
+        const X = Math.floor(x) & 255;
+        const Y = Math.floor(y) & 255;
+        const Z = Math.floor(z) & 255;
+        const fx = x - Math.floor(x);
+        const fy = y - Math.floor(y);
+        const fz = z - Math.floor(z);
+        const u = fx * fx * fx * (fx * (fx * 6 - 15) + 10);
+        const v = fy * fy * fy * (fy * (fy * 6 - 15) + 10);
+        const w = fz * fz * fz * (fz * (fz * 6 - 15) + 10);
+        
+        const hash = (i, j, k) => {
+          let h = (i * 374761393 + j * 668265263 + k * 362827313) ^ 0x5bf03635;
+          h = Math.imul(h ^ (h >>> 13), 1274126177);
+          return (h ^ (h >>> 16)) / 2147483648;
+        };
+
+        const x0 = hash(X, Y, Z);
+        const x1 = hash(X + 1, Y, Z);
+        const x2 = hash(X, Y + 1, Z);
+        const x3 = hash(X + 1, Y + 1, Z);
+        const y0 = x0 + u * (x1 - x0);
+        const y1 = x2 + u * (x3 - x2);
+        const z0 = y0 + v * (y1 - y0);
+
+        const x4 = hash(X, Y, Z + 1);
+        const x5 = hash(X + 1, Y, Z + 1);
+        const x6 = hash(X, Y + 1, Z + 1);
+        const x7 = hash(X + 1, Y + 1, Z + 1);
+        const y2 = x4 + u * (x5 - x4);
+        const y3 = x6 + u * (x7 - x6);
+        const z1 = y2 + v * (y3 - y2);
+
+        return z0 + w * (z1 - z0);
+      };
+
+      let activeDotCount = 0;
+      const mousePixelX = mouse.x * width;
+      const mousePixelY = mouse.y * height;
+
+      for (let r = 0; r < rows; r++) {
+        const baseY = r * pitch + pitch / 2;
+        const vNorm = baseY / height;
+
+        for (let c = 0; c < cols; c++) {
+          const baseX = c * pitch + pitch / 2;
+          const uNorm = baseX / width;
+
+          // Spatial coordinates
+          const nx = uNorm * 3.4;
+          const ny = vNorm * 2.6;
+
+          // Rolling Ocean Wave Harmonics
+          const wave1 = Math.sin(uNorm * 7.0 + vNorm * 5.0 - t * 2.8);
+          const wave2 = Math.cos(uNorm * 11.0 - vNorm * 7.0 + t * 2.0) * 0.45;
+          const wave3 = Math.sin(vNorm * 14.0 - t * 3.5) * 0.25;
+
+          const noiseWarp = fastNoise3D(nx + wave1 * 0.5, ny + wave2 * 0.5, t * 0.3) * 0.6;
+          const diagonalBias = (1.0 - uNorm * 0.6) * (0.4 + vNorm * 0.8);
+
+          const compositeWave = (wave1 + wave2 + wave3 + noiseWarp + 1.6) * 0.35;
+          let density = compositeWave * diagonalBias * 1.35;
+          density = Math.max(0, Math.min(1.0, Math.pow(density, 1.3)));
+
+          // 3D wave position offset (vertical crest & lateral flow)
+          const waveElev = (wave1 + wave2 * 0.7) * 7.5;
+          const lateralWave = Math.cos(uNorm * 7.0 - t * 2.8) * 3.5;
+
+          const gx = baseX + lateralWave;
+          const gy = baseY + waveElev;
+
+          // Mouse interaction wake
+          if (isTrackingMouse) {
+            const dMouse = Math.hypot(gx - mousePixelX, gy - mousePixelY);
+            if (dMouse < 140) {
+              const mFactor = 1.0 - dMouse / 140;
+              density = Math.min(1.0, density + mFactor * 0.7);
+            }
+          }
+
+          // Shockwave ripple pulses
+          for (const sw of amberShockwaves) {
+            const dSw = Math.hypot(gx - sw.x, gy - sw.y);
+            const ringDist = Math.abs(dSw - sw.radius);
+            if (ringDist < 50) {
+              const waveMag = (1.0 - ringDist / 50) * sw.strength * 0.65;
+              density = Math.min(1.0, density + waveMag);
+            }
+          }
+
+          let dotRadius = 0;
+          let dotColor = "rgba(255, 255, 255, 0.04)";
+
+          if (density < 0.08) {
+            dotRadius = 0.8;
+            dotColor = "rgba(255, 255, 255, 0.04)";
+          } else if (density < 0.3) {
+            activeDotCount++;
+            dotRadius = 1.2 + density * maxRadius * 0.85;
+            dotColor = color;
+          } else if (density < 0.6) {
+            activeDotCount++;
+            dotRadius = maxRadius * (0.35 + density * 0.5);
+            dotColor = color;
+          } else if (density < 0.85) {
+            activeDotCount++;
+            dotRadius = maxRadius * (0.55 + density * 0.4);
+            dotColor = color;
+          } else {
+            activeDotCount++;
+            dotRadius = maxRadius * Math.min(1.0, 0.78 + density * 0.22);
+            dotColor = "#ffffff";
+          }
+
+          if (glowIntensity > 1.0 && density > 0.68) {
+            ctx.shadowColor = color;
+            ctx.shadowBlur = (density - 0.68) * 18 * glowIntensity;
+          } else {
+            ctx.shadowBlur = 0;
+          }
+
+          ctx.fillStyle = dotColor;
+          ctx.beginPath();
+          ctx.arc(gx, gy, Math.max(0.6, dotRadius), 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      ctx.shadowBlur = 0;
+
+      // CRT scanlines
+      ctx.fillStyle = "rgba(0, 0, 0, 0.22)";
+      for (let y = 0; y < height; y += 4) {
+        ctx.fillRect(0, y, width, 1.5);
+      }
+
+      particleCounter.textContent = activeDotCount.toLocaleString();
+      raf = requestAnimationFrame(draw);
+      return;
+    }
+
+
 
     // ══════════════════════════════════════════════════════════
     //  STANDARD GRID PRESETS
@@ -3608,17 +4342,23 @@ const visualizer = new ${cleanPresetName}Visualizer(canvas, {
       
       snakes.push(createSnake(boundedC, boundedR));
     } else if (presetMode === "pixel-cascade") {
+      // User is breaking blocks: STOP new blocks from falling down!
+      cascadeBuildComplete = true;
+      cascadeFalling = [];
+
       const rect = canvas.getBoundingClientRect();
       const clickX = e.clientX - rect.left;
       const clickY = e.clientY - rect.top;
-      const pitch = Math.max(12, Math.min(28, pixelSize));
+      const pitch = 24;
       const targetC = Math.floor(clickX / pitch);
       const targetR = Math.floor(clickY / pitch);
       const radiusCells = 4;
+      let brokenCount = 0;
       for (let r = Math.max(0, targetR - radiusCells); r <= Math.min(cascadeRows - 1, targetR + radiusCells); r++) {
         for (let c = Math.max(0, targetC - radiusCells); c <= Math.min(cascadeCols - 1, targetC + radiusCells); c++) {
           const d = Math.hypot(c - targetC, r - targetR);
           if (d <= radiusCells && cascadeGrid[r] && cascadeGrid[r][c]) {
+            brokenCount++;
             const blockCol = cascadeGrid[r][c].color;
             for (let k = 0; k < 4; k++) {
               const angle = Math.random() * Math.PI * 2;
@@ -3638,6 +4378,73 @@ const visualizer = new ${cleanPresetName}Visualizer(canvas, {
           }
         }
       }
+
+      // Progressively fill the text boxes with glowing solid color as bricks break!
+      cascadeTextFill = Math.min(1.0, cascadeTextFill + Math.max(0.18, brokenCount * 0.12));
+
+      // Combo counter: if user breaks > 10 bricks, shatter whole wall & trigger 100% text neon fill
+      const now = performance.now();
+      if (now - cascadeComboTimer < 2500) {
+        cascadeComboBreaks += brokenCount;
+      } else {
+        cascadeComboBreaks = brokenCount;
+      }
+      cascadeComboTimer = now;
+
+      if (cascadeComboBreaks >= 10) {
+        cascadeMegaFlash = 1.0;
+        cascadeTextFill = 1.0;
+        cascadeComboBreaks = 0;
+        cascadeFalling = [];
+        for (let r = 0; r < cascadeRows; r++) {
+          for (let c = 0; c < cascadeCols; c++) {
+            if (cascadeGrid[r] && cascadeGrid[r][c]) {
+              const angle = Math.random() * Math.PI * 2;
+              const spd = 3 + Math.random() * 8;
+              cascadeSparks.push({
+                x: c * pitch + pitch / 2,
+                y: r * pitch + pitch / 2,
+                vx: Math.cos(angle) * spd,
+                vy: Math.sin(angle) * spd - 3,
+                color: color,
+                alpha: 1.0,
+                size: 3 + Math.random() * 4,
+                decay: 0.015 + Math.random() * 0.02
+              });
+              cascadeGrid[r][c] = null;
+            }
+          }
+        }
+      }
+    } else if (presetMode === "flying-eagle") {
+      flyingEagle.diveBurst = 1.0;
+      for (let i = 0; i < 28; i++) {
+        const ang = Math.random() * Math.PI * 2;
+        const spd = 3 + Math.random() * 8;
+        flyingEagleSparks.push({
+          x: flyingEagle.x,
+          y: flyingEagle.y,
+          vx: Math.cos(ang) * spd,
+          vy: Math.sin(ang) * spd,
+          color: color,
+          size: 2 + Math.random() * 3,
+          alpha: 1.0,
+          decay: 0.02 + Math.random() * 0.025
+        });
+      }
+    } else if (presetMode === "amber-dispersion") {
+      const rect = canvas.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+      amberShockwaves.push({
+        x: clickX,
+        y: clickY,
+        radius: 0,
+        maxRadius: Math.max(width, height) * 0.5,
+        speed: 380,
+        strength: 1.0,
+        decay: 1.2
+      });
     }
   };
 
@@ -3660,6 +4467,16 @@ const visualizer = new ${cleanPresetName}Visualizer(canvas, {
     arcThicknessValue = document.getElementById("arc-thickness-value");
     glowIntensitySlider = document.getElementById("glow-intensity");
     glowIntensityValue = document.getElementById("glow-intensity-value");
+    
+    // Custom Cutout Text Input
+    const wallTextInput = document.getElementById("wall-custom-text");
+    if (wallTextInput) {
+      wallTextInput.addEventListener("input", (e) => {
+        cascadeCustomText = e.target.value || "NODE JS";
+        cascadeInitialized = false;
+        cascadeBuildComplete = false;
+      });
+    }
     
     // System Stats
     fpsCounter = document.getElementById("fps-counter");
@@ -3725,9 +4542,16 @@ const visualizer = new ${cleanPresetName}Visualizer(canvas, {
         nodejsRain = [];
       } else if (presetMode === "pixel-cascade") {
         cascadeInitialized = false;
+        cascadeBuildComplete = false;
         cascadeGrid = [];
         cascadeFalling = [];
         cascadeSparks = [];
+      } else if (presetMode === "flying-eagle") {
+        flyingEagleInitialized = false;
+        flyingEagleVortex = [];
+        flyingEagleSparks = [];
+      } else if (presetMode === "amber-dispersion") {
+        amberShockwaves = [];
       }
     });
 

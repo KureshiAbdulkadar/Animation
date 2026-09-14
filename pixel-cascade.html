@@ -101,31 +101,40 @@
           </div>
         </div>
 
-        <!-- Block Dimension Slider -->
+        <!-- Custom Wall Cutout Text -->
+        <div class="pc-control-group">
+          <div class="pc-control-label-row">
+            <span>Wall Cutout Text</span>
+            <span class="pc-val-badge">VOID</span>
+          </div>
+          <input type="text" id="pc-text-input" class="pc-text-input" value="NODE JS" placeholder="Type text..." style="width: 100%; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.18); border-radius: 6px; padding: 7px 10px; color: #fff; font-family: inherit; font-size: 12px; font-weight: 700; text-transform: uppercase;">
+        </div>
+
+        <!-- Block Size Slider -->
         <div class="pc-control-group">
           <div class="pc-control-label-row">
             <span>Block Pixel Size</span>
-            <span class="pc-val-badge" id="pc-blocksize-val">16px</span>
+            <span class="pc-val-badge" id="pc-blocksize-val">24px</span>
           </div>
-          <input type="range" id="pc-blocksize-slider" class="pc-slider" min="10" max="32" step="2" value="16">
+          <input type="range" id="pc-blocksize-slider" class="pc-slider" min="8" max="36" step="2" value="24">
         </div>
 
-        <!-- Drop Speed Multiplier -->
+        <!-- Falling Speed Slider -->
         <div class="pc-control-group">
           <div class="pc-control-label-row">
-            <span>Drop Speed (Top → Down)</span>
-            <span class="pc-val-badge" id="pc-speed-val">1.0x</span>
+            <span>Falling Speed</span>
+            <span class="pc-val-badge" id="pc-speed-val">1.2x</span>
           </div>
-          <input type="range" id="pc-speed-slider" class="pc-slider" min="0.3" max="3.0" step="0.1" value="1.0">
+          <input type="range" id="pc-speed-slider" class="pc-slider" min="0.2" max="3.0" step="0.1" value="1.2">
         </div>
 
-        <!-- Spawn Density Slider -->
+        <!-- Spawn Rate Slider -->
         <div class="pc-control-group">
           <div class="pc-control-label-row">
             <span>Block Spawn Rate</span>
-            <span class="pc-val-badge" id="pc-spawn-val">1.0x</span>
+            <span class="pc-val-badge" id="pc-spawn-val">1.5x</span>
           </div>
-          <input type="range" id="pc-spawn-slider" class="pc-slider" min="0.3" max="3.0" step="0.1" value="1.0">
+          <input type="range" id="pc-spawn-slider" class="pc-slider" min="0.3" max="3.0" step="0.1" value="1.5">
         </div>
 
         <!-- Auto Line Clear Laser Toggle -->
@@ -134,8 +143,19 @@
             <span>Auto Laser Line Clears</span>
           </div>
           <select id="pc-clear-select" class="pc-select">
-            <option value="on" selected>Enabled (Dissolve Full Wall Rows)</option>
-            <option value="off">Disabled (Stack Wall To The Top)</option>
+            <option value="off" selected>Disabled (Solid Wall Builds Up)</option>
+            <option value="on">Enabled (Dissolve Full Wall Rows)</option>
+          </select>
+        </div>
+
+        <!-- Auto Break / Demolition Toggle -->
+        <div class="pc-control-group">
+          <div class="pc-control-label-row">
+            <span>Auto Wall Demolition</span>
+          </div>
+          <select id="pc-break-select" class="pc-select">
+            <option value="off" selected>Disabled (Manual Click Blasts Only)</option>
+            <option value="on">Enabled (Auto-Break Gaps & Gravity Fall)</option>
           </select>
         </div>
 
@@ -169,11 +189,13 @@
     // Mount visualizer instance
     const visualizer = new PixelCascade('#pc-container', {
       gameMode: 'tetris-wall',
-      blockSize: 16,
-      dropSpeed: 1.0,
-      spawnRate: 1.0,
+      blockSize: 24,
+      dropSpeed: 1.2,
+      spawnRate: 1.5,
       colorScheme: 'retro-arcade',
-      autoLineClear: true,
+      customText: 'NODE JS',
+      autoLineClear: false,
+      autoBreak: false,
       scanlines: true,
       interactive: true,
       mouseRadius: 100
@@ -184,6 +206,11 @@
     const hudHeader = document.getElementById('pc-hud-header');
     hudHeader.addEventListener('click', () => {
       hud.classList.toggle('collapsed');
+    });
+
+    // Custom Text input
+    document.getElementById('pc-text-input').addEventListener('input', (e) => {
+      visualizer.setOption('customText', e.target.value || 'NODE JS');
     });
 
     // Mode Selector
@@ -231,6 +258,11 @@
     // Line Clears
     document.getElementById('pc-clear-select').addEventListener('change', (e) => {
       visualizer.setOption('autoLineClear', e.target.value === 'on');
+    });
+
+    // Auto Break
+    document.getElementById('pc-break-select').addEventListener('change', (e) => {
+      visualizer.setOption('autoBreak', e.target.value === 'on');
     });
 
     // Scanlines

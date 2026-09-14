@@ -14,7 +14,9 @@ export default defineConfig({
         pixelCascade: './pixel-cascade.html',
         constellation: './constellation.html',
         ghosting: './ghosting.html',
-        pixelArt: './pixel-art.html'
+        pixelArt: './pixel-art.html',
+        flyingEagle: './flying-eagle.html',
+        amberDispersion: './amber-dispersion.html'
       }
     }
   }
