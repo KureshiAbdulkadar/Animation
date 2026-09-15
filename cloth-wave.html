@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D Cloth Wave Grid — Flowing Silk Particle Surface</title>
+  <meta name="description" content="An animated background of small dots arranged in a 3D grid flowing like a wavy cloth surface with peak-to-valley brightness depth shading.">
+  <link rel="stylesheet" href="./effects/cloth-wave/styles.css">
+</head>
+<body>
+  <div id="canvas-container"></div>
+
+  <!-- Top Brand / Title -->
+  <header class="top-header">
+    <div class="brand-icon">3D</div>
+    <div class="title-group">
+      <h1>3D Cloth Wave Grid</h1>
+      <span class="subtitle">Silky Dot Surface · Peak-to-Valley Depth Shading</span>
+    </div>
+  </header>
+
+  <!-- Top Actions -->
+  <nav class="top-actions">
+    <a href="/" class="action-btn">← All Presets</a>
+    <a href="./pixel-wall.html" class="action-btn">2D Pixel Wall</a>
+    <button id="btn-toggle-hud" class="action-btn" title="Toggle HUD Controls (H)">HUD: ON</button>
+    <button id="btn-export-code" class="action-btn accent">Export HTML</button>
+  </nav>
+
+  <!-- Interactive HUD Controls -->
+  <aside class="hud-panel" id="hud-panel">
+    <div class="hud-header">
+      <h2>Cloth Wave Config</h2>
+    </div>
+
+    <!-- Theme Selection -->
+    <div class="control-group">
+      <label>Color Theme</label>
+      <div class="theme-grid">
+        <button class="theme-pill active" data-theme="cyan">Cyan Silk</button>
+        <button class="theme-pill" data-theme="amber">Amber Glow</button>
+        <button class="theme-pill" data-theme="emerald">Emerald Sea</button>
+        <button class="theme-pill" data-theme="violet">Neon Violet</button>
+        <button class="theme-pill" data-theme="silver">Silver Monolith</button>
+      </div>
+    </div>
+
+    <!-- Wave Amplitude -->
+    <div class="control-group">
+      <label for="slider-amp">Wave Height (Amplitude) <span class="val" id="val-amp">65px</span></label>
+      <input type="range" id="slider-amp" min="20" max="140" value="65" step="1">
+    </div>
+
+    <!-- Wave Speed -->
+    <div class="control-group">
+      <label for="slider-speed">Wave Flow Speed <span class="val" id="val-speed">0.8x</span></label>
+      <input type="range" id="slider-speed" min="0.2" max="2.5" value="0.8" step="0.05">
+    </div>
+
+    <!-- Peak Dot Size -->
+    <div class="control-group">
+      <label for="slider-peak-dot">Peak Dot Size <span class="val" id="val-peak-dot">3.2px</span></label>
+      <input type="range" id="slider-peak-dot" min="1.5" max="6.0" value="3.2" step="0.1">
+    </div>
+
+    <!-- Valley Dot Size -->
+    <div class="control-group">
+      <label for="slider-valley-dot">Valley Dot Size <span class="val" id="val-valley-dot">1.2px</span></label>
+      <input type="range" id="slider-valley-dot" min="0.4" max="2.5" value="1.2" step="0.1">
+    </div>
+
+    <!-- Grid Density (Cols x Rows) -->
+    <div class="control-group">
+      <label for="slider-density">Grid Density <span class="val" id="val-density">46 x 46</span></label>
+      <input type="range" id="slider-density" min="24" max="60" value="46" step="2">
+    </div>
+
+    <!-- Camera Tilt Angle -->
+    <div class="control-group">
+      <label for="slider-pitch">Camera Tilt Angle <span class="val" id="val-pitch">30°</span></label>
+      <input type="range" id="slider-pitch" min="15" max="65" value="30" step="1">
+    </div>
+
+    <!-- Faint Mesh Lattice Lines Toggle -->
+    <div class="toggle-row">
+      <span>Cloth Mesh Lattice</span>
+      <label class="switch">
+        <input type="checkbox" id="toggle-mesh" checked>
+        <span class="slider-round"></span>
+      </label>
+    </div>
+  </aside>
+
+  <!-- Bottom Info Badge -->
+  <div class="info-badge">
+    <div class="fps-dot"></div>
+    <span id="fps-counter">60 FPS</span>
+    <span>·</span>
+    <span id="dot-count">2,116 Dots</span>
+  </div>
+
+  <script type="module">
+    import { ClothWave, DEFAULT_COLORS } from './effects/cloth-wave/ClothWave.js';
+
+    const container = document.getElementById('canvas-container');
+    const engine = new ClothWave(container, {
+      cols: 64,
+      rows: 36,
+      waveAmplitude: 65,
+      waveSpeed: 0.8,
+      peakDotRadius: 3.2,
+      baseDotRadius: 1.2,
+      showMeshLines: true
+    });
+
+    // Color theme definitions
+    const themes = {
+      cyan: {
+        bg: '#000000',
+        peak: '#ffffff',
+        mid: '#38bdf8',
+        valley: '#1e3a8a',
+        meshLine: 'rgba(56, 189, 248, 0.08)'
+      },
+      amber: {
+        bg: '#000000',
+        peak: '#fffbeb',
+        mid: '#f59e0b',
+        valley: '#78350f',
+        meshLine: 'rgba(245, 158, 11, 0.08)'
+      },
+      emerald: {
+        bg: '#000000',
+        peak: '#ecfdf5',
+        mid: '#10b981',
+        valley: '#064e3b',
+        meshLine: 'rgba(16, 185, 129, 0.08)'
+      },
+      violet: {
+        bg: '#000000',
+        peak: '#faf5ff',
+        mid: '#a855f7',
+        valley: '#3b0764',
+        meshLine: 'rgba(168, 85, 247, 0.08)'
+      },
+      silver: {
+        bg: '#000000',
+        peak: '#ffffff',
+        mid: '#94a3b8',
+        valley: '#1e293b',
+        meshLine: 'rgba(255, 255, 255, 0.06)'
+      }
+    };
+
+    // FPS and Dot Count monitors
+    let frameTimes = [];
+    const fpsCounter = document.getElementById('fps-counter');
+    const dotCounter = document.getElementById('dot-count');
+
+    function updateStats(timestamp) {
+      while (frameTimes.length > 0 && frameTimes[0] <= timestamp - 1000) {
+        frameTimes.shift();
+      }
+      frameTimes.push(timestamp);
+      if (fpsCounter && frameTimes.length > 1) {
+        fpsCounter.textContent = `${frameTimes.length} FPS`;
+      }
+      if (dotCounter) {
+        dotCounter.textContent = `${engine.particles.length.toLocaleString()} Dots`;
+      }
+      requestAnimationFrame(updateStats);
+    }
+    requestAnimationFrame(updateStats);
+
+    // Theme selector
+    const themePills = document.querySelectorAll('.theme-pill');
+    themePills.forEach(pill => {
+      pill.addEventListener('click', () => {
+        themePills.forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+        const themeKey = pill.getAttribute('data-theme');
+        if (themes[themeKey]) {
+          engine.setColors(themes[themeKey]);
+        }
+      });
+    });
+
+    // Range sliders
+    function bindSlider(id, valId, unit, optKey, parseFn = parseFloat) {
+      const slider = document.getElementById(id);
+      const val = document.getElementById(valId);
+      if (!slider || !val) return;
+      slider.addEventListener('input', (e) => {
+        const parsed = parseFn(e.target.value);
+        val.textContent = `${parsed}${unit}`;
+        engine.setOptions({ [optKey]: parsed });
+      });
+    }
+
+    bindSlider('slider-amp', 'val-amp', 'px', 'waveAmplitude');
+    bindSlider('slider-speed', 'val-speed', 'x', 'waveSpeed');
+    bindSlider('slider-peak-dot', 'val-peak-dot', 'px', 'peakDotRadius');
+    bindSlider('slider-valley-dot', 'val-valley-dot', 'px', 'baseDotRadius');
+
+    const densitySlider = document.getElementById('slider-density');
+    const densityVal = document.getElementById('val-density');
+    densitySlider.addEventListener('input', (e) => {
+      const d = parseInt(e.target.value, 10);
+      densityVal.textContent = `${d} x ${d}`;
+      engine.setOptions({ cols: d, rows: d });
+    });
+
+    const pitchSlider = document.getElementById('slider-pitch');
+    const pitchVal = document.getElementById('val-pitch');
+    pitchSlider.addEventListener('input', (e) => {
+      const deg = parseInt(e.target.value, 10);
+      pitchVal.textContent = `${deg}°`;
+      engine.setOptions({ cameraPitch: (deg * Math.PI) / 180 });
+    });
+
+    // Switches
+    document.getElementById('toggle-mesh').addEventListener('change', (e) => {
+      engine.setOptions({ showMeshLines: e.target.checked });
+    });
+
+    // HUD Toggle
+    const hudPanel = document.getElementById('hud-panel');
+    const btnToggleHud = document.getElementById('btn-toggle-hud');
+    function toggleHud() {
+      hudPanel.classList.toggle('hidden');
+      const isHidden = hudPanel.classList.contains('hidden');
+      btnToggleHud.textContent = isHidden ? 'HUD: OFF' : 'HUD: ON';
+    }
+    btnToggleHud.addEventListener('click', toggleHud);
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'h' || e.key === 'H') toggleHud();
+    });
+
+    // Export HTML
+    document.getElementById('btn-export-code').addEventListener('click', () => {
+      window.open('./cloth-wave-standalone.html', '_blank');
+    });
+  </script>
+</body>
+</html>

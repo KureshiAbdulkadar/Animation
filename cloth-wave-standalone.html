@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D Cloth Wave Grid — Standalone Visualizer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #000000; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #fff; }
+    #canvas-container { position: absolute; inset: 0; width: 100%; height: 100%; background: #000000; }
+    canvas { display: block; width: 100%; height: 100%; }
+    .badge {
+      position: absolute; top: 16px; left: 16px; z-index: 10;
+      background: rgba(12, 14, 20, 0.85); backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px;
+      padding: 10px 16px; font-size: 13px; font-weight: 500;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.6); pointer-events: none;
+    }
+    .badge small { display: block; font-size: 11px; color: #94a3b8; font-weight: normal; margin-top: 2px; }
+  </style>
+</head>
+<body>
+  <div id="canvas-container"></div>
+  <div class="badge">
+    <strong>3D Cloth Wave Grid</strong>
+    <small>60 FPS Flowing Surface · Peak & Valley Depth Shading</small>
+  </div>
+
+  <script>
+    /* ═══════════════════════════════════════════════════════════════
+       COLOR CONFIGURATION (Change your colors here easily)
+       ═══════════════════════════════════════════════════════════════ */
+    const BG_COLOR = '#000000';             // Background canvas color
+    const COLOR_PEAK = '#ffffff';           // Peak crest color (brightest & largest dots)
+    const COLOR_MID = '#38bdf8';            // Mid-elevation cloth accent color
+    const COLOR_VALLEY = '#1e3a8a';         // Deep valley / trough shadow color
+    const COLOR_LATTICE = 'rgba(56, 189, 248, 0.08)'; // Connecting cloth grid lines (optional)
+
+    /* ═══════════════════════════════════════════════════════════════
+       WAVE & GRID CONFIGURATION (Wide aspect across lower half of screen)
+       ═══════════════════════════════════════════════════════════════ */
+    const GRID_COLS = 64;
+    const GRID_ROWS = 36;
+    const SPACING_X = 32;
+    const SPACING_Z = 26;
+    const WAVE_AMPLITUDE = 65;   // Wave height in pixels
+    const WAVE_SPEED = 0.8;      // Flow speed multiplier
+    const PEAK_DOT_RADIUS = 3.2; // Maximum radius of dots on wave peaks
+    const VALLEY_DOT_RADIUS = 1.2; // Minimum radius of dots in valleys
+    const SHOW_LATTICE_LINES = true;
+
+    // Helper functions
+    function parseHex(hex) {
+      let c = hex.replace('#', '');
+      if (c.length === 3) c = c.split('').map(x => x + x).join('');
+      const num = parseInt(c, 16);
+      return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
+    }
+
+    function lerpColor(c1, c2, t) {
+      return [
+        Math.round(c1[0] + (c2[0] - c1[0]) * t),
+        Math.round(c1[1] + (c2[1] - c1[1]) * t),
+        Math.round(c1[2] + (c2[2] - c1[2]) * t)
+      ];
+    }
+
+    const rgbPeak = parseHex(COLOR_PEAK);
+    const rgbMid = parseHex(COLOR_MID);
+    const rgbValley = parseHex(COLOR_VALLEY);
+
+    // Canvas & Animation Engine
+    const container = document.getElementById('canvas-container');
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    container.appendChild(canvas);
+
+    let width = window.innerWidth;
+    let height = window.innerHeight;
+    let dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+    function resize() {
+      width = window.innerWidth;
+      height = window.innerHeight;
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.floor(width * dpr);
+      canvas.height = Math.floor(height * dpr);
+      canvas.style.width = width + 'px';
+      canvas.style.height = height + 'px';
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // Build 3D Grid
+    const halfW = ((GRID_COLS - 1) * SPACING_X) * 0.5;
+    const halfD = ((GRID_ROWS - 1) * SPACING_Z) * 0.5;
+    const particles = [];
+
+    for (let r = 0; r < GRID_ROWS; r++) {
+      for (let c = 0; c < GRID_COLS; c++) {
+        particles.push({
+          c, r,
+          wx: c * SPACING_X - halfW,
+          wz: r * SPACING_Z - halfD,
+          wy: 0,
+          screenX: 0,
+          screenY: 0,
+          screenRadius: 1,
+          elevationNorm: 0.5,
+          visible: true
+        });
+      }
+    }
+
+    // Mouse Interaction
+    const mouse = { x: 0, y: 0, tx: 0, ty: 0 };
+    window.addEventListener('mousemove', (e) => {
+      const nx = (e.clientX / width) * 2 - 1;
+      const ny = (e.clientY / height) * 2 - 1;
+      mouse.tx = nx * 140;
+      mouse.ty = ny * 70;
+    });
+    window.addEventListener('mouseleave', () => {
+      mouse.tx = 0;
+      mouse.ty = 0;
+    });
+
+    // 3D Camera constants
+    const CAMERA_FOV = 440;
+    const CAMERA_PITCH = 0.44; // ~25 degrees downwards tilt
+    const cosPitch = Math.cos(CAMERA_PITCH);
+    const sinPitch = Math.sin(CAMERA_PITCH);
+    const CAMERA_DIST = 580;
+    const BASE_CAMERA_ELEV = 300;
+
+    let time = 0;
+    let lastTime = performance.now();
+
+    function animate(timestamp) {
+      const dt = Math.min((timestamp - lastTime) * 0.001, 0.05);
+      lastTime = timestamp;
+      time += dt * WAVE_SPEED;
+
+      mouse.x += (mouse.tx - mouse.x) * 0.08;
+      mouse.y += (mouse.ty - mouse.y) * 0.08;
+
+      const camElev = BASE_CAMERA_ELEV + mouse.y;
+      const camOffsetX = mouse.x;
+      const cx = width * 0.5;
+      const cy = height * 0.72;
+
+      // 1. Calculate Wave Physics & 3D Projections
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        const wx = p.wx;
+        const wz = p.wz;
+
+        // Multi-harmonic cloth wave formulas
+        const wave1 = Math.sin(wx * 0.009 + wz * 0.008 + time * 1.4);
+        const wave2 = Math.cos(wx * 0.006 - wz * 0.011 + time * 0.9) * 0.7;
+        const wave3 = Math.sin((wx + wz) * 0.010 + time * 1.8) * 0.45;
+        const wave4 = Math.cos(Math.hypot(wx, wz) * 0.006 - time * 1.2) * 0.35;
+
+        const rawHeight = wave1 + wave2 + wave3 + wave4;
+        p.wy = rawHeight * (WAVE_AMPLITUDE * 0.45);
+
+        // 0.0 (valley) to 1.0 (peak)
+        p.elevationNorm = Math.max(0, Math.min(1, (rawHeight + 2.5) / 5.0));
+
+        // Camera space
+        const relX = wx - camOffsetX;
+        const relY = p.wy - camElev;
+        const relZ = wz + CAMERA_DIST;
+
+        const rotY = relY * cosPitch - relZ * sinPitch;
+        const rotZ = relY * sinPitch + relZ * cosPitch;
+
+        if (rotZ <= 10) {
+          p.visible = false;
+          continue;
+        }
+
+        p.visible = true;
+        const scale = CAMERA_FOV / rotZ;
+        p.screenX = cx + relX * scale;
+        p.screenY = cy - rotY * scale;
+
+        // Peaks are larger, valleys are smaller
+        p.screenRadius = Math.max(0.4, (VALLEY_DOT_RADIUS + (PEAK_DOT_RADIUS - VALLEY_DOT_RADIUS) * p.elevationNorm) * scale * 1.3);
+      }
+
+      // 2. Draw
+      ctx.save();
+      ctx.scale(dpr, dpr);
+
+      ctx.fillStyle = BG_COLOR;
+      ctx.fillRect(0, 0, width, height);
+
+      // Connecting lattice lines
+      if (SHOW_LATTICE_LINES) {
+        ctx.lineWidth = 0.75;
+        ctx.strokeStyle = COLOR_LATTICE;
+        ctx.beginPath();
+        for (let r = 0; r < GRID_ROWS; r++) {
+          let drawing = false;
+          for (let c = 0; c < GRID_COLS; c++) {
+            const p = particles[r * GRID_COLS + c];
+            if (!p.visible) { drawing = false; continue; }
+            if (!drawing) { ctx.moveTo(p.screenX, p.screenY); drawing = true; }
+            else { ctx.lineTo(p.screenX, p.screenY); }
+          }
+        }
+        for (let c = 0; c < GRID_COLS; c++) {
+          let drawing = false;
+          for (let r = 0; r < GRID_ROWS; r++) {
+            const p = particles[r * GRID_COLS + c];
+            if (!p.visible) { drawing = false; continue; }
+            if (!drawing) { ctx.moveTo(p.screenX, p.screenY); drawing = true; }
+            else { ctx.lineTo(p.screenX, p.screenY); }
+          }
+        }
+        ctx.stroke();
+      }
+
+      // Depth & Elevation Shaded Dots
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        if (!p.visible) continue;
+
+        const norm = p.elevationNorm;
+        let rgb;
+        if (norm < 0.5) {
+          rgb = lerpColor(rgbValley, rgbMid, norm * 2.0);
+        } else {
+          rgb = lerpColor(rgbMid, rgbPeak, (norm - 0.5) * 2.0);
+        }
+
+        const alpha = 0.2 + norm * 0.75;
+        ctx.fillStyle = `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${alpha.toFixed(2)})`;
+        ctx.beginPath();
+        ctx.arc(p.screenX, p.screenY, p.screenRadius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.restore();
+      requestAnimationFrame(animate);
+    }
+
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>

@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stacked-Panel Wave — 3D Isometric Kinetic Field</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="effects/stacked-panels/styles.css">
+</head>
+<body>
+  <div class="sp-frame">
+    <!-- Main Canvas Mount Target -->
+    <div id="sp-container" class="sp-canvas-container"></div>
+
+    <!-- Top Bar -->
+    <header class="sp-topbar">
+      <div class="sp-brand">
+        <svg class="sp-brand-icon" viewBox="0 0 24 24">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+        </svg>
+        <span class="sp-brand-title">Stacked-Panel Wave</span>
+        <span class="sp-brand-tag">3D Isometric</span>
+      </div>
+
+      <div class="sp-topbar-actions">
+        <a href="index.html" class="sp-action-btn" title="Back to Shader Suite">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+          <span>All Shaders</span>
+        </a>
+        <button id="sp-burst-btn" class="sp-action-btn" title="Trigger Impact Shockwave">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+          <span>Shockwave</span>
+        </button>
+        <button id="sp-snapshot-btn" class="sp-action-btn" title="Save PNG Snapshot">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+          <span>Snapshot</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Floating HUD Control Panel -->
+    <aside class="sp-hud-panel" id="sp-hud">
+      <div class="sp-hud-header" id="sp-hud-header">
+        <div class="sp-hud-title">
+          <span>✦</span>
+          <span>Wave Controls</span>
+        </div>
+        <button class="sp-toggle-btn" id="sp-toggle" aria-label="Toggle Panel">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
+      </div>
+
+      <div class="sp-hud-content">
+        <!-- Color Theme -->
+        <div class="sp-control-group">
+          <div class="sp-control-label-row">
+            <span>Color Palette</span>
+          </div>
+          <div class="sp-palette-row">
+            <button class="sp-theme-btn active" data-theme="obsidian" style="background: linear-gradient(135deg, #191922, #000000);" title="Obsidian Stealth"></button>
+            <button class="sp-theme-btn" data-theme="titanium" style="background: linear-gradient(135deg, #e2e8f0, #2d313d);" title="Titanium Silver"></button>
+            <button class="sp-theme-btn" data-theme="cyber-cyan" style="background: linear-gradient(135deg, #00f0ff, #092133);" title="Cyberpunk Cyan"></button>
+            <button class="sp-theme-btn" data-theme="amber-glow" style="background: linear-gradient(135deg, #ffb830, #2b1b0b);" title="Amber Monolith"></button>
+            <button class="sp-theme-btn" data-theme="emerald-matrix" style="background: linear-gradient(135deg, #00ff88, #0b2616);" title="Emerald Matrix"></button>
+          </div>
+        </div>
+
+        <!-- Grid Density -->
+        <div class="sp-control-group">
+          <div class="sp-control-label-row">
+            <span>Grid Resolution</span>
+            <span class="sp-val-badge" id="sp-density-val">30 × 30</span>
+          </div>
+          <input type="range" id="sp-density-slider" class="sp-slider" min="16" max="44" step="2" value="30">
+        </div>
+
+        <!-- Peak Height -->
+        <div class="sp-control-group">
+          <div class="sp-control-label-row">
+            <span>Peak Wave Height</span>
+            <span class="sp-val-badge" id="sp-height-val">68px</span>
+          </div>
+          <input type="range" id="sp-height-slider" class="sp-slider" min="20" max="120" step="2" value="68">
+        </div>
+
+        <!-- Wave Radius -->
+        <div class="sp-control-group">
+          <div class="sp-control-label-row">
+            <span>Cursor Wave Radius</span>
+            <span class="sp-val-badge" id="sp-radius-val">220px</span>
+          </div>
+          <input type="range" id="sp-radius-slider" class="sp-slider" min="100" max="360" step="10" value="220">
+        </div>
+
+        <!-- Spring Elasticity -->
+        <div class="sp-control-group">
+          <div class="sp-control-label-row">
+            <span>Spring Elasticity</span>
+            <span class="sp-val-badge" id="sp-spring-val">0.10</span>
+          </div>
+          <input type="range" id="sp-spring-slider" class="sp-slider" min="0.02" max="0.25" step="0.01" value="0.10">
+        </div>
+
+        <!-- Ambient Ocean Waves Toggle -->
+        <div class="sp-checkbox-row">
+          <span class="sp-checkbox-label">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+            </svg>
+            Rolling Ocean Swells
+          </span>
+          <label class="sp-switch">
+            <input type="checkbox" id="sp-ambient-toggle" checked>
+            <span class="sp-switch-slider"></span>
+          </label>
+        </div>
+
+        <!-- Scanlines Toggle -->
+        <div class="sp-checkbox-row">
+          <span class="sp-checkbox-label">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="3" y1="6" x2="21" y2="6"/>
+              <line x1="3" y1="12" x2="21" y2="12"/>
+              <line x1="3" y1="18" x2="21" y2="18"/>
+            </svg>
+            CRT Scanlines
+          </span>
+          <label class="sp-switch">
+            <input type="checkbox" id="sp-scanlines-toggle">
+            <span class="sp-switch-slider"></span>
+          </label>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Bottom Status Bar -->
+    <footer class="sp-bottom-bar">
+      <div class="sp-status-pill" id="sp-fps-text">60 FPS • 900 Monolith Panels • Active</div>
+      <div class="sp-status-pill">Hover Cursor to Elevate Wave • Click For Shockwave</div>
+    </footer>
+  </div>
+
+  <script type="module">
+    import { StackedPanels } from './effects/stacked-panels/StackedPanels.js';
+
+    const container = document.getElementById('sp-container');
+    const visualizer = new StackedPanels(container, {
+      gridCols: 30,
+      gridRows: 30,
+      baseHeight: 14,
+      maxHeight: 130,
+      waveRadius: 180,
+      springStiffness: 0.08,
+      theme: 'obsidian',
+      ambientBreathing: true
+    });
+
+    // UI Binding
+    const hud = document.getElementById('sp-hud');
+    const hudHeader = document.getElementById('sp-hud-header');
+    hudHeader.addEventListener('click', () => {
+      hud.classList.toggle('collapsed');
+    });
+
+    // Theme Switcher
+    const themeBtns = document.querySelectorAll('.sp-theme-btn');
+    themeBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        themeBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        visualizer.setOption('theme', btn.dataset.theme);
+      });
+    });
+
+    // Density Slider
+    const densitySlider = document.getElementById('sp-density-slider');
+    const densityVal = document.getElementById('sp-density-val');
+    densitySlider.addEventListener('input', (e) => {
+      const v = parseInt(e.target.value, 10);
+      densityVal.textContent = `${v} × ${v}`;
+      visualizer.setOption('density', v);
+    });
+
+    // Height Slider
+    const heightSlider = document.getElementById('sp-height-slider');
+    const heightVal = document.getElementById('sp-height-val');
+    heightSlider.addEventListener('input', (e) => {
+      const v = parseFloat(e.target.value);
+      heightVal.textContent = `${v}px`;
+      visualizer.setOption('maxHeight', v);
+    });
+
+    // Radius Slider
+    const radiusSlider = document.getElementById('sp-radius-slider');
+    const radiusVal = document.getElementById('sp-radius-val');
+    radiusSlider.addEventListener('input', (e) => {
+      const v = parseFloat(e.target.value);
+      radiusVal.textContent = `${v}px`;
+      visualizer.setOption('waveRadius', v);
+    });
+
+    // Spring Slider
+    const springSlider = document.getElementById('sp-spring-slider');
+    const springVal = document.getElementById('sp-spring-val');
+    springSlider.addEventListener('input', (e) => {
+      const v = parseFloat(e.target.value);
+      springVal.textContent = v.toFixed(2);
+      visualizer.setOption('springStiffness', v);
+    });
+
+    // Ambient Toggle
+    const ambientToggle = document.getElementById('sp-ambient-toggle');
+    ambientToggle.addEventListener('change', (e) => {
+      visualizer.setOption('ambientBreathing', e.target.checked);
+    });
+
+    // Scanlines Toggle
+    const scanlinesToggle = document.getElementById('sp-scanlines-toggle');
+    scanlinesToggle.addEventListener('change', (e) => {
+      visualizer.setOption('scanlines', e.target.checked);
+    });
+
+    // Burst Button
+    document.getElementById('sp-burst-btn').addEventListener('click', () => {
+      visualizer.triggerShockwave();
+    });
+
+    // Snapshot Button
+    document.getElementById('sp-snapshot-btn').addEventListener('click', () => {
+      const link = document.createElement('a');
+      link.download = 'stacked-panel-wave.png';
+      link.href = visualizer.canvas.toDataURL('image/png');
+      link.click();
+    });
+
+    // FPS Loop
+    const fpsText = document.getElementById('sp-fps-text');
+    let frameCount = 0;
+    let lastFpsCalc = performance.now();
+    let currentFps = 60;
+
+    function fpsLoop() {
+      frameCount++;
+      const now = performance.now();
+      if (now - lastFpsCalc >= 1000) {
+        currentFps = frameCount;
+        frameCount = 0;
+        lastFpsCalc = now;
+        fpsText.textContent = `${currentFps} FPS • ${visualizer.panels.length} Monolith Panels • Active`;
+      }
+      requestAnimationFrame(fpsLoop);
+    }
+    fpsLoop();
+  </script>
+</body>
+</html>

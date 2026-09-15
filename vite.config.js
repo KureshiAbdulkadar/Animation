@@ -16,7 +16,11 @@ export default defineConfig({
         ghosting: './ghosting.html',
         pixelArt: './pixel-art.html',
         flyingEagle: './flying-eagle.html',
-        amberDispersion: './amber-dispersion.html'
+        amberDispersion: './amber-dispersion.html',
+        stackedPanels: './stacked-panels.html',
+        stackBox: './stack-box.html',
+        pixelWall: './pixel-wall.html',
+        clothWave: './cloth-wave.html'
       }
     }
   }

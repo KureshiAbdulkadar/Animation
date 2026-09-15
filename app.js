@@ -149,6 +149,17 @@
   let flyingEagleVortex = [];
   let flyingEagleSparks = [];
   let amberShockwaves = [];
+  let stackedPanelsGrid = [];
+  let stackedPanelsInitialized = false;
+  let stackedShockwaves = [];
+  let stackBoxGrid = [];
+  let stackBoxInitialized = false;
+  let stackBoxShockwaves = [];
+  let pixelWallTiles = [];
+  let pixelWallInitialized = false;
+  let pixelWallRipples = [];
+  let clothWaveParticles = [];
+  let clothWaveInitialized = false;
 
   const mouse = {
     x: 0.5,
@@ -943,6 +954,10 @@
         mouse.tx = 0.5;
         mouse.ty = 0.5;
       }
+    } else if (presetMode === "stacked-panels" || presetMode === "stack-box" || presetMode === "pixel-wall" || presetMode === "cloth-wave") {
+      // Direct high-responsiveness mouse tracking (0 artificial drag lag)
+      mouse.x += (mouse.tx - mouse.x) * 0.45;
+      mouse.y += (mouse.ty - mouse.y) * 0.45;
     } else {
       mouse.x += (mouse.tx - mouse.x) * 0.08;
       mouse.y += (mouse.ty - mouse.y) * 0.08;
@@ -3261,11 +3276,830 @@
       return;
     }
 
+    // ══════════════════════════════════════════════════════════
+    //  PRESET 20: 3D ISOMETRIC STACKED-PANEL WAVE
+    // ══════════════════════════════════════════════════════════
+    if (presetMode === "stacked-panels") {
+      const curDt = Math.min((time - lastTime) / 1000, 0.05);
+      const curElapsed = (time - loadTime) / 1000;
+      const t = curElapsed * speed;
 
+      const cols = 28;
+      const rows = 28;
+      const spacingX = Math.max(14, Math.min(36, pixelSize * 1.6));
+      const spacingZ = Math.max(14, Math.min(36, pixelSize * 1.6));
+      const panelW = spacingX * 0.72;
+      const panelD = spacingZ * 0.72;
+      const baseHeight = 8;
+      const maxExtraHeight = 65 * Math.max(0.4, Math.min(2.0, arcThickness / 100));
+      const waveRadius = 240 * (width / 1200);
+
+      // Re-init grid if size changed or not initialized
+      if (!stackedPanelsInitialized || stackedPanelsGrid.length !== rows || (stackedPanelsGrid[0] && stackedPanelsGrid[0].length !== cols)) {
+        stackedPanelsGrid = [];
+        for (let r = 0; r < rows; r++) {
+          const row = [];
+          for (let c = 0; c < cols; c++) {
+            row.push({
+              height: baseHeight,
+              targetHeight: baseHeight,
+              velocity: 0,
+              active: 0
+            });
+          }
+          stackedPanelsGrid.push(row);
+        }
+        stackedPanelsInitialized = true;
+      }
+
+      // Isometric projection setup
+      const angle = Math.PI / 6; // 30 degrees isometric
+      const cosA = Math.cos(angle);
+      const sinA = Math.sin(angle);
+      const centerX = width / 2;
+      const centerY = height / 2 + 30;
+
+      // Project world coordinates (wx, wy, wz) to screen (sx, sy)
+      const project = (wx, wy, wz) => {
+        return {
+          x: centerX + (wx - wz) * cosA,
+          y: centerY + (wx + wz) * sinA - wy
+        };
+      };
+
+      // Unproject mouse ground position
+      const mouseScreenX = mouse.x * width;
+      const mouseScreenY = mouse.y * height;
+      const dxScreen = mouseScreenX - centerX;
+      const dyScreen = mouseScreenY - centerY;
+      const mouseGroundWx = (dxScreen / cosA + dyScreen / sinA) * 0.5;
+      const mouseGroundWz = (dyScreen / sinA - dxScreen / cosA) * 0.5;
+
+      // Update shockwaves
+      for (let i = stackedShockwaves.length - 1; i >= 0; i--) {
+        const sw = stackedShockwaves[i];
+        sw.radius += sw.speed * curDt;
+        sw.strength -= sw.decay * curDt;
+        if (sw.strength <= 0 || sw.radius >= sw.maxRadius) {
+          stackedShockwaves.splice(i, 1);
+        }
+      }
+
+      const kSpring = 120;
+      const damping = 12;
+
+      const halfGridX = ((cols - 1) * spacingX) / 2;
+      const halfGridZ = ((rows - 1) * spacingZ) / 2;
+
+      // Parse RGB
+      let hex = color.replace("#", "");
+      if (hex.length === 3) hex = hex.split("").map(c => c + c).join("");
+      const pr = parseInt(hex.substring(0, 2), 16) || 0;
+      const pg = parseInt(hex.substring(2, 4), 16) || 240;
+      const pb = parseInt(hex.substring(4, 6), 16) || 102;
+
+      // 1. Calculate target heights and update physics
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const panel = stackedPanelsGrid[r][c];
+          const wx = c * spacingX - halfGridX;
+          const wz = r * spacingZ - halfGridZ;
+
+          // Distance to mouse in ground space
+          const distToMouse = Math.hypot(wx - mouseGroundWx, wz - mouseGroundWz);
+
+          // Gaussian bell curve elevation
+          let waveFactor = 0;
+          if (isTrackingMouse && distToMouse < waveRadius) {
+            const normDist = distToMouse / waveRadius;
+            waveFactor = Math.exp(-Math.pow(normDist * 2.3, 2));
+          }
+
+          // Ambient Rolling Ocean Swells (Multi-frequency Gerstner/Harmonic Waves)
+          const u = wx * 0.007;
+          const v = wz * 0.007;
+          const swell1 = Math.sin(u * 1.4 + v * 1.1 - t * 2.4);
+          const swell2 = Math.sin(u * 2.0 - v * 1.6 - t * 1.7) * 0.65;
+          const swell3 = Math.cos(u * 0.9 + v * 1.8 + t * 1.2) * 0.45;
+          const chop = Math.sin(u * 3.2 + v * 3.2 - t * 3.4) * 0.22;
+          const rawOcean = swell1 + swell2 + swell3 + chop;
+          const oceanCrest = Math.sign(rawOcean) * Math.pow(Math.abs(rawOcean) / 2.3, 1.25) * 2.3;
+          const oceanElev = (oceanCrest + 0.6) * 7.5;
+
+          // Shockwaves
+          let shockElev = 0;
+          for (const sw of stackedShockwaves) {
+            const dSw = Math.hypot(wx - sw.wx, wz - sw.wz);
+            const ringDist = Math.abs(dSw - sw.radius);
+            if (ringDist < 60) {
+              shockElev += (1.0 - ringDist / 60) * sw.strength * 60;
+            }
+          }
+
+          panel.targetHeight = baseHeight + waveFactor * maxExtraHeight + oceanElev + shockElev;
+
+          // Ultra-smooth exponential spring easing (100% butter smooth, 0 lag, 0 jitter)
+          const lerpRate = (isTrackingMouse ? 14.0 : 8.0) * speed;
+          const springFactor = 1.0 - Math.exp(-lerpRate * curDt);
+          panel.height += (panel.targetHeight - panel.height) * springFactor;
+          if (panel.height < 2) panel.height = 2;
+
+          panel.active = Math.max(0, Math.min(1, (panel.height - baseHeight) / (maxExtraHeight * 0.45 || 1)));
+        }
+      }
+
+      // 2. Draw depth-sorted panels from back to front (r + c from 0 up to rows + cols - 2)
+      const isTransparent = (typeof transparentBgCheckbox !== "undefined" && transparentBgCheckbox) ? transparentBgCheckbox.checked : false;
+      if (!isTransparent) {
+        ctx.fillStyle = "#000000";
+        ctx.fillRect(0, 0, width, height);
+      } else {
+        ctx.clearRect(0, 0, width, height);
+      }
+
+      // 2. Draw depth-sorted panels from back to front (deterministic diagonal order with 0 array allocations)
+      const hw = panelW * 0.5;
+      const hd = panelD * 0.5;
+      const ox0 = (-hw + hd) * cosA;
+      const oy0 = (-hw - hd) * sinA;
+      const ox1 = (hw + hd) * cosA;
+      const oy1 = (hw - hd) * sinA;
+      const ox2 = (hw - hd) * cosA;
+      const oy2 = (hw + hd) * sinA;
+      const ox3 = (-hw - hd) * cosA;
+      const oy3 = (-hw + hd) * sinA;
+
+      const maxDepth = rows + cols - 2;
+      for (let depth = 0; depth <= maxDepth; depth++) {
+        for (let r = 0; r < rows; r++) {
+          const c = depth - r;
+          if (c < 0 || c >= cols) continue;
+
+          const panel = stackedPanelsGrid[r][c];
+          const wx = c * spacingX - halfGridX;
+          const wz = r * spacingZ - halfGridZ;
+          const h = panel.height;
+          const act = panel.active;
+
+          const scx = centerX + (wx - wz) * cosA;
+          const sby = centerY + (wx + wz) * sinA;
+          const sty = sby - h;
+
+          // 4 Bottom corners
+          const b0x = scx + ox0, b0y = sby + oy0;
+          const b1x = scx + ox1, b1y = sby + oy1;
+          const b2x = scx + ox2, b2y = sby + oy2;
+          const b3x = scx + ox3, b3y = sby + oy3;
+
+          // 4 Top corners
+          const t0x = scx + ox0, t0y = sty + oy0;
+          const t1x = scx + ox1, t1y = sty + oy1;
+          const t2x = scx + ox2, t2y = sty + oy2;
+          const t3x = scx + ox3, t3y = sty + oy3;
+
+          // Left visible face (Secondary Deep Facet): b3 -> b2 -> t2 -> t3
+          const leftR = Math.round(5 + pr * 0.25 * act);
+          const leftG = Math.round(6 + pg * 0.25 * act);
+          const leftB = Math.round(9 + pb * 0.30 * act);
+          ctx.fillStyle = `rgb(${leftR}, ${leftG}, ${leftB})`;
+          ctx.beginPath();
+          ctx.moveTo(b3x, b3y);
+          ctx.lineTo(b2x, b2y);
+          ctx.lineTo(t2x, t2y);
+          ctx.lineTo(t3x, t3y);
+          ctx.closePath();
+          ctx.fill();
+
+          // Right visible face (Secondary Midtone Facet): b2 -> b1 -> t1 -> t2
+          const rightR = Math.round(9 + pr * 0.48 * act);
+          const rightG = Math.round(11 + pg * 0.48 * act);
+          const rightB = Math.round(15 + pb * 0.55 * act);
+          ctx.fillStyle = `rgb(${rightR}, ${rightG}, ${rightB})`;
+          ctx.beginPath();
+          ctx.moveTo(b2x, b2y);
+          ctx.lineTo(b1x, b1y);
+          ctx.lineTo(t1x, t1y);
+          ctx.lineTo(t2x, t2y);
+          ctx.closePath();
+          ctx.fill();
+
+          // Top Cap face (Primary Accent Cap): t0 -> t1 -> t2 -> t3
+          const topR = Math.round(14 + (pr - 14) * Math.pow(act, 0.72));
+          const topG = Math.round(16 + (pg - 16) * Math.pow(act, 0.72));
+          const topB = Math.round(22 + (pb - 22) * Math.pow(act, 0.72));
+          ctx.fillStyle = `rgb(${topR}, ${topG}, ${topB})`;
+          ctx.beginPath();
+          ctx.moveTo(t0x, t0y);
+          ctx.lineTo(t1x, t1y);
+          ctx.lineTo(t2x, t2y);
+          ctx.lineTo(t3x, t3y);
+          ctx.closePath();
+          ctx.fill();
+
+          // Subtle minor dark-grey outline (ultra-sleek and clearly defined)
+          const borderAlpha = 0.10 + act * 0.75;
+          const edgeR = Math.round(65 + (pr - 65) * act);
+          const edgeG = Math.round(70 + (pg - 70) * act);
+          const edgeB = Math.round(80 + (pb - 80) * act);
+          ctx.strokeStyle = `rgba(${edgeR}, ${edgeG}, ${edgeB}, ${borderAlpha})`;
+          ctx.lineWidth = 1.0;
+          ctx.stroke();
+        }
+      }
+
+      // CRT scanlines
+      ctx.fillStyle = "rgba(0, 0, 0, 0.22)";
+      for (let y = 0; y < height; y += 4) {
+        ctx.fillRect(0, y, width, 1.5);
+      }
+
+      particleCounter.textContent = (rows * cols).toLocaleString();
+      raf = requestAnimationFrame(draw);
+      return;
+    }
+
+    // ══════════════════════════════════════════════════════════
+    //  PRESET 21: 3D STACK BOX LAYER GRID
+    // ══════════════════════════════════════════════════════════
+    if (presetMode === "stack-box") {
+      const curDt = Math.min((time - lastTime) / 1000, 0.05);
+      const curElapsed = (time - loadTime) / 1000;
+      const t = curElapsed * speed;
+
+      const cols = 26;
+      const rows = 26;
+      const spacingX = Math.max(22, Math.min(48, pixelSize * 2.0));
+      const spacingZ = Math.max(22, Math.min(48, pixelSize * 2.0));
+      const boxW = spacingX * 0.74;
+      const boxD = spacingZ * 0.74;
+      const baseHeight = 8;
+      const popHeight = 26 * Math.max(0.4, Math.min(2.0, arcThickness / 100));
+      const hoverRadius = 220 * (width / 1200);
+
+      // Re-init grid if size changed or not initialized
+      if (!stackBoxInitialized || stackBoxGrid.length !== rows || (stackBoxGrid[0] && stackBoxGrid[0].length !== cols)) {
+        stackBoxGrid = [];
+        for (let r = 0; r < rows; r++) {
+          const row = [];
+          for (let c = 0; c < cols; c++) {
+            row.push({
+              height: baseHeight,
+              targetHeight: baseHeight,
+              plateHeight: baseHeight + 2,
+              active: 0
+            });
+          }
+          stackBoxGrid.push(row);
+        }
+        stackBoxInitialized = true;
+      }
+
+      // Isometric projection setup
+      const angle = Math.PI / 6; // 30 degrees isometric
+      const cosA = Math.cos(angle);
+      const sinA = Math.sin(angle);
+      const centerX = width / 2;
+      const centerY = height / 2 + 30;
+
+      // Unproject mouse ground position
+      const mouseScreenX = mouse.x * width;
+      const mouseScreenY = mouse.y * height;
+      const dxScreen = mouseScreenX - centerX;
+      const dyScreen = mouseScreenY - centerY;
+      const mouseGroundWx = (dxScreen / cosA + dyScreen / sinA) * 0.5;
+      const mouseGroundWz = (dyScreen / sinA - dxScreen / cosA) * 0.5;
+
+      // Update shockwaves
+      for (let i = stackBoxShockwaves.length - 1; i >= 0; i--) {
+        const sw = stackBoxShockwaves[i];
+        sw.radius += sw.speed * curDt;
+        sw.strength -= sw.decay * curDt;
+        if (sw.strength <= 0 || sw.radius >= sw.maxRadius) {
+          stackBoxShockwaves.splice(i, 1);
+        }
+      }
+
+      const halfGridX = ((cols - 1) * spacingX) / 2;
+      const halfGridZ = ((rows - 1) * spacingZ) / 2;
+
+      // Parse RGB
+      let hex = color.replace("#", "");
+      if (hex.length === 3) hex = hex.split("").map(c => c + c).join("");
+      const pr = parseInt(hex.substring(0, 2), 16) || 56;
+      const pg = parseInt(hex.substring(2, 4), 16) || 189;
+      const pb = parseInt(hex.substring(4, 6), 16) || 248;
+
+      // 1. Calculate target heights and update spring physics
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const box = stackBoxGrid[r][c];
+          const wx = c * spacingX - halfGridX;
+          const wz = r * spacingZ - halfGridZ;
+
+          // Distance to mouse in ground space
+          const distToMouse = Math.hypot(wx - mouseGroundWx, wz - mouseGroundWz);
+
+          // Smooth cosine bell pop curve
+          let popFactor = 0;
+          if (isTrackingMouse && distToMouse < hoverRadius) {
+            const normDist = distToMouse / hoverRadius;
+            popFactor = 0.5 * (1.0 + Math.cos(normDist * Math.PI));
+          }
+
+          // Ambient idle harmonic swell
+          const idleWave = (Math.sin(wx * 0.008 + wz * 0.006 + t * 1.5) *
+                           Math.cos(wx * 0.005 - wz * 0.007 + t * 1.2)) * 4.0;
+
+          // Shockwaves
+          let shockElev = 0;
+          for (const sw of stackBoxShockwaves) {
+            const dSw = Math.hypot(wx - sw.wx, wz - sw.wz);
+            const ringDist = Math.abs(dSw - sw.radius);
+            if (ringDist < 60) {
+              shockElev += (1.0 - ringDist / 60) * sw.strength * 40;
+            }
+          }
+
+          box.targetHeight = baseHeight + popFactor * popHeight + idleWave + shockElev;
+
+          // Ultra-smooth analytical exponential spring easing
+          const springRate = (isTrackingMouse ? 14.0 : 8.0) * speed;
+          const springFactor = 1.0 - Math.exp(-springRate * curDt);
+          box.height += (box.targetHeight - box.height) * springFactor;
+          if (box.height < 2) box.height = 2;
+
+          const plateTarget = box.targetHeight + (popFactor > 0.05 ? 4.0 : 0.0);
+          box.plateHeight += (plateTarget - box.plateHeight) * (springFactor * 1.15);
+
+          box.active = Math.max(0, Math.min(1, (box.height - baseHeight) / (popHeight * 0.6 || 1)));
+        }
+      }
+
+      // 2. Draw depth-sorted boxes from back to front
+      const isTransparent = (typeof transparentBgCheckbox !== "undefined" && transparentBgCheckbox) ? transparentBgCheckbox.checked : false;
+      if (!isTransparent) {
+        ctx.fillStyle = "#000000";
+        ctx.fillRect(0, 0, width, height);
+      } else {
+        ctx.clearRect(0, 0, width, height);
+      }
+
+      const hw = boxW * 0.5;
+      const hd = boxD * 0.5;
+      const ox0 = (-hw + hd) * cosA;
+      const oy0 = (-hw - hd) * sinA;
+      const ox1 = (hw + hd) * cosA;
+      const oy1 = (hw - hd) * sinA;
+      const ox2 = (hw - hd) * cosA;
+      const oy2 = (hw + hd) * sinA;
+      const ox3 = (-hw - hd) * cosA;
+      const oy3 = (-hw + hd) * sinA;
+
+      const capHw = hw * 0.88;
+      const capHd = hd * 0.88;
+      const capOx0 = (-capHw + capHd) * cosA;
+      const capOy0 = (-capHw - capHd) * sinA;
+      const capOx1 = (capHw + capHd) * cosA;
+      const capOy1 = (capHw - capHd) * sinA;
+      const capOx2 = (capHw - capHd) * cosA;
+      const capOy2 = (capHw + capHd) * sinA;
+      const capOx3 = (-capHw - capHd) * cosA;
+      const capOy3 = (-capHw + capHd) * sinA;
+
+      const maxDepth = rows + cols - 2;
+      for (let depth = 0; depth <= maxDepth; depth++) {
+        for (let r = 0; r < rows; r++) {
+          const c = depth - r;
+          if (c < 0 || c >= cols) continue;
+
+          const box = stackBoxGrid[r][c];
+          const wx = c * spacingX - halfGridX;
+          const wz = r * spacingZ - halfGridZ;
+          const h = box.height;
+          const pH = box.plateHeight;
+          const act = box.active;
+
+          const scx = centerX + (wx - wz) * cosA;
+          const sby = centerY + (wx + wz) * sinA;
+
+          // 1. Base floor well outline
+          ctx.strokeStyle = "rgba(255, 255, 255, 0.04)";
+          ctx.beginPath();
+          ctx.moveTo(scx + ox0, sby + oy0);
+          ctx.lineTo(scx + ox1, sby + oy1);
+          ctx.lineTo(scx + ox2, sby + oy2);
+          ctx.lineTo(scx + ox3, sby + oy3);
+          ctx.closePath();
+          ctx.stroke();
+
+          // 2. Left visible face (Secondary Deep Facet)
+          const leftR = Math.round(14 + pr * 0.22 * act);
+          const leftG = Math.round(16 + pg * 0.22 * act);
+          const leftB = Math.round(22 + pb * 0.26 * act);
+          ctx.fillStyle = `rgb(${leftR}, ${leftG}, ${leftB})`;
+          ctx.beginPath();
+          ctx.moveTo(scx + ox3, sby + oy3);
+          ctx.lineTo(scx + ox3, sby + oy3 - h);
+          ctx.lineTo(scx + ox2, sby + oy2 - h);
+          ctx.lineTo(scx + ox2, sby + oy2);
+          ctx.closePath();
+          ctx.fill();
+
+          // 3. Right visible face (Secondary Midtone Facet)
+          const rightR = Math.round(24 + pr * 0.42 * act);
+          const rightG = Math.round(28 + pg * 0.42 * act);
+          const rightB = Math.round(38 + pb * 0.48 * act);
+          ctx.fillStyle = `rgb(${rightR}, ${rightG}, ${rightB})`;
+          ctx.beginPath();
+          ctx.moveTo(scx + ox2, sby + oy2);
+          ctx.lineTo(scx + ox2, sby + oy2 - h);
+          ctx.lineTo(scx + ox1, sby + oy1 - h);
+          ctx.lineTo(scx + ox1, sby + oy1);
+          ctx.closePath();
+          ctx.fill();
+
+          // 4. Top Face (Primary Accent tone)
+          const topR = Math.round(38 + (pr - 38) * Math.pow(act, 0.7));
+          const topG = Math.round(44 + (pg - 44) * Math.pow(act, 0.7));
+          const topB = Math.round(58 + (pb - 58) * Math.pow(act, 0.7));
+          ctx.fillStyle = `rgb(${topR}, ${topG}, ${topB})`;
+          ctx.beginPath();
+          ctx.moveTo(scx + ox0, sby + oy0 - h);
+          ctx.lineTo(scx + ox1, sby + oy1 - h);
+          ctx.lineTo(scx + ox2, sby + oy2 - h);
+          ctx.lineTo(scx + ox3, sby + oy3 - h);
+          ctx.closePath();
+          ctx.fill();
+
+          // Subtle dark-grey border lines
+          const borderAlpha = 0.12 + act * 0.65;
+          const edgeR = Math.round(75 + (pr - 75) * act);
+          const edgeG = Math.round(85 + (pg - 85) * act);
+          const edgeB = Math.round(100 + (pb - 100) * act);
+          ctx.strokeStyle = `rgba(${edgeR}, ${edgeG}, ${edgeB}, ${borderAlpha})`;
+          ctx.lineWidth = 1.0;
+          ctx.beginPath();
+          ctx.moveTo(scx + ox0, sby + oy0 - h);
+          ctx.lineTo(scx + ox1, sby + oy1 - h);
+          ctx.lineTo(scx + ox2, sby + oy2 - h);
+          ctx.lineTo(scx + ox3, sby + oy3 - h);
+          ctx.closePath();
+          ctx.moveTo(scx + ox2, sby + oy2 - h);
+          ctx.lineTo(scx + ox2, sby + oy2);
+          ctx.stroke();
+
+          // 5. Floating Top Cap Plate
+          const plateR = Math.round(90 + (pr - 90) * act);
+          const plateG = Math.round(105 + (pg - 105) * act);
+          const plateB = Math.round(125 + (pb - 125) * act);
+          ctx.fillStyle = `rgba(${plateR}, ${plateG}, ${plateB}, ${0.85 + act * 0.15})`;
+          ctx.beginPath();
+          ctx.moveTo(scx + capOx0, sby + capOy0 - pH);
+          ctx.lineTo(scx + capOx1, sby + capOy1 - pH);
+          ctx.lineTo(scx + capOx2, sby + capOy2 - pH);
+          ctx.lineTo(scx + capOx3, sby + capOy3 - pH);
+          ctx.closePath();
+          ctx.fill();
+          ctx.strokeStyle = `rgba(${edgeR}, ${edgeG}, ${edgeB}, ${borderAlpha * 1.2})`;
+          ctx.stroke();
+        }
+      }
+
+      // CRT scanlines
+      ctx.fillStyle = "rgba(0, 0, 0, 0.18)";
+      for (let y = 0; y < height; y += 4) {
+        ctx.fillRect(0, y, width, 1.5);
+      }
+
+      particleCounter.textContent = (rows * cols).toLocaleString();
+      raf = requestAnimationFrame(draw);
+      return;
+    }
+
+    // ══════════════════════════════════════════════════════════
+    //  PRESET 22: 2D PIXEL POP WALL
+    // ══════════════════════════════════════════════════════════
+    if (presetMode === "pixel-wall") {
+      const curDt = Math.min((time - lastTime) / 1000, 0.05);
+      const curElapsed = (time - loadTime) / 1000;
+
+      const tileSize = Math.max(16, Math.min(64, pixelSize * 1.5));
+      const gap = 3;
+      const stride = tileSize + gap;
+      const cols = Math.ceil(width / stride) + 1;
+      const rows = Math.ceil(height / stride) + 1;
+
+      const clickPopHeight = 14 * Math.max(0.4, Math.min(2.0, arcThickness / 100));
+      const hoverPopHeight = 5 * Math.max(0.4, Math.min(2.0, arcThickness / 100));
+      const hoverRadius = 110 * (width / 1200);
+
+      // Re-init tiles if grid dimensions changed
+      if (!pixelWallInitialized || pixelWallTiles.length !== (rows * cols)) {
+        pixelWallTiles = [];
+        const offsetX = (width - ((cols - 1) * stride + tileSize)) * 0.5;
+        const offsetY = (height - ((rows - 1) * stride + tileSize)) * 0.5;
+
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            const x = offsetX + c * stride;
+            const y = offsetY + r * stride;
+            pixelWallTiles.push({
+              x, y,
+              cx: x + tileSize * 0.5,
+              cy: y + tileSize * 0.5,
+              currentPop: 0,
+              targetPop: 0,
+              activeFactor: 0
+            });
+          }
+        }
+        pixelWallInitialized = true;
+      }
+
+      // Update ripples
+      for (let i = pixelWallRipples.length - 1; i >= 0; i--) {
+        const rp = pixelWallRipples[i];
+        rp.radius += rp.speed * curDt;
+        rp.strength -= rp.decay * curDt;
+        if (rp.strength <= 0 || rp.radius >= rp.maxRadius) {
+          pixelWallRipples.splice(i, 1);
+        }
+      }
+
+      const numRipples = pixelWallRipples.length;
+      const mx = mouse.x * width;
+      const my = mouse.y * height;
+      const springRate = (isTrackingMouse ? 18.0 : 10.0) * speed;
+      const springFactor = 1.0 - Math.exp(-springRate * curDt);
+
+      // Parse RGB
+      let hex = color.replace("#", "");
+      if (hex.length === 3) hex = hex.split("").map(c => c + c).join("");
+      const pr = parseInt(hex.substring(0, 2), 16) || 56;
+      const pg = parseInt(hex.substring(2, 4), 16) || 189;
+      const pb = parseInt(hex.substring(4, 6), 16) || 248;
+
+      // Update tile physics
+      for (let i = 0; i < pixelWallTiles.length; i++) {
+        const tile = pixelWallTiles[i];
+        let target = 0;
+
+        if (isTrackingMouse) {
+          const d = Math.hypot(tile.cx - mx, tile.cy - my);
+          if (d < hoverRadius) {
+            const norm = d / hoverRadius;
+            const curve = 0.5 * (1.0 + Math.cos(norm * Math.PI));
+            target += hoverPopHeight * curve;
+          }
+        }
+
+        if (numRipples > 0) {
+          for (let j = 0; j < numRipples; j++) {
+            const rp = pixelWallRipples[j];
+            const dist = Math.hypot(tile.cx - rp.x, tile.cy - rp.y);
+            const ringDist = Math.abs(dist - rp.radius);
+            if (ringDist < 60) {
+              const ringFactor = 0.5 * (1.0 + Math.cos((ringDist / 60) * Math.PI));
+              target += clickPopHeight * ringFactor * rp.strength;
+            }
+          }
+        }
+
+        tile.targetPop = target;
+        tile.currentPop += (tile.targetPop - tile.currentPop) * springFactor;
+        tile.activeFactor = Math.max(0, Math.min(1, tile.currentPop / (clickPopHeight || 1)));
+      }
+
+      // Draw 2D wall
+      const isTransparent = (typeof transparentBgCheckbox !== "undefined" && transparentBgCheckbox) ? transparentBgCheckbox.checked : false;
+      if (!isTransparent) {
+        ctx.fillStyle = "#000000";
+        ctx.fillRect(0, 0, width, height);
+      } else {
+        ctx.clearRect(0, 0, width, height);
+      }
+
+      ctx.lineWidth = 1;
+
+      for (let i = 0; i < pixelWallTiles.length; i++) {
+        const tile = pixelWallTiles[i];
+        const pop = tile.currentPop;
+        const act = tile.activeFactor;
+        const x = tile.x;
+        const y = tile.y;
+
+        // 1. Bottom shadow bevel reveal on pop
+        if (pop > 0.5) {
+          ctx.fillStyle = "#080a0e";
+          ctx.fillRect(x, y + tileSize - pop, tileSize, pop);
+          ctx.strokeStyle = "rgba(0, 0, 0, 0.5)";
+          ctx.strokeRect(x, y + tileSize - pop, tileSize, pop);
+        }
+
+        // 2. Pixel face translated up
+        const topY = y - pop;
+        const rFill = Math.round(18 + (pr - 18) * Math.pow(act, 0.7));
+        const gFill = Math.round(21 + (pg - 21) * Math.pow(act, 0.7));
+        const bFill = Math.round(28 + (pb - 28) * Math.pow(act, 0.7));
+        ctx.fillStyle = act > 0.05 ? `rgb(${rFill}, ${gFill}, ${bFill})` : "rgb(18, 21, 28)";
+        ctx.fillRect(x, topY, tileSize, tileSize);
+
+        // Border outline
+        const borderAlpha = 0.08 + act * 0.55;
+        const edgeR = Math.round(60 + (pr - 60) * act);
+        const edgeG = Math.round(70 + (pg - 70) * act);
+        const edgeB = Math.round(85 + (pb - 85) * act);
+        ctx.strokeStyle = `rgba(${edgeR}, ${edgeG}, ${edgeB}, ${borderAlpha})`;
+        ctx.strokeRect(x + 0.5, topY + 0.5, tileSize - 1, tileSize - 1);
+
+        // Center micro accent dot
+        ctx.fillStyle = act > 0.1 ? `rgba(${pr}, ${pg}, ${pb}, 0.95)` : "rgba(255, 255, 255, 0.12)";
+        ctx.fillRect(x + tileSize * 0.5 - 1, topY + tileSize * 0.5 - 1, 2, 2);
+      }
+
+      // CRT scanlines
+      ctx.fillStyle = "rgba(0, 0, 0, 0.18)";
+      for (let y = 0; y < height; y += 4) {
+        ctx.fillRect(0, y, width, 1.5);
+      }
+
+      particleCounter.textContent = pixelWallTiles.length.toLocaleString();
+      raf = requestAnimationFrame(draw);
+      return;
+    }
+
+    // ══════════════════════════════════════════════════════════
+    //  PRESET 23: 3D CLOTH WAVE GRID
+    // ══════════════════════════════════════════════════════════
+    if (presetMode === "cloth-wave") {
+      const curDt = Math.min((time - lastTime) / 1000, 0.05);
+      const curElapsed = (time - loadTime) / 1000;
+      const t = curElapsed * speed * 0.8;
+
+      const cols = 60;
+      const rows = 34;
+      const spacingX = Math.max(20, Math.min(52, pixelSize * 1.8));
+      const spacingZ = Math.max(16, Math.min(38, pixelSize * 1.2));
+      const amp = 65 * Math.max(0.4, Math.min(2.0, arcThickness / 100));
+
+      const halfW = ((cols - 1) * spacingX) * 0.5;
+      const halfD = ((rows - 1) * spacingZ) * 0.5;
+
+      // Re-init cloth particles if grid size changed
+      if (!clothWaveInitialized || clothWaveParticles.length !== (rows * cols)) {
+        clothWaveParticles = [];
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            clothWaveParticles.push({
+              c, r,
+              wx: c * spacingX - halfW,
+              wz: r * spacingZ - halfD,
+              wy: 0,
+              screenX: 0,
+              screenY: 0,
+              screenRadius: 1,
+              elevationNorm: 0.5,
+              visible: true
+            });
+          }
+        }
+        clothWaveInitialized = true;
+      }
+
+      // Camera parameters (Wide landscape horizon across lower half of screen)
+      const camPitch = 0.44; // ~25 degrees downwards view
+      const cosPitch = Math.cos(camPitch);
+      const sinPitch = Math.sin(camPitch);
+      const camFov = 440;
+      const camDist = 580;
+      const camElev = 300 + (mouse.y - 0.5) * 80;
+      const camOffsetX = (mouse.x - 0.5) * 160;
+
+      const centerX = width * 0.5;
+      const centerY = height * 0.72;
+
+      // Parse user accent color & derive valley/peak tones
+      let hex = color.replace("#", "");
+      if (hex.length === 3) hex = hex.split("").map(c => c + c).join("");
+      const pr = parseInt(hex.substring(0, 2), 16) || 56;
+      const pg = parseInt(hex.substring(2, 4), 16) || 189;
+      const pb = parseInt(hex.substring(4, 6), 16) || 248;
+
+      // Valley RGB (deep ambient tint)
+      const vr = Math.round(pr * 0.22);
+      const vg = Math.round(pg * 0.22);
+      const vb = Math.round(pb * 0.40);
+
+      // Peak RGB (bright white highlight)
+      const peakR = 255, peakG = 255, peakB = 255;
+
+      // Update particle physics & 3D projection
+      for (let i = 0; i < clothWaveParticles.length; i++) {
+        const p = clothWaveParticles[i];
+        const wx = p.wx;
+        const wz = p.wz;
+
+        const wave1 = Math.sin(wx * 0.009 + wz * 0.008 + t * 1.4);
+        const wave2 = Math.cos(wx * 0.006 - wz * 0.011 + t * 0.9) * 0.7;
+        const wave3 = Math.sin((wx + wz) * 0.010 + t * 1.8) * 0.45;
+        const wave4 = Math.cos(Math.hypot(wx, wz) * 0.006 - t * 1.2) * 0.35;
+
+        const rawH = wave1 + wave2 + wave3 + wave4;
+        p.wy = rawH * (amp * 0.45);
+        p.elevationNorm = Math.max(0, Math.min(1, (rawH + 2.5) / 5.0));
+
+        const relX = wx - camOffsetX;
+        const relY = p.wy - camElev;
+        const relZ = wz + camDist;
+
+        const rotY = relY * cosPitch - relZ * sinPitch;
+        const rotZ = relY * sinPitch + relZ * cosPitch;
+
+        if (rotZ <= 10) {
+          p.visible = false;
+          continue;
+        }
+
+        p.visible = true;
+        const scale = camFov / rotZ;
+        p.screenX = centerX + relX * scale;
+        p.screenY = centerY - rotY * scale;
+        p.screenRadius = Math.max(0.4, (1.2 + 2.2 * p.elevationNorm) * scale * 1.3);
+      }
+
+      // Draw 3D cloth surface
+      const isTransparent = (typeof transparentBgCheckbox !== "undefined" && transparentBgCheckbox) ? transparentBgCheckbox.checked : false;
+      if (!isTransparent) {
+        ctx.fillStyle = "#000000";
+        ctx.fillRect(0, 0, width, height);
+      } else {
+        ctx.clearRect(0, 0, width, height);
+      }
+
+      // 1. Subtle cloth lattice connecting lines
+      ctx.lineWidth = 0.75;
+      ctx.strokeStyle = `rgba(${pr}, ${pg}, ${pb}, 0.08)`;
+      ctx.beginPath();
+      for (let r = 0; r < rows; r++) {
+        let drawing = false;
+        for (let c = 0; c < cols; c++) {
+          const p = clothWaveParticles[r * cols + c];
+          if (!p.visible) { drawing = false; continue; }
+          if (!drawing) { ctx.moveTo(p.screenX, p.screenY); drawing = true; }
+          else { ctx.lineTo(p.screenX, p.screenY); }
+        }
+      }
+      for (let c = 0; c < cols; c++) {
+        let drawing = false;
+        for (let r = 0; r < rows; r++) {
+          const p = clothWaveParticles[r * cols + c];
+          if (!p.visible) { drawing = false; continue; }
+          if (!drawing) { ctx.moveTo(p.screenX, p.screenY); drawing = true; }
+          else { ctx.lineTo(p.screenX, p.screenY); }
+        }
+      }
+      ctx.stroke();
+
+      // 2. Dots with Peak-to-Valley Depth Shading
+      for (let i = 0; i < clothWaveParticles.length; i++) {
+        const p = clothWaveParticles[i];
+        if (!p.visible) continue;
+
+        const norm = p.elevationNorm;
+        let rDot, gDot, bDot;
+
+        if (norm < 0.5) {
+          const factor = norm * 2.0;
+          rDot = Math.round(vr + (pr - vr) * factor);
+          gDot = Math.round(vg + (pg - vg) * factor);
+          bDot = Math.round(vb + (pb - vb) * factor);
+        } else {
+          const factor = (norm - 0.5) * 2.0;
+          rDot = Math.round(pr + (peakR - pr) * factor);
+          gDot = Math.round(pg + (peakG - pg) * factor);
+          bDot = Math.round(pb + (peakB - pb) * factor);
+        }
+
+        const alpha = 0.20 + norm * 0.75;
+        ctx.fillStyle = `rgba(${rDot}, ${gDot}, ${bDot}, ${alpha.toFixed(2)})`;
+        ctx.beginPath();
+        ctx.arc(p.screenX, p.screenY, p.screenRadius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // CRT scanlines
+      ctx.fillStyle = "rgba(0, 0, 0, 0.16)";
+      for (let y = 0; y < height; y += 4) {
+        ctx.fillRect(0, y, width, 1.5);
+      }
+
+      particleCounter.textContent = clothWaveParticles.length.toLocaleString();
+      raf = requestAnimationFrame(draw);
+      return;
+    }
 
     // ══════════════════════════════════════════════════════════
     //  STANDARD GRID PRESETS
-
     // ══════════════════════════════════════════════════════════
 
     // Coordinates based on center (static for led-arch)
@@ -4053,6 +4887,290 @@
       }
         `;
 
+      case "stacked-panels":
+        return `
+      // 20. 3D Isometric Stacked-Panel Wave
+      const cols = 24;
+      const rows = 24;
+      const spacingX = Math.max(16, pixelSize * 1.6);
+      const spacingZ = Math.max(16, pixelSize * 1.6);
+      const panelW = spacingX * 0.72;
+      const panelD = spacingZ * 0.72;
+      const angle = Math.PI / 6;
+      const cosA = Math.cos(angle);
+      const sinA = Math.sin(angle);
+      const centerX = width / 2;
+      const centerY = height / 2 + 30;
+      const halfGridX = ((cols - 1) * spacingX) / 2;
+      const halfGridZ = ((rows - 1) * spacingZ) / 2;
+
+      const project = (wx, wy, wz) => ({
+        x: centerX + (wx - wz) * cosA,
+        y: centerY + (wx + wz) * sinA - wy
+      });
+
+      const mx = mouse.x * width;
+      const my = mouse.y * height;
+      const gmx = ((mx - centerX) / cosA + (my - centerY) / sinA) * 0.5;
+      const gmz = ((my - centerY) / sinA - (mx - centerX) / cosA) * 0.5;
+
+      for (let depth = 0; depth <= (rows + cols - 2); depth++) {
+        for (let r = 0; r < rows; r++) {
+          const c = depth - r;
+          if (c < 0 || c >= cols) continue;
+          const wx = c * spacingX - halfGridX;
+          const wz = r * spacingZ - halfGridZ;
+          const d = Math.hypot(wx - gmx, wz - gmz);
+          const wave = Math.exp(-Math.pow(d / 220, 2));
+          const h = 10 + wave * 130 * (arcThickness / 8) + Math.sin(wx * 0.02 + wz * 0.02 + t * 2) * 4;
+
+          const hw = panelW / 2;
+          const hd = panelD / 2;
+          const b2 = project(wx + hw, 0, wz + hd);
+          const b3 = project(wx - hw, 0, wz + hd);
+          const b1 = project(wx + hw, 0, wz - hd);
+          const t0 = project(wx - hw, h, wz - hd);
+          const t1 = project(wx + hw, h, wz - hd);
+          const t2 = project(wx + hw, h, wz + hd);
+          const t3 = project(wx - hw, h, wz + hd);
+
+          // Left face
+          ctx.fillStyle = "rgb(18, 20, 24)";
+          ctx.beginPath();
+          ctx.moveTo(b3.x, b3.y); ctx.lineTo(b2.x, b2.y); ctx.lineTo(t2.x, t2.y); ctx.lineTo(t3.x, t3.y);
+          ctx.fill();
+
+          // Right face
+          ctx.fillStyle = "rgb(28, 30, 38)";
+          ctx.beginPath();
+          ctx.moveTo(b2.x, b2.y); ctx.lineTo(b1.x, b1.y); ctx.lineTo(t1.x, t1.y); ctx.lineTo(t2.x, t2.y);
+          ctx.fill();
+
+          // Top face
+          ctx.fillStyle = wave > 0.3 ? "rgba(" + baseR + "," + baseG + "," + baseB + ", 0.9)" : "rgb(38, 42, 52)";
+          ctx.beginPath();
+          ctx.moveTo(t0.x, t0.y); ctx.lineTo(t1.x, t1.y); ctx.lineTo(t2.x, t2.y); ctx.lineTo(t3.x, t3.y);
+          ctx.fill();
+          ctx.strokeStyle = "rgba(255, 255, 255, 0.12)";
+          ctx.stroke();
+        }
+      }
+        `;
+
+      case "stack-box":
+        return `
+      // 21. 3D Stack Box Layer Grid
+      const cols = 22;
+      const rows = 22;
+      const spacingX = Math.max(22, pixelSize * 2.0);
+      const spacingZ = Math.max(22, pixelSize * 2.0);
+      const boxW = spacingX * 0.74;
+      const boxD = spacingZ * 0.74;
+      const angle = Math.PI / 6;
+      const cosA = Math.cos(angle);
+      const sinA = Math.sin(angle);
+      const centerX = width / 2;
+      const centerY = height / 2 + 30;
+      const halfGridX = ((cols - 1) * spacingX) / 2;
+      const halfGridZ = ((rows - 1) * spacingZ) / 2;
+
+      const project = (wx, wy, wz) => ({
+        x: centerX + (wx - wz) * cosA,
+        y: centerY + (wx + wz) * sinA - wy
+      });
+
+      const mx = mouse.x * width;
+      const my = mouse.y * height;
+      const gmx = ((mx - centerX) / cosA + (my - centerY) / sinA) * 0.5;
+      const gmz = ((my - centerY) / sinA - (mx - centerX) / cosA) * 0.5;
+
+      const hw = boxW / 2;
+      const hd = boxD / 2;
+      const capHw = hw * 0.88;
+      const capHd = hd * 0.88;
+
+      for (let depth = 0; depth <= (rows + cols - 2); depth++) {
+        for (let r = 0; r < rows; r++) {
+          const c = depth - r;
+          if (c < 0 || c >= cols) continue;
+          const wx = c * spacingX - halfGridX;
+          const wz = r * spacingZ - halfGridZ;
+          const d = Math.hypot(wx - gmx, wz - gmz);
+          const pop = Math.max(0, 1 - d / 200);
+          const popCurve = 0.5 * (1 + Math.cos((1 - pop) * Math.PI));
+          const h = 8 + (pop > 0 ? popCurve * 26 * (arcThickness / 8) : 0) + Math.sin(wx * 0.01 + wz * 0.01 + t * 1.5) * 3;
+          const pH = h + (pop > 0.05 ? 4 : 0);
+
+          const b0 = project(wx - hw, 0, wz - hd);
+          const b1 = project(wx + hw, 0, wz - hd);
+          const b2 = project(wx + hw, 0, wz + hd);
+          const b3 = project(wx - hw, 0, wz + hd);
+
+          const t0 = project(wx - hw, h, wz - hd);
+          const t1 = project(wx + hw, h, wz - hd);
+          const t2 = project(wx + hw, h, wz + hd);
+          const t3 = project(wx - hw, h, wz + hd);
+
+          // Floor well
+          ctx.strokeStyle = "rgba(255, 255, 255, 0.04)";
+          ctx.beginPath();
+          ctx.moveTo(b0.x, b0.y); ctx.lineTo(b1.x, b1.y); ctx.lineTo(b2.x, b2.y); ctx.lineTo(b3.x, b3.y);
+          ctx.closePath();
+          ctx.stroke();
+
+          // Left facet (Secondary dark)
+          ctx.fillStyle = pop > 0.1 ? "rgb(24, 28, 38)" : "rgb(14, 16, 22)";
+          ctx.beginPath();
+          ctx.moveTo(b3.x, b3.y); ctx.lineTo(b2.x, b2.y); ctx.lineTo(t2.x, t2.y); ctx.lineTo(t3.x, t3.y);
+          ctx.fill();
+
+          // Right facet (Secondary midtone)
+          ctx.fillStyle = pop > 0.1 ? "rgb(36, 42, 56)" : "rgb(24, 28, 38)";
+          ctx.beginPath();
+          ctx.moveTo(b2.x, b2.y); ctx.lineTo(b1.x, b1.y); ctx.lineTo(t1.x, t1.y); ctx.lineTo(t2.x, t2.y);
+          ctx.fill();
+
+          // Top face (Primary)
+          ctx.fillStyle = pop > 0.1 ? "rgba(" + baseR + "," + baseG + "," + baseB + ", 0.85)" : "rgb(38, 44, 58)";
+          ctx.beginPath();
+          ctx.moveTo(t0.x, t0.y); ctx.lineTo(t1.x, t1.y); ctx.lineTo(t2.x, t2.y); ctx.lineTo(t3.x, t3.y);
+          ctx.fill();
+          ctx.strokeStyle = pop > 0.1 ? "rgba(255, 255, 255, 0.3)" : "rgba(255, 255, 255, 0.08)";
+          ctx.stroke();
+
+          // Floating Top Cap Plate
+          const cap0 = project(wx - capHw, pH, wz - capHd);
+          const cap1 = project(wx + capHw, pH, wz - capHd);
+          const cap2 = project(wx + capHw, pH, wz + capHd);
+          const cap3 = project(wx - capHw, pH, wz + capHd);
+          ctx.fillStyle = pop > 0.1 ? "rgba(255, 255, 255, 0.95)" : "rgba(100, 116, 139, 0.85)";
+          ctx.beginPath();
+          ctx.moveTo(cap0.x, cap0.y); ctx.lineTo(cap1.x, cap1.y); ctx.lineTo(cap2.x, cap2.y); ctx.lineTo(cap3.x, cap3.y);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+        }
+      }
+        `;
+
+      case "pixel-wall":
+        return `
+      // 22. 2D Pixel Pop Wall
+      const tileSize = Math.max(16, pixelSize * 1.5);
+      const gap = 3;
+      const stride = tileSize + gap;
+      const cols = Math.ceil(width / stride) + 1;
+      const rows = Math.ceil(height / stride) + 1;
+      const offsetX = (width - ((cols - 1) * stride + tileSize)) * 0.5;
+      const offsetY = (height - ((rows - 1) * stride + tileSize)) * 0.5;
+
+      const mx = mouse.x * width;
+      const my = mouse.y * height;
+
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const x = offsetX + c * stride;
+          const y = offsetY + r * stride;
+          const cx = x + tileSize * 0.5;
+          const cy = y + tileSize * 0.5;
+          const d = Math.hypot(cx - mx, cy - my);
+          const pop = Math.max(0, 1 - d / 120);
+          const popOffset = pop > 0 ? (0.5 * (1 + Math.cos((1 - pop) * Math.PI))) * 14 * (arcThickness / 8) : 0;
+
+          if (popOffset > 0.5) {
+            ctx.fillStyle = "#080a0e";
+            ctx.fillRect(x, y + tileSize - popOffset, tileSize, popOffset);
+          }
+
+          const topY = y - popOffset;
+          ctx.fillStyle = pop > 0.1 ? "rgba(" + baseR + "," + baseG + "," + baseB + ", 0.9)" : "rgb(18, 21, 28)";
+          ctx.fillRect(x, topY, tileSize, tileSize);
+
+          ctx.strokeStyle = pop > 0.1 ? "rgba(255, 255, 255, 0.4)" : "rgba(255, 255, 255, 0.08)";
+          ctx.strokeRect(x + 0.5, topY + 0.5, tileSize - 1, tileSize - 1);
+
+          ctx.fillStyle = pop > 0.1 ? "#ffffff" : "rgba(255, 255, 255, 0.15)";
+          ctx.fillRect(cx - 1, topY + tileSize * 0.5 - 1, 2, 2);
+        }
+      }
+        `;
+
+      case "cloth-wave":
+        return `
+      // 23. 3D Cloth Wave Grid
+      const cols = 40;
+      const rows = 40;
+      const spacingX = Math.max(16, pixelSize * 1.3);
+      const spacingZ = Math.max(16, pixelSize * 1.3);
+      const halfW = ((cols - 1) * spacingX) * 0.5;
+      const halfD = ((rows - 1) * spacingZ) * 0.5;
+
+      const camPitch = 0.52;
+      const cosPitch = Math.cos(camPitch);
+      const sinPitch = Math.sin(camPitch);
+      const camFov = 420;
+      const camDist = 600;
+      const camElev = 260 + (mouse.y - 0.5) * 80;
+      const camOffsetX = (mouse.x - 0.5) * 160;
+      const cx = width * 0.5;
+      const cy = height * 0.52;
+
+      const vr = Math.round(baseR * 0.22);
+      const vg = Math.round(baseG * 0.22);
+      const vb = Math.round(baseB * 0.40);
+
+      const pts = [];
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const wx = c * spacingX - halfW;
+          const wz = r * spacingZ - halfD;
+
+          const w1 = Math.sin(wx * 0.009 + wz * 0.008 + t * 1.4);
+          const w2 = Math.cos(wx * 0.006 - wz * 0.011 + t * 0.9) * 0.7;
+          const w3 = Math.sin((wx + wz) * 0.010 + t * 1.8) * 0.45;
+          const rawH = w1 + w2 + w3;
+          const wy = rawH * 32 * (arcThickness / 8);
+          const normElev = Math.max(0, Math.min(1, (rawH + 2.2) / 4.4));
+
+          const relX = wx - camOffsetX;
+          const relY = wy - camElev;
+          const relZ = wz + camDist;
+
+          const rotY = relY * cosPitch - relZ * sinPitch;
+          const rotZ = relY * sinPitch + relZ * cosPitch;
+
+          if (rotZ > 10) {
+            const scale = camFov / rotZ;
+            const sx = cx + relX * scale;
+            const sy = cy - rotY * scale;
+            const rad = Math.max(0.4, (1.2 + 2.2 * normElev) * scale * 1.3);
+            pts.push({ sx, sy, rad, normElev });
+          }
+        }
+      }
+
+      for (let i = 0; i < pts.length; i++) {
+        const p = pts[i];
+        const n = p.normElev;
+        let rDot, gDot, bDot;
+        if (n < 0.5) {
+          const f = n * 2.0;
+          rDot = Math.round(vr + (baseR - vr) * f);
+          gDot = Math.round(vg + (baseG - vg) * f);
+          bDot = Math.round(vb + (baseB - vb) * f);
+        } else {
+          const f = (n - 0.5) * 2.0;
+          rDot = Math.round(baseR + (255 - baseR) * f);
+          gDot = Math.round(baseG + (255 - baseG) * f);
+          bDot = Math.round(baseB + (255 - baseB) * f);
+        }
+        ctx.fillStyle = "rgba(" + rDot + "," + gDot + "," + bDot + "," + (0.2 + n * 0.75) + ")";
+        ctx.beginPath();
+        ctx.arc(p.sx, p.sy, p.rad, 0, Math.PI * 2);
+        ctx.fill();
+      }
+        `;
+
       default:
         return `
       const pitch = pixelSize;
@@ -4792,6 +5910,65 @@ const visualizer = new ${cleanPresetName}Visualizer(canvas, {
         strength: 1.0,
         decay: 1.2
       });
+    } else if (presetMode === "stacked-panels") {
+      const rect = canvas.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+      const angle = Math.PI / 6;
+      const cosA = Math.cos(angle);
+      const sinA = Math.sin(angle);
+      const centerX = width / 2;
+      const centerY = height / 2 + 30;
+      const dxScreen = clickX - centerX;
+      const dyScreen = clickY - centerY;
+      const groundWx = (dxScreen / cosA + dyScreen / sinA) * 0.5;
+      const groundWz = (dyScreen / sinA - dxScreen / cosA) * 0.5;
+
+      stackedShockwaves.push({
+        wx: groundWx,
+        wz: groundWz,
+        radius: 0,
+        maxRadius: Math.max(width, height) * 0.8,
+        speed: 480,
+        strength: 1.2,
+        decay: 1.4
+      });
+    } else if (presetMode === "stack-box") {
+      const rect = canvas.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+      const angle = Math.PI / 6;
+      const cosA = Math.cos(angle);
+      const sinA = Math.sin(angle);
+      const centerX = width / 2;
+      const centerY = height / 2 + 30;
+      const dxScreen = clickX - centerX;
+      const dyScreen = clickY - centerY;
+      const groundWx = (dxScreen / cosA + dyScreen / sinA) * 0.5;
+      const groundWz = (dyScreen / sinA - dxScreen / cosA) * 0.5;
+
+      stackBoxShockwaves.push({
+        wx: groundWx,
+        wz: groundWz,
+        radius: 0,
+        maxRadius: Math.max(width, height) * 0.8,
+        speed: 480,
+        strength: 1.2,
+        decay: 1.4
+      });
+    } else if (presetMode === "pixel-wall") {
+      const rect = canvas.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+      pixelWallRipples.push({
+        x: clickX,
+        y: clickY,
+        radius: 0,
+        maxRadius: Math.max(width, height) * 0.75,
+        speed: 380,
+        strength: 1.0,
+        decay: 1.5
+      });
     }
   };
 
@@ -4916,6 +6093,21 @@ const visualizer = new ${cleanPresetName}Visualizer(canvas, {
         flyingEagleSparks = [];
       } else if (presetMode === "amber-dispersion") {
         amberShockwaves = [];
+      } else if (presetMode === "stacked-panels") {
+        stackedPanelsInitialized = false;
+        stackedPanelsGrid = [];
+        stackedShockwaves = [];
+      } else if (presetMode === "stack-box") {
+        stackBoxInitialized = false;
+        stackBoxGrid = [];
+        stackBoxShockwaves = [];
+      } else if (presetMode === "pixel-wall") {
+        pixelWallInitialized = false;
+        pixelWallTiles = [];
+        pixelWallRipples = [];
+      } else if (presetMode === "cloth-wave") {
+        clothWaveInitialized = false;
+        clothWaveParticles = [];
       }
     });
 

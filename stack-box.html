@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D Stack Box Layer Grid — Interactive Background Animation</title>
+  <meta name="description" content="A high-performance 3D isometric stacked box layer grid background animation with spring lift hover physics and two-tone facet shading.">
+  <link rel="stylesheet" href="./effects/stack-box/styles.css">
+</head>
+<body>
+  <div id="canvas-container"></div>
+
+  <!-- Top Brand / Title -->
+  <header class="top-header">
+    <div class="brand-icon">3D</div>
+    <div class="title-group">
+      <h1>3D Stack Box Layer Grid</h1>
+      <span class="subtitle">Interactive Isometric Matrix · 120 FPS Engine</span>
+    </div>
+  </header>
+
+  <!-- Top Actions -->
+  <nav class="top-actions">
+    <a href="/" class="action-btn">← All Presets</a>
+    <a href="./stacked-panels.html" class="action-btn">Stacked Panels</a>
+    <button id="btn-toggle-hud" class="action-btn" title="Toggle HUD Controls (H)">HUD: ON</button>
+    <button id="btn-export-code" class="action-btn accent">Export HTML</button>
+  </nav>
+
+  <!-- Interactive HUD Controls -->
+  <aside class="hud-panel" id="hud-panel">
+    <div class="hud-header">
+      <h2>Grid & 3D Layer Config</h2>
+    </div>
+
+    <!-- Theme Selection -->
+    <div class="control-group">
+      <label>Color Theme</label>
+      <div class="theme-grid">
+        <button class="theme-pill active" data-theme="titanium">Titanium</button>
+        <button class="theme-pill" data-theme="obsidian">Obsidian</button>
+        <button class="theme-pill" data-theme="cyan">Cyan</button>
+        <button class="theme-pill" data-theme="amber">Amber</button>
+        <button class="theme-pill" data-theme="emerald">Emerald</button>
+      </div>
+    </div>
+
+    <!-- Box Hover Pop Height -->
+    <div class="control-group">
+      <label for="slider-pop-height">Hover Pop Height <span class="val" id="val-pop-height">24px</span></label>
+      <input type="range" id="slider-pop-height" min="8" max="60" value="24" step="1">
+    </div>
+
+    <!-- Hover Radius -->
+    <div class="control-group">
+      <label for="slider-radius">Hover Radius <span class="val" id="val-radius">180px</span></label>
+      <input type="range" id="slider-radius" min="80" max="360" value="180" step="5">
+    </div>
+
+    <!-- Spring Speed / Responsiveness -->
+    <div class="control-group">
+      <label for="slider-spring">Spring Speed <span class="val" id="val-spring">14.0</span></label>
+      <input type="range" id="slider-spring" min="4" max="30" value="14" step="0.5">
+    </div>
+
+    <!-- Idle Wave Amplitude -->
+    <div class="control-group">
+      <label for="slider-wave-amp">Idle Wave Height <span class="val" id="val-wave-amp">4.0px</span></label>
+      <input type="range" id="slider-wave-amp" min="0" max="15" value="4" step="0.5">
+    </div>
+
+    <!-- Idle Wave Speed -->
+    <div class="control-group">
+      <label for="slider-wave-speed">Wave Speed <span class="val" id="val-wave-speed">1.2x</span></label>
+      <input type="range" id="slider-wave-speed" min="0" max="4" value="1.2" step="0.1">
+    </div>
+
+    <!-- Grid Density / Box Size -->
+    <div class="control-group">
+      <label for="slider-box-size">Box Size <span class="val" id="val-box-size">34px</span></label>
+      <input type="range" id="slider-box-size" min="20" max="60" value="34" step="2">
+    </div>
+
+    <!-- Floating Top Plate Toggle -->
+    <div class="toggle-row">
+      <span>Layered Floating Plate</span>
+      <label class="switch">
+        <input type="checkbox" id="toggle-floating-plate" checked>
+        <span class="slider-round"></span>
+      </label>
+    </div>
+
+    <!-- Base Floor Well Toggle -->
+    <div class="toggle-row">
+      <span>Base Floor Well Outline</span>
+      <label class="switch">
+        <input type="checkbox" id="toggle-floor-well" checked>
+        <span class="slider-round"></span>
+      </label>
+    </div>
+
+    <!-- Click Cascading Shockwave -->
+    <div class="toggle-row">
+      <span>Click Pop Shockwave</span>
+      <label class="switch">
+        <input type="checkbox" id="toggle-click-shockwave" checked>
+        <span class="slider-round"></span>
+      </label>
+    </div>
+  </aside>
+
+  <!-- Bottom Info Badge -->
+  <div class="info-badge">
+    <div class="fps-dot"></div>
+    <span id="fps-counter">60 FPS</span>
+    <span>·</span>
+    <span id="box-count">0 Boxes</span>
+  </div>
+
+  <script type="module">
+    import { StackBoxEngine } from './effects/stack-box/StackBox.js';
+
+    const container = document.getElementById('canvas-container');
+    const engine = new StackBoxEngine(container, {
+      boxWidth: 34,
+      boxDepth: 34,
+      boxBaseHeight: 8,
+      popHeight: 24,
+      hoverRadius: 180,
+      springSpeed: 14.0,
+      idleWaveAmp: 4.0,
+      idleWaveSpeed: 1.2,
+      theme: 'titanium',
+      showFloatingPlate: true,
+      showFloorWell: true,
+      enableShockwaves: true
+    });
+
+    // FPS and Box Count monitors
+    let frameTimes = [];
+    const fpsCounter = document.getElementById('fps-counter');
+    const boxCounter = document.getElementById('box-count');
+
+    function updateStats(timestamp) {
+      while (frameTimes.length > 0 && frameTimes[0] <= timestamp - 1000) {
+        frameTimes.shift();
+      }
+      frameTimes.push(timestamp);
+      if (fpsCounter && frameTimes.length > 1) {
+        fpsCounter.textContent = `${frameTimes.length} FPS`;
+      }
+      if (boxCounter) {
+        boxCounter.textContent = `${engine.boxes.length} Boxes`;
+      }
+      requestAnimationFrame(updateStats);
+    }
+    requestAnimationFrame(updateStats);
+
+    // Theme selector
+    const themePills = document.querySelectorAll('.theme-pill');
+    themePills.forEach(pill => {
+      pill.addEventListener('click', () => {
+        themePills.forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+        engine.setTheme(pill.getAttribute('data-theme'));
+      });
+    });
+
+    // Range sliders
+    function bindSlider(id, valId, unit, optKey, parseFn = parseFloat) {
+      const slider = document.getElementById(id);
+      const val = document.getElementById(valId);
+      if (!slider || !val) return;
+      slider.addEventListener('input', (e) => {
+        const parsed = parseFn(e.target.value);
+        val.textContent = `${parsed}${unit}`;
+        engine.setOptions({ [optKey]: parsed });
+      });
+    }
+
+    bindSlider('slider-pop-height', 'val-pop-height', 'px', 'popHeight');
+    bindSlider('slider-radius', 'val-radius', 'px', 'hoverRadius');
+    bindSlider('slider-spring', 'val-spring', '', 'springSpeed');
+    bindSlider('slider-wave-amp', 'val-wave-amp', 'px', 'idleWaveAmp');
+    bindSlider('slider-wave-speed', 'val-wave-speed', 'x', 'idleWaveSpeed');
+
+    const boxSizeSlider = document.getElementById('slider-box-size');
+    const boxSizeVal = document.getElementById('val-box-size');
+    boxSizeSlider.addEventListener('input', (e) => {
+      const size = parseInt(e.target.value, 10);
+      boxSizeVal.textContent = `${size}px`;
+      engine.setOptions({ boxWidth: size, boxDepth: size });
+    });
+
+    // Switches
+    document.getElementById('toggle-floating-plate').addEventListener('change', (e) => {
+      engine.setOptions({ showFloatingPlate: e.target.checked });
+    });
+    document.getElementById('toggle-floor-well').addEventListener('change', (e) => {
+      engine.setOptions({ showFloorWell: e.target.checked });
+    });
+    document.getElementById('toggle-click-shockwave').addEventListener('change', (e) => {
+      engine.setOptions({ enableShockwaves: e.target.checked });
+    });
+
+    // HUD Toggle
+    const hudPanel = document.getElementById('hud-panel');
+    const btnToggleHud = document.getElementById('btn-toggle-hud');
+    function toggleHud() {
+      hudPanel.classList.toggle('hidden');
+      const isHidden = hudPanel.classList.contains('hidden');
+      btnToggleHud.textContent = isHidden ? 'HUD: OFF' : 'HUD: ON';
+    }
+    btnToggleHud.addEventListener('click', toggleHud);
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'h' || e.key === 'H') toggleHud();
+    });
+
+    // Export HTML
+    document.getElementById('btn-export-code').addEventListener('click', () => {
+      window.open('./stack-box-standalone.html', '_blank');
+    });
+  </script>
+</body>
+</html>
