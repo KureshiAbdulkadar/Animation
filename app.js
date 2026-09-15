@@ -160,6 +160,8 @@
   let pixelWallRipples = [];
   let clothWaveParticles = [];
   let clothWaveInitialized = false;
+  let clothWaveGlowCanvas = null;
+  let clothWaveGlowColor = null;
 
   const mouse = {
     x: 0.5,
@@ -3934,12 +3936,12 @@
     if (presetMode === "cloth-wave") {
       const curDt = Math.min((time - lastTime) / 1000, 0.05);
       const curElapsed = (time - loadTime) / 1000;
-      const t = curElapsed * speed * 0.8;
+      const t = curElapsed * speed * 0.85;
 
-      const cols = 60;
-      const rows = 34;
-      const spacingX = Math.max(20, Math.min(52, pixelSize * 1.8));
-      const spacingZ = Math.max(16, Math.min(38, pixelSize * 1.2));
+      const cols = 64;
+      const rows = 38;
+      const spacingX = Math.max(16, Math.min(48, pixelSize * 1.6));
+      const spacingZ = Math.max(12, Math.min(34, pixelSize * 1.1));
       const amp = 65 * Math.max(0.4, Math.min(2.0, arcThickness / 100));
 
       const halfW = ((cols - 1) * spacingX) * 0.5;
@@ -3950,6 +3952,10 @@
         clothWaveParticles = [];
         for (let r = 0; r < rows; r++) {
           for (let c = 0; c < cols; c++) {
+            const edgeU = Math.min(c, cols - 1 - c) / (cols * 0.16);
+            const edgeV = Math.min(r, rows - 1 - r) / (rows * 0.16);
+            const edgeFactor = Math.max(0, Math.min(1, Math.min(edgeU, edgeV)));
+
             clothWaveParticles.push({
               c, r,
               wx: c * spacingX - halfW,
@@ -3959,6 +3965,9 @@
               screenY: 0,
               screenRadius: 1,
               elevationNorm: 0.5,
+              specular: 0,
+              depthFogAlpha: 1,
+              edgeFactor,
               visible: true
             });
           }
@@ -3966,65 +3975,108 @@
         clothWaveInitialized = true;
       }
 
-      // Camera parameters (Wide landscape horizon across lower half of screen)
-      const camPitch = 0.44; // ~25 degrees downwards view
+      // Stable 3D Camera geometry without mouse perturbation
+      const camPitch = 0.48; // ~27.5 degrees downwards tilt
+      const camDist = 720;
+      const camHeight = 340;
+      const fov = 520;
+
       const cosPitch = Math.cos(camPitch);
       const sinPitch = Math.sin(camPitch);
-      const camFov = 440;
-      const camDist = 580;
-      const camElev = 300 + (mouse.y - 0.5) * 80;
-      const camOffsetX = (mouse.x - 0.5) * 160;
 
       const centerX = width * 0.5;
-      const centerY = height * 0.72;
+      const centerY = height * 0.58;
 
-      // Parse user accent color & derive valley/peak tones
+      // Parse user accent color & derive hue-accurate valley/peak tones
       let hex = color.replace("#", "");
       if (hex.length === 3) hex = hex.split("").map(c => c + c).join("");
       const pr = parseInt(hex.substring(0, 2), 16) || 56;
       const pg = parseInt(hex.substring(2, 4), 16) || 189;
       const pb = parseInt(hex.substring(4, 6), 16) || 248;
 
-      // Valley RGB (deep ambient tint)
-      const vr = Math.round(pr * 0.22);
-      const vg = Math.round(pg * 0.22);
-      const vb = Math.round(pb * 0.40);
+      // Valley: deep rich tone preserving exact hue
+      const vr = Math.round(pr * 0.16);
+      const vg = Math.round(pg * 0.16);
+      const vb = Math.round(pb * 0.16);
 
-      // Peak RGB (bright white highlight)
-      const peakR = 255, peakG = 255, peakB = 255;
+      // Peak: bright highlight with subtle tint of the base color
+      const peakR = Math.round(pr * 0.15 + 255 * 0.85);
+      const peakG = Math.round(pg * 0.15 + 255 * 0.85);
+      const peakB = Math.round(pb * 0.15 + 255 * 0.85);
+      const lx = 0.577, ly = 0.577, lz = -0.577;
+
+      // GPU Sprite cache for 60+ FPS peak bloom glow
+      if (!clothWaveGlowCanvas || clothWaveGlowColor !== color) {
+        clothWaveGlowColor = color;
+        clothWaveGlowCanvas = document.createElement("canvas");
+        clothWaveGlowCanvas.width = 64;
+        clothWaveGlowCanvas.height = 64;
+        const gctx = clothWaveGlowCanvas.getContext("2d");
+        const grad = gctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+        grad.addColorStop(0, `rgba(${pr}, ${pg}, ${pb}, 1)`);
+        grad.addColorStop(0.35, `rgba(${pr}, ${pg}, ${pb}, 0.45)`);
+        grad.addColorStop(0.7, `rgba(${pr}, ${pg}, ${pb}, 0.12)`);
+        grad.addColorStop(1, `rgba(${pr}, ${pg}, ${pb}, 0)`);
+        gctx.fillStyle = grad;
+        gctx.fillRect(0, 0, 64, 64);
+      }
 
       // Update particle physics & 3D projection
       for (let i = 0; i < clothWaveParticles.length; i++) {
         const p = clothWaveParticles[i];
+        
+        // Dynamically update world coords when spacing sliders change
+        p.wx = p.c * spacingX - halfW;
+        p.wz = p.r * spacingZ - halfD;
+
         const wx = p.wx;
         const wz = p.wz;
 
-        const wave1 = Math.sin(wx * 0.009 + wz * 0.008 + t * 1.4);
-        const wave2 = Math.cos(wx * 0.006 - wz * 0.011 + t * 0.9) * 0.7;
-        const wave3 = Math.sin((wx + wz) * 0.010 + t * 1.8) * 0.45;
-        const wave4 = Math.cos(Math.hypot(wx, wz) * 0.006 - t * 1.2) * 0.35;
+        // Fluid silk multi-harmonic waves
+        const a1 = wx * 0.006 * 1.3 + wz * 0.008 * 1.1 + t * 1.4;
+        const a2 = wx * 0.006 * 0.8 - wz * 0.008 * 1.6 + t * 0.9;
+        const a3 = (wx + wz) * 0.006 * 1.5 + t * 1.8;
+        const dist = Math.hypot(wx, wz);
+        const a4 = dist * 0.006 - t * 1.2;
 
-        const rawH = wave1 + wave2 + wave3 + wave4;
+        const rawH = Math.sin(a1) + Math.cos(a2) * 0.7 + Math.sin(a3) * 0.45 + Math.cos(a4) * 0.35;
+        const invDist = dist > 0.001 ? 1 / dist : 0;
+        const dh_dx = (Math.cos(a1) * 0.006 * 1.3 - Math.sin(a2) * 0.7 * 0.006 * 0.8 + Math.cos(a3) * 0.45 * 0.006 * 1.5 - Math.sin(a4) * 0.35 * 0.006 * (wx * invDist));
+        const dh_dz = (Math.cos(a1) * 0.008 * 1.1 + Math.sin(a2) * 0.7 * 0.008 * 1.6 + Math.cos(a3) * 0.45 * 0.006 * 1.5 - Math.sin(a4) * 0.35 * 0.006 * (wz * invDist));
+
         p.wy = rawH * (amp * 0.45);
         p.elevationNorm = Math.max(0, Math.min(1, (rawH + 2.5) / 5.0));
 
-        const relX = wx - camOffsetX;
-        const relY = p.wy - camElev;
-        const relZ = wz + camDist;
+        // Specular Slope Lighting
+        const nx = -dh_dx * (amp * 0.45) * 0.15;
+        const ny = 1.0;
+        const nz = -dh_dz * (amp * 0.45) * 0.15;
+        const nLen = Math.hypot(nx, ny, nz) || 1.0;
+        const dotL = Math.max(0, (nx / nLen) * lx + (ny / nLen) * ly + (nz / nLen) * lz);
+        p.specular = Math.pow(dotL, 4.0) * 0.75 + (p.elevationNorm > 0.65 ? (p.elevationNorm - 0.65) * 0.8 : 0);
 
-        const rotY = relY * cosPitch - relZ * sinPitch;
-        const rotZ = relY * sinPitch + relZ * cosPitch;
+        // Stable 3D Camera Transformation
+        const dx = wx;
+        const dy = p.wy - camHeight;
+        const dz = wz - camDist;
 
-        if (rotZ <= 10) {
+        const camSpaceX = dx;
+        const camSpaceY = dy * cosPitch - dz * sinPitch;
+        const camSpaceZ = -dy * sinPitch - dz * cosPitch;
+
+        if (camSpaceZ <= 10) {
           p.visible = false;
           continue;
         }
 
         p.visible = true;
-        const scale = camFov / rotZ;
-        p.screenX = centerX + relX * scale;
-        p.screenY = centerY - rotY * scale;
-        p.screenRadius = Math.max(0.4, (1.2 + 2.2 * p.elevationNorm) * scale * 1.3);
+        const scale = fov / camSpaceZ;
+        p.screenX = centerX + camSpaceX * scale;
+        p.screenY = centerY - camSpaceY * scale;
+        p.screenRadius = Math.max(0.5, (1.2 + 2.2 * p.elevationNorm) * scale * 1.25);
+
+        const fogFactor = Math.max(0, Math.min(1, 1 - (camSpaceZ - 450) / 750));
+        p.depthFogAlpha = fogFactor * p.edgeFactor;
       }
 
       // Draw 3D cloth surface
@@ -4037,14 +4089,14 @@
       }
 
       // 1. Subtle cloth lattice connecting lines
-      ctx.lineWidth = 0.75;
-      ctx.strokeStyle = `rgba(${pr}, ${pg}, ${pb}, 0.08)`;
+      ctx.lineWidth = 0.85;
+      ctx.strokeStyle = `rgba(${pr}, ${pg}, ${pb}, 0.12)`;
       ctx.beginPath();
       for (let r = 0; r < rows; r++) {
         let drawing = false;
         for (let c = 0; c < cols; c++) {
           const p = clothWaveParticles[r * cols + c];
-          if (!p.visible) { drawing = false; continue; }
+          if (!p.visible || p.depthFogAlpha < 0.02) { drawing = false; continue; }
           if (!drawing) { ctx.moveTo(p.screenX, p.screenY); drawing = true; }
           else { ctx.lineTo(p.screenX, p.screenY); }
         }
@@ -4053,17 +4105,38 @@
         let drawing = false;
         for (let r = 0; r < rows; r++) {
           const p = clothWaveParticles[r * cols + c];
-          if (!p.visible) { drawing = false; continue; }
+          if (!p.visible || p.depthFogAlpha < 0.02) { drawing = false; continue; }
           if (!drawing) { ctx.moveTo(p.screenX, p.screenY); drawing = true; }
           else { ctx.lineTo(p.screenX, p.screenY); }
         }
       }
       ctx.stroke();
 
-      // 2. Dots with Peak-to-Valley Depth Shading
+      // 2. High-Performance Peak Glow / Bloom (GPU Sprite drawImage)
+      if (clothWaveGlowCanvas) {
+        for (let i = 0; i < clothWaveParticles.length; i++) {
+          const p = clothWaveParticles[i];
+          if (!p.visible || p.elevationNorm < 0.68 || p.depthFogAlpha < 0.1) continue;
+
+          const glowSize = p.screenRadius * (4.2 + p.elevationNorm * 3.0);
+          const glowAlpha = (p.elevationNorm - 0.68) * 3.0 * 0.35 * p.depthFogAlpha;
+
+          ctx.globalAlpha = Math.min(1.0, Math.max(0, glowAlpha));
+          ctx.drawImage(
+            clothWaveGlowCanvas,
+            p.screenX - glowSize,
+            p.screenY - glowSize,
+            glowSize * 2,
+            glowSize * 2
+          );
+        }
+        ctx.globalAlpha = 1.0;
+      }
+
+      // 3. Dots with Peak-to-Valley Depth & Specular Shading (Hue Accurate)
       for (let i = 0; i < clothWaveParticles.length; i++) {
         const p = clothWaveParticles[i];
-        if (!p.visible) continue;
+        if (!p.visible || p.depthFogAlpha < 0.01) continue;
 
         const norm = p.elevationNorm;
         let rDot, gDot, bDot;
@@ -4080,17 +4153,26 @@
           bDot = Math.round(pb + (peakB - pb) * factor);
         }
 
-        const alpha = 0.20 + norm * 0.75;
-        ctx.fillStyle = `rgba(${rDot}, ${gDot}, ${bDot}, ${alpha.toFixed(2)})`;
+        if (p.specular > 0.05) {
+          const specFactor = Math.min(1.0, p.specular) * 0.75;
+          rDot = Math.round(rDot + (255 - rDot) * specFactor);
+          gDot = Math.round(gDot + (255 - gDot) * specFactor);
+          bDot = Math.round(bDot + (255 - bDot) * specFactor);
+        }
+
+        const baseAlpha = 0.25 + norm * 0.75;
+        const finalAlpha = Math.max(0, Math.min(1, baseAlpha * p.depthFogAlpha));
+
+        ctx.fillStyle = `rgba(${rDot}, ${gDot}, ${bDot}, ${finalAlpha.toFixed(2)})`;
         ctx.beginPath();
         ctx.arc(p.screenX, p.screenY, p.screenRadius, 0, Math.PI * 2);
         ctx.fill();
       }
 
-      // CRT scanlines
-      ctx.fillStyle = "rgba(0, 0, 0, 0.16)";
+      // Subtle CRT scanlines
+      ctx.fillStyle = "rgba(0, 0, 0, 0.12)";
       for (let y = 0; y < height; y += 4) {
-        ctx.fillRect(0, y, width, 1.5);
+        ctx.fillRect(0, y, width, 1.2);
       }
 
       particleCounter.textContent = clothWaveParticles.length.toLocaleString();
