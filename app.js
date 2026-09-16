@@ -162,12 +162,20 @@
   let clothWaveInitialized = false;
   let clothWaveGlowCanvas = null;
   let clothWaveGlowColor = null;
+  let flowVectorNodes = [];
+  let flowVectorInitialized = false;
 
   const mouse = {
     x: 0.5,
     y: 0.5,
     tx: 0.5,
     ty: 0.5,
+    px: 0.5,
+    py: 0.5,
+    vx: 0,
+    vy: 0,
+    speed: 0,
+    motionAngle: 0,
   };
 
   // Activity tracking for idle pulse
@@ -956,7 +964,7 @@
         mouse.tx = 0.5;
         mouse.ty = 0.5;
       }
-    } else if (presetMode === "stacked-panels" || presetMode === "stack-box" || presetMode === "pixel-wall" || presetMode === "cloth-wave") {
+    } else if (presetMode === "stacked-panels" || presetMode === "stack-box" || presetMode === "pixel-wall" || presetMode === "cloth-wave" || presetMode === "flow-vector-field") {
       // Direct high-responsiveness mouse tracking (0 artificial drag lag)
       mouse.x += (mouse.tx - mouse.x) * 0.45;
       mouse.y += (mouse.ty - mouse.y) * 0.45;
@@ -4181,6 +4189,172 @@
     }
 
     // ══════════════════════════════════════════════════════════
+    //  PRESET 24: VECTOR FLOW FIELD (Interactive Cursor Grid)
+    // ══════════════════════════════════════════════════════════
+    if (presetMode === "flow-vector-field") {
+      const spacing = Math.max(14, Math.min(36, pixelSize * 1.2));
+      const dashLength = Math.max(10, Math.min(30, spacing * 0.75));
+      const thickness = Math.max(1.4, Math.min(4.0, arcThickness / 45));
+
+      const cols = Math.ceil(width / spacing) + 2;
+      const rows = Math.ceil(height / spacing) + 2;
+      const totalCount = cols * rows;
+
+      if (!flowVectorInitialized || flowVectorNodes.length !== totalCount) {
+        flowVectorNodes = [];
+        const offsetX = (width - (cols - 1) * spacing) * 0.5;
+        const offsetY = (height - (rows - 1) * spacing) * 0.5;
+
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            flowVectorNodes.push({
+              x: offsetX + c * spacing,
+              y: offsetY + r * spacing,
+              c,
+              r,
+              currentAngle: 0,
+              currentIntensity: 0,
+              length: dashLength
+            });
+          }
+        }
+        flowVectorInitialized = true;
+      }
+
+      // Cursor position and movement tracking
+      const mx = isTrackingMouse ? mouse.x * width : -10000;
+      const my = isTrackingMouse ? mouse.y * height : -10000;
+      const radius = 170;
+      const motionAngle = mouse.motionAngle || 0;
+      const speed = mouse.speed || 0;
+
+      // Parse user accent color & derive highlight tones
+      let hex = color.replace("#", "");
+      if (hex.length === 3) hex = hex.split("").map(c => c + c).join("");
+      const pr = parseInt(hex.substring(0, 2), 16) || 249;
+      const pg = parseInt(hex.substring(2, 4), 16) || 115;
+      const pb = parseInt(hex.substring(4, 6), 16) || 22;
+
+      const baseR = pr, baseG = pg, baseB = pb;
+      const midR = Math.min(255, Math.round(pr * 1.05 + 10));
+      const midG = Math.min(255, Math.round(pg * 1.15 + 25));
+      const midB = Math.min(255, Math.round(pb * 1.10 + 35));
+
+      const crestR = Math.round(pr * 0.25 + 255 * 0.75);
+      const crestG = Math.round(pg * 0.25 + 255 * 0.75);
+      const crestB = Math.round(pb * 0.25 + 255 * 0.75);
+      const peakR = 255, peakG = 255, peakB = 255;
+
+      // Update node angles & intensity based on cursor proximity and movement direction
+      for (let i = 0; i < flowVectorNodes.length; i++) {
+        const node = flowVectorNodes[i];
+        let targetAngle = 0; // Stationary resting orientation (horizontal)
+        let targetIntensity = 0;
+
+        if (isTrackingMouse) {
+          const dx = node.x - mx;
+          const dy = node.y - my;
+          const dist = Math.hypot(dx, dy);
+
+          if (dist < radius) {
+            const factor = 1.0 - (dist / radius);
+            targetIntensity = factor * factor * (3.0 - 2.0 * factor); // smoothstep
+
+            // Follow cursor movement direction when moving, or radial orientation when resting
+            if (speed > 1.2) {
+              const radialAngle = Math.atan2(dy, dx);
+              targetAngle = motionAngle * 0.8 + radialAngle * 0.2;
+            } else {
+              targetAngle = Math.atan2(dy, dx);
+            }
+          }
+        }
+
+        // Smooth shortest-arc angle easing
+        const diff = Math.atan2(Math.sin(targetAngle - node.currentAngle), Math.cos(targetAngle - node.currentAngle));
+        node.currentAngle += diff * 0.16;
+        node.currentIntensity += (targetIntensity - node.currentIntensity) * (targetIntensity > node.currentIntensity ? 0.22 : 0.08);
+        node.length = dashLength * (0.9 + node.currentIntensity * 0.35);
+      }
+
+      // Decay mouse velocity
+      mouse.speed *= 0.85;
+
+      // Draw canvas
+      const isTransparent = (typeof transparentBgCheckbox !== "undefined" && transparentBgCheckbox) ? transparentBgCheckbox.checked : false;
+      if (!isTransparent) {
+        ctx.fillStyle = "#000000";
+        ctx.fillRect(0, 0, width, height);
+      } else {
+        ctx.clearRect(0, 0, width, height);
+      }
+
+      ctx.lineCap = "round";
+
+      // 1. Bloom Glow on Active Cursor Area
+      ctx.lineWidth = thickness * 3.4;
+      for (let i = 0; i < flowVectorNodes.length; i++) {
+        const node = flowVectorNodes[i];
+        if (node.currentIntensity < 0.25) continue;
+
+        const glowAlpha = (node.currentIntensity - 0.25) * 1.33 * 0.35;
+        const halfL = node.length * 0.65;
+        const dx = Math.cos(node.currentAngle) * halfL;
+        const dy = Math.sin(node.currentAngle) * halfL;
+
+        ctx.strokeStyle = `rgba(${baseR}, ${baseG}, ${baseB}, ${Math.min(1, glowAlpha).toFixed(3)})`;
+        ctx.beginPath();
+        ctx.moveTo(node.x - dx, node.y - dy);
+        ctx.lineTo(node.x + dx, node.y + dy);
+        ctx.stroke();
+      }
+
+      // 2. Main Dash Vector Field Pass (Illuminates under cursor)
+      ctx.lineWidth = thickness;
+      for (let i = 0; i < flowVectorNodes.length; i++) {
+        const node = flowVectorNodes[i];
+        const norm = node.currentIntensity;
+
+        let rDot, gDot, bDot;
+        if (norm <= 0.02) {
+          rDot = baseR;
+          gDot = baseG;
+          bDot = baseB;
+        } else if (norm < 0.5) {
+          const f = norm * 2.0;
+          rDot = Math.round(baseR + (midR - baseR) * f);
+          gDot = Math.round(baseG + (midG - baseG) * f);
+          bDot = Math.round(baseB + (midB - baseB) * f);
+        } else if (norm < 0.85) {
+          const f = (norm - 0.5) / 0.35;
+          rDot = Math.round(midR + (crestR - midR) * f);
+          gDot = Math.round(midG + (crestG - midG) * f);
+          bDot = Math.round(midB + (crestB - midB) * f);
+        } else {
+          const f = (norm - 0.85) / 0.15;
+          rDot = Math.round(crestR + (peakR - crestR) * f);
+          gDot = Math.round(crestG + (peakG - crestG) * f);
+          bDot = Math.round(crestB + (peakB - crestB) * f);
+        }
+
+        const alpha = 0.15 + norm * 0.85;
+        const halfL = node.length * 0.5;
+        const dx = Math.cos(node.currentAngle) * halfL;
+        const dy = Math.sin(node.currentAngle) * halfL;
+
+        ctx.strokeStyle = `rgba(${rDot}, ${gDot}, ${bDot}, ${alpha.toFixed(2)})`;
+        ctx.beginPath();
+        ctx.moveTo(node.x - dx, node.y - dy);
+        ctx.lineTo(node.x + dx, node.y + dy);
+        ctx.stroke();
+      }
+
+      particleCounter.textContent = flowVectorNodes.length.toLocaleString();
+      raf = requestAnimationFrame(draw);
+      return;
+    }
+
+    // ══════════════════════════════════════════════════════════
     //  STANDARD GRID PRESETS
     // ══════════════════════════════════════════════════════════
 
@@ -4386,19 +4560,42 @@
 
   // Mouse and Touch event listeners
   const updatePosition = (clientX, clientY) => {
+    let nx, ny;
     if (canvas) {
       const rect = canvas.getBoundingClientRect();
       if (rect.width > 0 && rect.height > 0) {
-        mouse.tx = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-        mouse.ty = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
+        nx = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+        ny = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
       } else {
-        mouse.tx = clientX / window.innerWidth;
-        mouse.ty = clientY / window.innerHeight;
+        nx = clientX / window.innerWidth;
+        ny = clientY / window.innerHeight;
       }
     } else {
-      mouse.tx = clientX / window.innerWidth;
-      mouse.ty = clientY / window.innerHeight;
+      nx = clientX / window.innerWidth;
+      ny = clientY / window.innerHeight;
     }
+
+    if (!isTrackingMouse) {
+      mouse.px = nx;
+      mouse.py = ny;
+    } else {
+      mouse.px = mouse.tx;
+      mouse.py = mouse.ty;
+    }
+
+    const dx = (nx - mouse.px) * width;
+    const dy = (ny - mouse.py) * height;
+    const dist = Math.hypot(dx, dy);
+
+    mouse.vx = dx;
+    mouse.vy = dy;
+    mouse.speed = dist;
+    if (dist > 1.2) {
+      mouse.motionAngle = Math.atan2(dy, dx);
+    }
+
+    mouse.tx = nx;
+    mouse.ty = ny;
     isTrackingMouse = true;
     lastActivityTime = performance.now();
   };
@@ -4408,8 +4605,11 @@
   };
 
   const onMouseLeave = () => {
-    mouse.tx = 0.5;
-    mouse.ty = 0.5;
+    mouse.tx = -1000;
+    mouse.ty = -1000;
+    mouse.vx = 0;
+    mouse.vy = 0;
+    mouse.speed = 0;
     isTrackingMouse = false;
   };
 
@@ -6190,6 +6390,9 @@ const visualizer = new ${cleanPresetName}Visualizer(canvas, {
       } else if (presetMode === "cloth-wave") {
         clothWaveInitialized = false;
         clothWaveParticles = [];
+      } else if (presetMode === "flow-vector-field") {
+        flowVectorInitialized = false;
+        flowVectorNodes = [];
       }
     });
 

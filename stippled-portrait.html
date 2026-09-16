@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stippled Particle Portrait — Pointillism Particle Assembly</title>
+  <link rel="stylesheet" href="./effects/stippled-portrait/styles.css">
+</head>
+<body>
+  <div id="canvas-container"></div>
+
+  <!-- Top-Left Title Badge -->
+  <div class="title-badge">
+    <h1>Stippled Particle Portrait</h1>
+    <p>Pointillism particle assembly &amp; luminance-weighted stippling</p>
+  </div>
+
+  <!-- Interactive Control HUD -->
+  <div class="hud-panel">
+    <div class="hud-header">
+      <div class="hud-title">Portrait Controls</div>
+      <div class="hud-badge" id="particle-counter">12,000 Dots</div>
+    </div>
+
+    <!-- Mode Selector -->
+    <div class="control-group">
+      <div class="control-label"><span>Animation State</span></div>
+      <div class="mode-pills">
+        <button class="mode-btn active" data-mode="assembling">Assemble</button>
+        <button class="mode-btn" data-mode="static">Static</button>
+        <button class="mode-btn" data-mode="scattered">Scatter</button>
+        <button class="mode-btn" id="btn-reassemble">Replay</button>
+      </div>
+    </div>
+
+    <!-- Particle Count -->
+    <div class="control-group">
+      <div class="control-label">
+        <span>Particle Density</span>
+        <span class="control-val" id="val-count">12,000</span>
+      </div>
+      <input type="range" id="slider-count" min="4000" max="24000" step="1000" value="12000">
+    </div>
+
+    <!-- Contrast & Threshold -->
+    <div class="control-group">
+      <div class="control-label">
+        <span>Contrast &amp; Depth</span>
+        <span class="control-val" id="val-contrast">1.3x</span>
+      </div>
+      <input type="range" id="slider-contrast" min="0.8" max="2.2" step="0.05" value="1.25">
+    </div>
+
+    <!-- Dot Size Scale -->
+    <div class="control-group">
+      <div class="control-label">
+        <span>Max Dot Size</span>
+        <span class="control-val" id="val-size">2.4px</span>
+      </div>
+      <input type="range" id="slider-size" min="1.0" max="4.5" step="0.1" value="2.4">
+    </div>
+
+    <!-- Spring Assembly Speed -->
+    <div class="control-group">
+      <div class="control-label">
+        <span>Assembly Tension</span>
+        <span class="control-val" id="val-tension">0.045</span>
+      </div>
+      <input type="range" id="slider-tension" min="0.01" max="0.1" step="0.005" value="0.045">
+    </div>
+
+    <!-- Custom Photo Upload Dropzone -->
+    <div class="control-group">
+      <div class="control-label"><span>Custom Portrait Photo</span></div>
+      <div class="upload-dropzone" id="dropzone">
+        <span id="dropzone-text">📷 Click or Drop Photo Here</span>
+        <input type="file" id="file-input" accept="image/*" style="display:none">
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <button class="action-btn primary" id="btn-trigger-assemble">
+      <span>✨ Assemble Portrait</span>
+    </button>
+  </div>
+
+  <script type="module">
+    import { StippledPortrait } from './effects/stippled-portrait/StippledPortrait.js';
+
+    const container = document.getElementById('canvas-container');
+    const portrait = new StippledPortrait(container, {
+      imageSrc: '/portrait.jpg',
+      particleCount: 12000,
+      initialState: 'assembling'
+    });
+
+    // UI Elements
+    const modeBtns = document.querySelectorAll('.mode-btn[data-mode]');
+    const btnReassemble = document.getElementById('btn-reassemble');
+    const btnTriggerAssemble = document.getElementById('btn-trigger-assemble');
+    const sliderCount = document.getElementById('slider-count');
+    const valCount = document.getElementById('val-count');
+    const sliderContrast = document.getElementById('slider-contrast');
+    const valContrast = document.getElementById('val-contrast');
+    const sliderSize = document.getElementById('slider-size');
+    const valSize = document.getElementById('val-size');
+    const sliderTension = document.getElementById('slider-tension');
+    const valTension = document.getElementById('val-tension');
+    const particleCounter = document.getElementById('particle-counter');
+
+    modeBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        modeBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const mode = btn.dataset.mode;
+        if (mode === 'static') portrait.setStatic();
+        else if (mode === 'assembling') portrait.triggerAssemble();
+        else if (mode === 'scattered') portrait.triggerScatter();
+      });
+    });
+
+    const triggerReplay = () => {
+      portrait.triggerAssemble();
+      modeBtns.forEach(b => {
+        if (b.dataset.mode === 'assembling') b.classList.add('active');
+        else b.classList.remove('active');
+      });
+    };
+
+    btnReassemble.addEventListener('click', triggerReplay);
+    btnTriggerAssemble.addEventListener('click', triggerReplay);
+
+    sliderCount.addEventListener('input', (e) => {
+      const count = parseInt(e.target.value);
+      valCount.textContent = count.toLocaleString();
+      particleCounter.textContent = count.toLocaleString() + ' Dots';
+      portrait.setOptions({ particleCount: count });
+    });
+
+    sliderContrast.addEventListener('input', (e) => {
+      const c = parseFloat(e.target.value);
+      valContrast.textContent = c.toFixed(2) + 'x';
+      portrait.setOptions({ contrast: c });
+    });
+
+    sliderSize.addEventListener('input', (e) => {
+      const s = parseFloat(e.target.value);
+      valSize.textContent = s.toFixed(1) + 'px';
+      portrait.setOptions({ dotMaxSize: s });
+    });
+
+    sliderTension.addEventListener('input', (e) => {
+      const t = parseFloat(e.target.value);
+      valTension.textContent = t.toFixed(3);
+      portrait.setOptions({ springK: t });
+    });
+
+    // File Upload / Drop
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('file-input');
+    const dropzoneText = document.getElementById('dropzone-text');
+
+    dropzone.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files && e.target.files[0]) {
+        loadCustomFile(e.target.files[0]);
+      }
+    });
+
+    dropzone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropzone.classList.add('dragover');
+    });
+
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+
+    dropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+        loadCustomFile(e.dataTransfer.files[0]);
+      }
+    });
+
+    function loadCustomFile(file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          portrait.loadCustomImage(img);
+          dropzoneText.textContent = '✓ ' + file.name.substring(0, 18);
+          triggerReplay();
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+  </script>
+</body>
+</html>

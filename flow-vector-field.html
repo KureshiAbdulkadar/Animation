@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vector Flow Field — Interactive Cursor Dash Surface</title>
+  <meta name="description" content="An interactive grid of short dashes that rotate and illuminate to follow your cursor movement, with orange-to-white highlights on a black background.">
+  <link rel="stylesheet" href="./effects/flow-vector-field/styles.css">
+</head>
+<body>
+  <div id="canvas-container"></div>
+
+  <!-- Top Brand / Title -->
+  <header class="top-header">
+    <div class="brand-icon">VF</div>
+    <div class="title-group">
+      <h1>Vector Flow Field</h1>
+      <span class="subtitle">Interactive Cursor Grid · Orange-to-White Highlights</span>
+    </div>
+  </header>
+
+  <!-- Top Actions -->
+  <nav class="top-actions">
+    <a href="./index.html" class="action-btn">← All Presets</a>
+    <a href="./cloth-wave.html" class="action-btn">3D Cloth Wave</a>
+    <button id="btn-toggle-hud" class="action-btn" title="Toggle HUD Controls (H)">HUD: ON</button>
+    <button id="btn-export-code" class="action-btn accent">Export HTML</button>
+  </nav>
+
+  <!-- Interactive HUD Controls -->
+  <aside class="hud-panel" id="hud-panel">
+    <div class="hud-header">
+      <h2>Vector Field Config</h2>
+    </div>
+
+    <!-- Interaction Mode -->
+    <div class="control-group">
+      <label>Cursor Follow Mode</label>
+      <div class="mode-grid">
+        <button class="mode-pill active" data-mode="follow">Cursor Direction</button>
+        <button class="mode-pill" data-mode="radial">Radial Point</button>
+        <button class="mode-pill" data-mode="vortex">Vortex Swirl</button>
+      </div>
+    </div>
+
+    <!-- Theme Selection -->
+    <div class="control-group">
+      <label>Color Theme</label>
+      <div class="theme-grid">
+        <button class="theme-pill active" data-theme="orange">Amber Glow</button>
+        <button class="theme-pill" data-theme="sunset">Cyber Sunset</button>
+        <button class="theme-pill" data-theme="cyan">Electric Cyan</button>
+        <button class="theme-pill" data-theme="emerald">Emerald Aurora</button>
+        <button class="theme-pill" data-theme="violet">Neon Violet</button>
+        <button class="theme-pill" data-theme="silver">Silver Monolith</button>
+      </div>
+    </div>
+
+    <!-- Influence Radius -->
+    <div class="control-group">
+      <label for="slider-radius">Cursor Area Radius <span class="val" id="val-radius">160px</span></label>
+      <input type="range" id="slider-radius" min="80" max="320" value="160" step="5">
+    </div>
+
+    <!-- Grid Spacing / Density -->
+    <div class="control-group">
+      <label for="slider-density">Grid Spacing <span class="val" id="val-density">22px</span></label>
+      <input type="range" id="slider-density" min="14" max="38" value="22" step="1">
+    </div>
+
+    <!-- Dash Length -->
+    <div class="control-group">
+      <label for="slider-length">Dash Length <span class="val" id="val-length">16px</span></label>
+      <input type="range" id="slider-length" min="8" max="32" value="16" step="1">
+    </div>
+
+    <!-- Dash Thickness -->
+    <div class="control-group">
+      <label for="slider-thickness">Dash Thickness <span class="val" id="val-thickness">2.0px</span></label>
+      <input type="range" id="slider-thickness" min="1.0" max="4.5" value="2.0" step="0.2">
+    </div>
+
+    <!-- Cursor Bloom Glow -->
+    <div class="control-group">
+      <label for="slider-glow">Cursor Bloom Glow <span class="val" id="val-glow">1.0x</span></label>
+      <input type="range" id="slider-glow" min="0.0" max="2.0" value="1.0" step="0.1">
+    </div>
+
+    <!-- Toggles -->
+    <div class="toggle-row">
+      <span>Cursor Area Bloom Glow</span>
+      <label class="switch">
+        <input type="checkbox" id="toggle-glow" checked>
+        <span class="slider-round"></span>
+      </label>
+    </div>
+  </aside>
+
+  <!-- Bottom Info Badge -->
+  <div class="info-badge">
+    <div class="fps-dot"></div>
+    <span id="fps-counter">60 FPS</span>
+    <span>·</span>
+    <span id="node-count">3,200 Dashes</span>
+    <span>·</span>
+    <span id="mode-indicator">Cursor Direction</span>
+  </div>
+
+  <script type="module">
+    import { VectorFlowField, THEMES } from './effects/flow-vector-field/VectorFlowField.js';
+
+    const container = document.getElementById('canvas-container');
+    const engine = new VectorFlowField(container, {
+      gridSpacing: 22,
+      dashLength: 16,
+      dashThickness: 2.0,
+      influenceRadius: 160,
+      interactionMode: 'follow',
+      showGlow: true,
+      glowIntensity: 1.0
+    });
+
+    // Stats Monitor
+    let frameTimes = [];
+    const fpsCounter = document.getElementById('fps-counter');
+    const nodeCounter = document.getElementById('node-count');
+    const modeIndicator = document.getElementById('mode-indicator');
+
+    function updateStats(timestamp) {
+      while (frameTimes.length > 0 && frameTimes[0] <= timestamp - 1000) {
+        frameTimes.shift();
+      }
+      frameTimes.push(timestamp);
+      if (fpsCounter && frameTimes.length > 1) {
+        fpsCounter.textContent = `${frameTimes.length} FPS`;
+      }
+      if (nodeCounter) {
+        nodeCounter.textContent = `${engine.nodes.length.toLocaleString()} Dashes`;
+      }
+      requestAnimationFrame(updateStats);
+    }
+    requestAnimationFrame(updateStats);
+
+    // Follow Mode Selector
+    const modePills = document.querySelectorAll('.mode-pill');
+    modePills.forEach(pill => {
+      pill.addEventListener('click', () => {
+        modePills.forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+        const mode = pill.getAttribute('data-mode');
+        engine.setOptions({ interactionMode: mode });
+        if (modeIndicator) {
+          modeIndicator.textContent = pill.textContent;
+        }
+      });
+    });
+
+    // Theme Selector
+    const themePills = document.querySelectorAll('.theme-pill');
+    themePills.forEach(pill => {
+      pill.addEventListener('click', () => {
+        themePills.forEach(p => p.classList.remove('active'));
+        pill.classList.add('active');
+        const themeKey = pill.getAttribute('data-theme');
+        if (THEMES[themeKey]) {
+          engine.setTheme(themeKey);
+        }
+      });
+    });
+
+    // Range Sliders
+    function bindSlider(id, valId, unit, optKey, parseFn = parseFloat) {
+      const slider = document.getElementById(id);
+      const val = document.getElementById(valId);
+      if (!slider || !val) return;
+      slider.addEventListener('input', (e) => {
+        const parsed = parseFn(e.target.value);
+        val.textContent = `${parsed}${unit}`;
+        engine.setOptions({ [optKey]: parsed });
+      });
+    }
+
+    bindSlider('slider-radius', 'val-radius', 'px', 'influenceRadius', (v) => parseInt(v, 10));
+    bindSlider('slider-density', 'val-density', 'px', 'gridSpacing', (v) => parseInt(v, 10));
+    bindSlider('slider-length', 'val-length', 'px', 'dashLength', (v) => parseInt(v, 10));
+    bindSlider('slider-thickness', 'val-thickness', 'px', 'dashThickness');
+    bindSlider('slider-glow', 'val-glow', 'x', 'glowIntensity');
+
+    // Toggles
+    document.getElementById('toggle-glow').addEventListener('change', (e) => {
+      engine.setOptions({ showGlow: e.target.checked });
+    });
+
+    // HUD Toggle
+    const hudPanel = document.getElementById('hud-panel');
+    const btnToggleHud = document.getElementById('btn-toggle-hud');
+    function toggleHud() {
+      hudPanel.classList.toggle('hidden');
+      const isHidden = hudPanel.classList.contains('hidden');
+      btnToggleHud.textContent = isHidden ? 'HUD: OFF' : 'HUD: ON';
+    }
+    btnToggleHud.addEventListener('click', toggleHud);
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'h' || e.key === 'H') toggleHud();
+    });
+
+    // Export HTML
+    document.getElementById('btn-export-code').addEventListener('click', () => {
+      window.open('./flow-vector-field-standalone.html', '_blank');
+    });
+  </script>
+</body>
+</html>

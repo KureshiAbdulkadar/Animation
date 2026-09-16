@@ -20,7 +20,8 @@ export default defineConfig({
         stackedPanels: './stacked-panels.html',
         stackBox: './stack-box.html',
         pixelWall: './pixel-wall.html',
-        clothWave: './cloth-wave.html'
+        clothWave: './cloth-wave.html',
+        flowVectorField: './flow-vector-field.html'
       }
     }
   }

@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vector Flow Field — Interactive Cursor Dash Visualizer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #000000; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #fff; }
+    #canvas-container { position: absolute; inset: 0; width: 100%; height: 100%; background: #000000; }
+    canvas { display: block; width: 100%; height: 100%; }
+    .badge {
+      position: absolute; top: 16px; left: 16px; z-index: 10;
+      background: rgba(12, 14, 20, 0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px;
+      padding: 10px 16px; font-size: 13px; font-weight: 500;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.6); pointer-events: none;
+    }
+    .badge small { display: block; font-size: 11px; color: #94a3b8; font-weight: normal; margin-top: 2px; }
+  </style>
+</head>
+<body>
+  <div id="canvas-container"></div>
+  <div class="badge">
+    <strong>Vector Flow Field</strong>
+    <small>Hover/Move cursor to direct rotating dashes with orange-to-white highlights</small>
+  </div>
+
+  <script>
+    /* ═══════════════════════════════════════════════════════════════
+       INTERACTIVE CURSOR VECTOR FIELD (Standalone)
+       ═══════════════════════════════════════════════════════════════ */
+    const GRID_SPACING = 22;
+    const DASH_LENGTH = 16;
+    const DASH_THICKNESS = 2.0;
+    const INFLUENCE_RADIUS = 160;
+
+    // Orange-to-White color palette
+    const COLOR_BASE = [249, 115, 22];   // #f97316 (Primary Orange)
+    const COLOR_MID = [251, 146, 60];    // #fb923c (Bright Amber)
+    const COLOR_CREST = [254, 215, 170]; // #fed7aa (Warm Cream)
+    const COLOR_PEAK = [255, 255, 255];  // #ffffff (Pure White)
+    const DIM_ALPHA = 0.15;
+
+    const container = document.getElementById('canvas-container');
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    container.appendChild(canvas);
+
+    let width = window.innerWidth;
+    let height = window.innerHeight;
+    let dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+    function resize() {
+      width = window.innerWidth;
+      height = window.innerHeight;
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.floor(width * dpr);
+      canvas.height = Math.floor(height * dpr);
+      canvas.style.width = width + 'px';
+      canvas.style.height = height + 'px';
+      initGrid();
+    }
+    window.addEventListener('resize', resize);
+
+    let nodes = [];
+    function initGrid() {
+      nodes = [];
+      const cols = Math.ceil(width / GRID_SPACING) + 2;
+      const rows = Math.ceil(height / GRID_SPACING) + 2;
+      const offsetX = (width - (cols - 1) * GRID_SPACING) * 0.5;
+      const offsetY = (height - (rows - 1) * GRID_SPACING) * 0.5;
+
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          nodes.push({
+            x: offsetX + c * GRID_SPACING,
+            y: offsetY + r * GRID_SPACING,
+            currentAngle: 0,
+            currentIntensity: 0,
+            length: DASH_LENGTH
+          });
+        }
+      }
+    }
+    resize();
+
+    // Mouse Tracking
+    const mouse = {
+      x: -1000,
+      y: -1000,
+      px: -1000,
+      py: -1000,
+      vx: 0,
+      vy: 0,
+      speed: 0,
+      motionAngle: 0,
+      isHovering: false
+    };
+
+    function onPointerMove(clientX, clientY) {
+      const nx = clientX;
+      const ny = clientY;
+
+      if (!mouse.isHovering) {
+        mouse.px = nx;
+        mouse.py = ny;
+      } else {
+        mouse.px = mouse.x;
+        mouse.py = mouse.y;
+      }
+
+      mouse.x = nx;
+      mouse.y = ny;
+
+      const dx = mouse.x - mouse.px;
+      const dy = mouse.y - mouse.py;
+      const dist = Math.hypot(dx, dy);
+
+      mouse.vx = dx;
+      mouse.vy = dy;
+      mouse.speed = dist;
+
+      if (dist > 1.5) {
+        mouse.motionAngle = Math.atan2(dy, dx);
+      }
+      mouse.isHovering = true;
+    }
+
+    function onPointerLeave() {
+      mouse.isHovering = false;
+      mouse.x = -1000;
+      mouse.y = -1000;
+      mouse.vx = 0;
+      mouse.vy = 0;
+    }
+
+    window.addEventListener('mousemove', (e) => onPointerMove(e.clientX, e.clientY));
+    window.addEventListener('mouseleave', onPointerLeave);
+    window.addEventListener('touchmove', (e) => {
+      if (e.touches.length > 0) onPointerMove(e.touches[0].clientX, e.touches[0].clientY);
+    }, { passive: true });
+    window.addEventListener('touchend', onPointerLeave);
+
+    function lerpColor(c1, c2, t) {
+      return [
+        Math.round(c1[0] + (c2[0] - c1[0]) * t),
+        Math.round(c1[1] + (c2[1] - c1[1]) * t),
+        Math.round(c1[2] + (c2[2] - c1[2]) * t)
+      ];
+    }
+
+    function animate() {
+      mouse.vx *= 0.85;
+      mouse.vy *= 0.85;
+      mouse.speed *= 0.85;
+
+      // 1. Update Physics (Cursor-Only Activation)
+      for (let i = 0; i < nodes.length; i++) {
+        const node = nodes[i];
+        let targetAngle = 0;
+        let targetIntensity = 0;
+
+        if (mouse.isHovering) {
+          const dx = node.x - mouse.x;
+          const dy = node.y - mouse.y;
+          const dist = Math.hypot(dx, dy);
+
+          if (dist < INFLUENCE_RADIUS) {
+            const factor = 1.0 - (dist / INFLUENCE_RADIUS);
+            targetIntensity = factor * factor * (3.0 - 2.0 * factor);
+
+            if (mouse.speed > 1.2) {
+              const radialAngle = Math.atan2(dy, dx);
+              targetAngle = mouse.motionAngle * 0.75 + radialAngle * 0.25;
+            } else {
+              targetAngle = Math.atan2(dy, dx);
+            }
+          }
+        }
+
+        const diff = Math.atan2(Math.sin(targetAngle - node.currentAngle), Math.cos(targetAngle - node.currentAngle));
+        node.currentAngle += diff * 0.16;
+        node.currentIntensity += (targetIntensity - node.currentIntensity) * (targetIntensity > node.currentIntensity ? 0.22 : 0.08);
+        node.length = DASH_LENGTH * (0.9 + node.currentIntensity * 0.35);
+      }
+
+      // 2. Render
+      ctx.save();
+      ctx.scale(dpr, dpr);
+
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, width, height);
+
+      ctx.lineCap = 'round';
+
+      // Bloom Glow on Active Cursor Area
+      ctx.lineWidth = DASH_THICKNESS * 3.4;
+      for (let i = 0; i < nodes.length; i++) {
+        const node = nodes[i];
+        if (node.currentIntensity < 0.25) continue;
+
+        const glowAlpha = (node.currentIntensity - 0.25) * 1.33 * 0.35;
+        const halfL = node.length * 0.65;
+        const dx = Math.cos(node.currentAngle) * halfL;
+        const dy = Math.sin(node.currentAngle) * halfL;
+
+        ctx.strokeStyle = `rgba(${COLOR_BASE[0]}, ${COLOR_BASE[1]}, ${COLOR_BASE[2]}, ${Math.min(1, glowAlpha).toFixed(3)})`;
+        ctx.beginPath();
+        ctx.moveTo(node.x - dx, node.y - dy);
+        ctx.lineTo(node.x + dx, node.y + dy);
+        ctx.stroke();
+      }
+
+      // Main Vector Field Dashes (Orange -> Hot White Highlights under cursor)
+      ctx.lineWidth = DASH_THICKNESS;
+      for (let i = 0; i < nodes.length; i++) {
+        const node = nodes[i];
+        const norm = node.currentIntensity;
+
+        let rgb;
+        if (norm <= 0.02) {
+          rgb = COLOR_BASE;
+        } else if (norm < 0.5) {
+          rgb = lerpColor(COLOR_BASE, COLOR_MID, norm * 2.0);
+        } else if (norm < 0.85) {
+          rgb = lerpColor(COLOR_MID, COLOR_CREST, (norm - 0.5) / 0.35);
+        } else {
+          rgb = lerpColor(COLOR_CREST, COLOR_PEAK, (norm - 0.85) / 0.15);
+        }
+
+        const alpha = DIM_ALPHA + norm * (1.0 - DIM_ALPHA);
+        const halfL = node.length * 0.5;
+        const dx = Math.cos(node.currentAngle) * halfL;
+        const dy = Math.sin(node.currentAngle) * halfL;
+
+        ctx.strokeStyle = `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${alpha.toFixed(2)})`;
+        ctx.beginPath();
+        ctx.moveTo(node.x - dx, node.y - dy);
+        ctx.lineTo(node.x + dx, node.y + dy);
+        ctx.stroke();
+      }
+
+      ctx.restore();
+      requestAnimationFrame(animate);
+    }
+
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>
