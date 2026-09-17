@@ -3,18 +3,362 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Circus Light Halftone — Radiant Starburst & Marquee Wave Grid</title>
+  <title>Circus Light Halftone — Radiant Starburst & Marquee Wave Grid (Standalone)</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="effects/halftone-waves/styles.css">
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #08101e;
+      font-family: 'JetBrains Mono', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace;
+      color: #e2e8f0;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      user-select: none;
+    }
+
+    .ht-frame {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: radial-gradient(circle at 50% 50%, #0d182a 0%, #060b16 100%);
+    }
+
+    .ht-canvas-container {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+
+    .ht-topbar {
+      position: absolute;
+      top: 20px;
+      left: 24px;
+      right: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 20;
+      pointer-events: none;
+    }
+
+    .ht-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(13, 22, 38, 0.78);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      padding: 8px 16px;
+      border-radius: 9999px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      pointer-events: auto;
+    }
+
+    .ht-brand-icon {
+      width: 18px;
+      height: 18px;
+      fill: #ff7700;
+      filter: drop-shadow(0 0 6px rgba(255, 119, 0, 0.6));
+    }
+
+    .ht-brand-title {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      color: #f8fafc;
+    }
+
+    .ht-brand-tag {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #ff9d42;
+      background: rgba(255, 119, 0, 0.12);
+      padding: 2px 8px;
+      border-radius: 12px;
+    }
+
+    .ht-topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      pointer-events: auto;
+    }
+
+    .ht-action-btn {
+      background: rgba(13, 22, 38, 0.78);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: #e2e8f0;
+      padding: 8px 14px;
+      border-radius: 9999px;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .ht-action-btn:hover {
+      background: rgba(30, 48, 78, 0.85);
+      border-color: rgba(255, 255, 255, 0.2);
+      color: #fff;
+      transform: translateY(-1px);
+    }
+
+    .ht-hud-panel {
+      position: absolute;
+      top: 80px;
+      right: 24px;
+      width: 320px;
+      max-height: calc(100vh - 120px);
+      background: rgba(13, 22, 38, 0.82);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .ht-hud-panel.collapsed {
+      height: 48px;
+    }
+
+    .ht-hud-panel.collapsed .ht-hud-content {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .ht-hud-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 18px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .ht-hud-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      color: #f1f5f9;
+      text-transform: uppercase;
+    }
+
+    .ht-hud-title span:first-child {
+      color: #ff7700;
+    }
+
+    .ht-toggle-btn {
+      background: none;
+      border: none;
+      color: #94a3b8;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+
+    .ht-toggle-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+    }
+
+    .ht-hud-panel.collapsed .ht-toggle-btn svg {
+      transform: rotate(180deg);
+    }
+
+    .ht-hud-content {
+      padding: 16px 18px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      transition: opacity 0.2s;
+    }
+
+    .ht-hud-content::-webkit-scrollbar {
+      width: 4px;
+    }
+    .ht-hud-content::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 4px;
+    }
+
+    .ht-control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .ht-control-label-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: #94a3b8;
+      font-weight: 500;
+    }
+
+    .ht-val-badge {
+      font-family: inherit;
+      color: #f1f5f9;
+      font-size: 11px;
+      background: rgba(255, 255, 255, 0.06);
+      padding: 1px 6px;
+      border-radius: 4px;
+    }
+
+    .ht-select {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #f1f5f9;
+      padding: 7px 10px;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 12px;
+      outline: none;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+
+    .ht-select:focus {
+      border-color: rgba(255, 119, 0, 0.5);
+    }
+
+    .ht-slider {
+      width: 100%;
+      height: 4px;
+      -webkit-appearance: none;
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 2px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .ht-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #f8fafc;
+      box-shadow: 0 0 8px rgba(0, 0, 0, 0.6);
+      cursor: pointer;
+      transition: transform 0.1s, background 0.2s;
+    }
+
+    .ht-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+      background: #ff7700;
+    }
+
+    .ht-palette-row {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 6px;
+    }
+
+    .ht-color-btn {
+      height: 24px;
+      border-radius: 6px;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .ht-color-btn:hover {
+      transform: translateY(-2px);
+    }
+
+    .ht-color-btn.active {
+      border-color: #ffffff;
+      box-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+    }
+
+    .ht-bottom-bar {
+      position: absolute;
+      bottom: 20px;
+      left: 24px;
+      right: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 20;
+      pointer-events: none;
+    }
+
+    .ht-status-pill {
+      font-size: 11px;
+      color: #64748b;
+      background: rgba(13, 22, 38, 0.65);
+      backdrop-filter: blur(10px);
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      pointer-events: auto;
+    }
+
+    @media (max-width: 768px) {
+      .ht-hud-panel {
+        top: auto;
+        bottom: 20px;
+        right: 16px;
+        left: 16px;
+        width: auto;
+        max-height: 60vh;
+      }
+      .ht-topbar {
+        top: 14px;
+        left: 16px;
+        right: 16px;
+      }
+      .ht-bottom-bar {
+        display: none;
+      }
+    }
+  </style>
 </head>
 <body>
   <div class="ht-frame">
-    <!-- Main Canvas Mount Target -->
     <div id="ht-container" class="ht-canvas-container"></div>
 
-    <!-- Top Bar -->
     <header class="ht-topbar">
       <div class="ht-brand">
         <svg class="ht-brand-icon" viewBox="0 0 24 24">
@@ -43,7 +387,7 @@
           </svg>
           <span>Bulb Flash</span>
         </button>
-        <button id="ht-snapshot-btn" class="ht-action-btn" title="Save PNG Snapshot">
+        <button id="ht-snapshot-btn" class="ht-action-btn" title="Save Snapshot">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
             <circle cx="12" cy="13" r="4"/>
@@ -53,7 +397,6 @@
       </div>
     </header>
 
-    <!-- Floating HUD Control Panel -->
     <aside class="ht-hud-panel" id="ht-hud">
       <div class="ht-hud-header" id="ht-hud-header">
         <div class="ht-hud-title">
@@ -68,7 +411,6 @@
       </div>
 
       <div class="ht-hud-content">
-        <!-- Wave Pattern -->
         <div class="ht-control-group">
           <div class="ht-control-label-row">
             <span>Wave & Starburst Mode</span>
@@ -82,7 +424,6 @@
           </select>
         </div>
 
-        <!-- Color Palette -->
         <div class="ht-control-group">
           <div class="ht-control-label-row">
             <span>Color Palette</span>
@@ -97,7 +438,6 @@
           </div>
         </div>
 
-        <!-- Starburst Arms Count -->
         <div class="ht-control-group">
           <div class="ht-control-label-row">
             <span>Starburst Arms</span>
@@ -106,7 +446,6 @@
           <input type="range" id="ht-arms-slider" class="ht-slider" min="4" max="16" step="1" value="8">
         </div>
 
-        <!-- Spiral Twist Curvature -->
         <div class="ht-control-group">
           <div class="ht-control-label-row">
             <span>Spiral Twist Curvature</span>
@@ -115,7 +454,6 @@
           <input type="range" id="ht-twist-slider" class="ht-slider" min="0.000" max="0.024" step="0.001" value="0.008">
         </div>
 
-        <!-- Grid Spacing / Pitch Slider -->
         <div class="ht-control-group">
           <div class="ht-control-label-row">
             <span>Bulb Spacing (Pitch)</span>
@@ -124,7 +462,6 @@
           <input type="range" id="ht-pitch-slider" class="ht-slider" min="8" max="28" step="1" value="14">
         </div>
 
-        <!-- Speed Slider -->
         <div class="ht-control-group">
           <div class="ht-control-label-row">
             <span>Rotation & Wave Speed</span>
@@ -133,7 +470,6 @@
           <input type="range" id="ht-speed-slider" class="ht-slider" min="0.1" max="3.0" step="0.05" value="1.0">
         </div>
 
-        <!-- Max Bulb Scale -->
         <div class="ht-control-group">
           <div class="ht-control-label-row">
             <span>Max Bulb Size</span>
@@ -142,7 +478,6 @@
           <input type="range" id="ht-scale-slider" class="ht-slider" min="0.5" max="1.6" step="0.05" value="1.15">
         </div>
 
-        <!-- Contrast Curve -->
         <div class="ht-control-group">
           <div class="ht-control-label-row">
             <span>Bulb Contrast / Sharpness</span>
@@ -151,7 +486,6 @@
           <input type="range" id="ht-contrast-slider" class="ht-slider" min="0.6" max="2.5" step="0.1" value="1.4">
         </div>
 
-        <!-- Mouse Center Following Mode -->
         <div class="ht-control-group">
           <div class="ht-control-label-row">
             <span>Starburst Origin Hub</span>
@@ -162,7 +496,6 @@
           </select>
         </div>
 
-        <!-- Bulb Glow Toggle -->
         <div class="ht-control-group">
           <div class="ht-control-label-row">
             <span>Illuminated Filament Glow</span>
@@ -175,7 +508,6 @@
       </div>
     </aside>
 
-    <!-- Bottom Status Bar -->
     <div class="ht-bottom-bar">
       <div class="ht-status-pill">
         <span>Circus Light Starburst Matrix • Glowing Amber Bulbs • Move Mouse or Click Canvas</span>
@@ -186,10 +518,371 @@
     </div>
   </div>
 
-  <script type="module">
-    import { HalftoneWaves } from './effects/halftone-waves/HalftoneWaves.js';
+  <script>
+    class HalftoneWaves {
+      constructor(container, options = {}) {
+        this.container = typeof container === 'string' ? document.querySelector(container) : container;
+        if (!this.container) throw new Error('Invalid container element');
 
-    // Mount visualizer instance
+        this.options = Object.assign({
+          pattern: 'circus-starburst',
+          dotShape: 'circle',
+          gridPitch: 14,
+          staggerGrid: false,
+          armsCount: 8,
+          spiralTwist: 0.008,
+          maxDotScale: 1.15,
+          minDotScale: 0.05,
+          waveSpeed: 1.0,
+          contrast: 1.4,
+          colorScheme: 'circus-amber',
+          bulbGlow: true,
+          interactive: true,
+          mouseForce: 1.0,
+          followMouseCenter: false,
+          reducedMotion: false,
+          dprCap: 2
+        }, options);
+
+        this.canvas = document.createElement('canvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.canvas.style.display = 'block';
+        this.canvas.style.width = '100%';
+        this.canvas.style.height = '100%';
+        this.container.appendChild(this.canvas);
+
+        this.width = 0;
+        this.height = 0;
+        this.dpr = 1;
+        this.rafId = null;
+        this.startTime = performance.now();
+        this.lastTime = this.startTime;
+        this.isRunning = false;
+
+        this.mouse = {
+          x: -9999, y: -9999, targetX: -9999, targetY: -9999, isHovering: false
+        };
+
+        this.shockwaves = [];
+
+        this.handleResize();
+        this.bindEvents();
+        this.start();
+      }
+
+      getPalette(scheme) {
+        switch (scheme) {
+          case 'circus-amber':
+          default:
+            return {
+              bg: '#08101e',
+              bulb: '#ff7700',
+              bulbCore: '#ffe082',
+              dimBulb: '#e65100',
+              glow: 'rgba(255, 119, 0, 0.45)',
+              centerGlow: 'rgba(255, 119, 0, 0.08)'
+            };
+          case 'carnival-gold':
+            return {
+              bg: '#0c0e14',
+              bulb: '#ffb300',
+              bulbCore: '#fff9c4',
+              dimBulb: '#b26a00',
+              glow: 'rgba(255, 179, 0, 0.45)',
+              centerGlow: 'rgba(255, 179, 0, 0.09)'
+            };
+          case 'neon-coral':
+            return {
+              bg: '#0a0612',
+              bulb: '#ff3d00',
+              bulbCore: '#ffccbc',
+              dimBulb: '#b71c1c',
+              glow: 'rgba(255, 61, 0, 0.45)',
+              centerGlow: 'rgba(255, 61, 0, 0.08)'
+            };
+          case 'vegas-cyan':
+            return {
+              bg: '#041018',
+              bulb: '#00e5ff',
+              bulbCore: '#e0f7fa',
+              dimBulb: '#006064',
+              glow: 'rgba(0, 229, 255, 0.45)',
+              centerGlow: 'rgba(0, 229, 255, 0.08)'
+            };
+          case 'broadway-magenta':
+            return {
+              bg: '#0f0514',
+              bulb: '#f50057',
+              bulbCore: '#fce4ec',
+              dimBulb: '#880e4f',
+              glow: 'rgba(245, 0, 87, 0.45)',
+              centerGlow: 'rgba(245, 0, 87, 0.08)'
+            };
+          case 'editorial':
+            return {
+              bg: '#0a0a0c',
+              bulb: '#f8fafc',
+              bulbCore: '#ffffff',
+              dimBulb: '#64748b',
+              glow: 'rgba(255, 255, 255, 0.40)',
+              centerGlow: 'rgba(255, 255, 255, 0.06)'
+            };
+        }
+      }
+
+      calculateWaveValue(x, y, time) {
+        const pattern = this.options.pattern;
+        const speed = this.options.waveSpeed;
+        const t = time * speed;
+
+        let cx = this.width / 2;
+        let cy = this.height / 2;
+
+        if (this.options.followMouseCenter && this.mouse.isHovering) {
+          cx = this.mouse.x;
+          cy = this.mouse.y;
+        }
+
+        const dx = x - cx;
+        const dy = y - cy;
+        const r = Math.hypot(dx, dy);
+        const theta = Math.atan2(dy, dx);
+
+        let val = 0.5;
+
+        switch (pattern) {
+          case 'circus-starburst': {
+            const arms = this.options.armsCount;
+            const twist = this.options.spiralTwist;
+            const spiralAngle = theta * arms - r * twist - t * 1.8;
+            const spiralWave = Math.sin(spiralAngle);
+            const radialPulse = Math.cos(r * 0.035 - t * 2.2);
+            const diagWave = Math.sin(x * 0.015 + y * 0.015 + t * 0.8);
+            val = 0.5 + 0.5 * (spiralWave * 0.68 + radialPulse * 0.22 + diagWave * 0.10);
+            break;
+          }
+          case 'radial-pulse': {
+            const ringWave = Math.sin(r * 0.045 - t * 3.0);
+            const angularMod = Math.cos(theta * 6.0 + t * 0.8) * 0.25;
+            val = 0.5 + 0.5 * (ringWave * 0.8 + angularMod);
+            break;
+          }
+          case 'wave-ribbons': {
+            const w1 = Math.sin(x * 0.025 + Math.cos(y * 0.018) * 2.5 - t * 2.0);
+            const w2 = Math.cos(y * 0.030 + t * 1.5);
+            const w3 = Math.sin((x + y) * 0.018 - t * 1.2);
+            val = 0.5 + 0.5 * (w1 * 0.5 + w2 * 0.3 + w3 * 0.2);
+            break;
+          }
+          case 'dual-vortex': {
+            const c1x = this.width * 0.35, c1y = this.height * 0.5;
+            const c2x = this.width * 0.65, c2y = this.height * 0.5;
+            const r1 = Math.hypot(x - c1x, y - c1y), a1 = Math.atan2(y - c1y, x - c1x);
+            const r2 = Math.hypot(x - c2x, y - c2y), a2 = Math.atan2(y - c2y, x - c2x);
+            const v1 = Math.sin(a1 * 6 - r1 * 0.012 - t * 2.0);
+            const v2 = Math.sin(a2 * 6 + r2 * 0.012 + t * 2.0);
+            val = 0.5 + 0.5 * ((v1 + v2) * 0.5);
+            break;
+          }
+          case 'liquid-flow':
+          default: {
+            const nx = x * 0.008, ny = y * 0.008;
+            const qx = Math.sin(nx + t * 0.8 + Math.cos(ny));
+            const qy = Math.cos(ny - t * 0.7 + Math.sin(nx));
+            const w1 = Math.sin(nx * 2.0 + qx * 2.5 + t * 1.2);
+            const w2 = Math.cos(ny * 2.0 + qy * 2.5 - t * 1.0);
+            val = 0.5 + 0.5 * (w1 * 0.55 + w2 * 0.45);
+            break;
+          }
+        }
+
+        const contrast = this.options.contrast;
+        if (contrast !== 1.0) val = Math.pow(val, contrast);
+        return Math.max(0, Math.min(1, val));
+      }
+
+      bindEvents() {
+        this._onResize = () => this.handleResize();
+        window.addEventListener('resize', this._onResize);
+
+        this.canvas.addEventListener('mousemove', (e) => {
+          const rect = this.canvas.getBoundingClientRect();
+          this.mouse.targetX = e.clientX - rect.left;
+          this.mouse.targetY = e.clientY - rect.top;
+          this.mouse.isHovering = true;
+        });
+
+        this.canvas.addEventListener('mouseleave', () => {
+          this.mouse.targetX = -9999;
+          this.mouse.targetY = -9999;
+          this.mouse.isHovering = false;
+        });
+
+        this.canvas.addEventListener('mousedown', (e) => {
+          const rect = this.canvas.getBoundingClientRect();
+          this.triggerShockwave(e.clientX - rect.left, e.clientY - rect.top);
+        });
+
+        this.canvas.addEventListener('touchmove', (e) => {
+          if (!e.touches[0]) return;
+          const rect = this.canvas.getBoundingClientRect();
+          this.mouse.targetX = e.touches[0].clientX - rect.left;
+          this.mouse.targetY = e.touches[0].clientY - rect.top;
+          this.mouse.isHovering = true;
+        }, { passive: true });
+
+        this.canvas.addEventListener('touchend', () => {
+          this.mouse.targetX = -9999;
+          this.mouse.targetY = -9999;
+          this.mouse.isHovering = false;
+        });
+      }
+
+      triggerShockwave(originX, originY) {
+        this.shockwaves.push({
+          x: originX,
+          y: originY,
+          radius: 0,
+          maxRadius: Math.max(this.width, this.height) * 0.75,
+          speed: 16,
+          force: 1.0 * this.options.mouseForce,
+          alpha: 1.0
+        });
+      }
+
+      handleResize() {
+        const rect = this.container.getBoundingClientRect();
+        this.width = rect.width || window.innerWidth;
+        this.height = rect.height || window.innerHeight;
+        this.dpr = Math.min(this.options.dprCap, window.devicePixelRatio || 1);
+        this.canvas.width = Math.floor(this.width * this.dpr);
+        this.canvas.height = Math.floor(this.height * this.dpr);
+      }
+
+      start() {
+        if (this.isRunning) return;
+        this.isRunning = true;
+        this.lastTime = performance.now();
+
+        const loop = (time) => {
+          if (!this.isRunning) return;
+          this.lastTime = time;
+          this.render((time - this.startTime) / 1000);
+          this.rafId = requestAnimationFrame(loop);
+        };
+        this.rafId = requestAnimationFrame(loop);
+      }
+
+      render(elapsed) {
+        const ctx = this.ctx;
+        ctx.save();
+        ctx.scale(this.dpr, this.dpr);
+
+        const palette = this.getPalette(this.options.colorScheme);
+
+        if (this.mouse.isHovering) {
+          this.mouse.x += (this.mouse.targetX - this.mouse.x) * 0.2;
+          this.mouse.y += (this.mouse.targetY - this.mouse.y) * 0.2;
+        } else {
+          this.mouse.x = -9999;
+          this.mouse.y = -9999;
+        }
+
+        for (let i = this.shockwaves.length - 1; i >= 0; i--) {
+          const sw = this.shockwaves[i];
+          sw.radius += sw.speed;
+          sw.alpha = 1.0 - (sw.radius / sw.maxRadius);
+          if (sw.radius >= sw.maxRadius) this.shockwaves.splice(i, 1);
+        }
+
+        ctx.fillStyle = palette.bg;
+        ctx.fillRect(0, 0, this.width, this.height);
+
+        const cx = this.width / 2, cy = this.height / 2;
+        const maxDim = Math.max(this.width, this.height);
+        const radGlow = ctx.createRadialGradient(cx, cy, 20, cx, cy, maxDim * 0.7);
+        radGlow.addColorStop(0, palette.centerGlow);
+        radGlow.addColorStop(1, 'transparent');
+        ctx.fillStyle = radGlow;
+        ctx.fillRect(0, 0, this.width, this.height);
+
+        const pitch = Math.max(8, Math.min(36, this.options.gridPitch));
+        const stagger = this.options.staggerGrid;
+        const cols = Math.ceil(this.width / pitch) + 2;
+        const rows = Math.ceil(this.height / pitch) + 2;
+        const startX = -pitch, startY = -pitch;
+
+        const minRadius = (pitch / 2) * this.options.minDotScale;
+        const maxRadius = (pitch / 2) * this.options.maxDotScale;
+        const shape = this.options.dotShape;
+        const bulbGlow = this.options.bulbGlow;
+
+        for (let r = 0; r < rows; r++) {
+          const gridY = startY + r * pitch;
+          const staggerOffset = (stagger && (r % 2 === 1)) ? pitch * 0.5 : 0;
+
+          for (let c = 0; c < cols; c++) {
+            const gridX = startX + c * pitch + staggerOffset;
+
+            let wave = this.calculateWaveValue(gridX, gridY, elapsed);
+
+            if (this.mouse.isHovering && !this.options.followMouseCenter) {
+              const mdx = gridX - this.mouse.x, mdy = gridY - this.mouse.y;
+              const mDist = Math.hypot(mdx, mdy);
+              const mRadius = 150;
+              if (mDist < mRadius) {
+                const mPower = (1 - mDist / mRadius) * this.options.mouseForce;
+                wave = Math.min(1.0, wave + mPower * 0.55);
+              }
+            }
+
+            for (const sw of this.shockwaves) {
+              const sDist = Math.hypot(gridX - sw.x, gridY - sw.y);
+              const delta = Math.abs(sDist - sw.radius);
+              if (delta < 60) {
+                const swPower = (1 - delta / 60) * sw.force * sw.alpha;
+                wave = Math.min(1.0, wave + swPower);
+              }
+            }
+
+            const dotRadius = minRadius + (maxRadius - minRadius) * wave;
+            if (dotRadius <= 0.4) continue;
+
+            if (bulbGlow && wave > 0.65) {
+              const glowRadius = dotRadius * 1.8;
+              ctx.fillStyle = palette.glow;
+              ctx.beginPath();
+              ctx.arc(gridX, gridY, glowRadius, 0, Math.PI * 2);
+              ctx.fill();
+            }
+
+            ctx.fillStyle = wave > 0.4 ? palette.bulb : palette.dimBulb;
+            ctx.globalAlpha = Math.max(0.25, Math.min(1.0, 0.35 + wave * 0.65));
+
+            ctx.beginPath();
+            ctx.arc(gridX, gridY, dotRadius, 0, Math.PI * 2);
+            ctx.fill();
+
+            if (bulbGlow && wave > 0.72) {
+              const coreRadius = dotRadius * 0.45;
+              ctx.fillStyle = palette.bulb;
+              ctx.globalAlpha = (wave - 0.72) * 3.5;
+              ctx.beginPath();
+              ctx.arc(gridX, gridY, coreRadius, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
+        }
+
+        ctx.globalAlpha = 1.0;
+        ctx.restore();
+      }
+
+      setOption(key, val) {
+        this.options[key] = val;
+      }
+    }
+
     const visualizer = new HalftoneWaves('#ht-container', {
       pattern: 'circus-starburst',
       dotShape: 'circle',
@@ -205,19 +898,20 @@
       followMouseCenter: false
     });
 
-    // HUD Collapse toggle
     const hud = document.getElementById('ht-hud');
     const hudHeader = document.getElementById('ht-hud-header');
-    hudHeader.addEventListener('click', () => {
+    const toggleBtn = document.getElementById('ht-toggle');
+    const toggleHud = (e) => {
+      if (e) e.stopPropagation();
       hud.classList.toggle('collapsed');
-    });
+    };
+    if (hudHeader) hudHeader.addEventListener('click', toggleHud);
+    if (toggleBtn) toggleBtn.addEventListener('click', toggleHud);
 
-    // Pattern Selector
     document.getElementById('ht-wave-pattern').addEventListener('change', (e) => {
       visualizer.setOption('pattern', e.target.value);
     });
 
-    // Palette Buttons
     const colorBtns = document.querySelectorAll('.ht-color-btn');
     colorBtns.forEach(btn => {
       btn.addEventListener('click', () => {
@@ -227,7 +921,6 @@
       });
     });
 
-    // Arms Slider
     const armsSlider = document.getElementById('ht-arms-slider');
     const armsVal = document.getElementById('ht-arms-val');
     armsSlider.addEventListener('input', (e) => {
@@ -236,7 +929,6 @@
       visualizer.setOption('armsCount', v);
     });
 
-    // Twist Slider
     const twistSlider = document.getElementById('ht-twist-slider');
     const twistVal = document.getElementById('ht-twist-val');
     twistSlider.addEventListener('input', (e) => {
@@ -245,7 +937,6 @@
       visualizer.setOption('spiralTwist', v);
     });
 
-    // Pitch Slider
     const pitchSlider = document.getElementById('ht-pitch-slider');
     const pitchVal = document.getElementById('ht-pitch-val');
     pitchSlider.addEventListener('input', (e) => {
@@ -254,7 +945,6 @@
       visualizer.setOption('gridPitch', v);
     });
 
-    // Speed Slider
     const speedSlider = document.getElementById('ht-speed-slider');
     const speedVal = document.getElementById('ht-speed-val');
     speedSlider.addEventListener('input', (e) => {
@@ -263,7 +953,6 @@
       visualizer.setOption('waveSpeed', v);
     });
 
-    // Scale Slider
     const scaleSlider = document.getElementById('ht-scale-slider');
     const scaleVal = document.getElementById('ht-scale-val');
     scaleSlider.addEventListener('input', (e) => {
@@ -272,7 +961,6 @@
       visualizer.setOption('maxDotScale', v);
     });
 
-    // Contrast Slider
     const contrastSlider = document.getElementById('ht-contrast-slider');
     const contrastVal = document.getElementById('ht-contrast-val');
     contrastSlider.addEventListener('input', (e) => {
@@ -281,22 +969,18 @@
       visualizer.setOption('contrast', v);
     });
 
-    // Origin Select
     document.getElementById('ht-origin-select').addEventListener('change', (e) => {
       visualizer.setOption('followMouseCenter', e.target.value === 'mouse');
     });
 
-    // Glow Select
     document.getElementById('ht-glow-select').addEventListener('change', (e) => {
       visualizer.setOption('bulbGlow', e.target.value === 'on');
     });
 
-    // Shockwave Button
     document.getElementById('ht-shockwave-btn').addEventListener('click', () => {
       visualizer.triggerShockwave(visualizer.width / 2, visualizer.height / 2);
     });
 
-    // FPS Loop
     const fpsText = document.getElementById('ht-fps-text');
     let frameCount = 0, lastFpsCalc = performance.now();
     function fpsLoop() {
@@ -311,7 +995,6 @@
     }
     fpsLoop();
 
-    // Snapshot
     document.getElementById('ht-snapshot-btn').addEventListener('click', () => {
       const a = document.createElement('a');
       a.download = 'circus-light-starburst.png';

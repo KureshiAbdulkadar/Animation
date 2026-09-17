@@ -2161,9 +2161,9 @@
           ctx.arc(gridX, gridY, dotRadius, 0, Math.PI * 2);
           ctx.fill();
 
-          // Illuminated Core
+          // Illuminated Core highlight (pure accent color, no white wash)
           if (wave > 0.72) {
-            ctx.fillStyle = `rgba(255, 245, 200, ${(wave - 0.72) * 3.0})`;
+            ctx.fillStyle = `rgba(${baseR}, ${baseG}, ${baseB}, ${(wave - 0.72) * 2.2})`;
             ctx.beginPath();
             ctx.arc(gridX, gridY, dotRadius * 0.45, 0, Math.PI * 2);
             ctx.fill();
@@ -3256,7 +3256,7 @@
           } else {
             activeDotCount++;
             dotRadius = maxRadius * Math.min(1.0, 0.78 + density * 0.22);
-            dotColor = "#ffffff";
+            dotColor = color;
           }
 
           if (glowIntensity > 1.0 && density > 0.68) {
@@ -4618,7 +4618,39 @@
     // reserved for future shortcuts
   };
 
-  // ── Standalone exports code generator for all 19 shaders ─────────
+  // ── Preset Human-Readable Titles ─────────────────────────────────
+  const getPresetTitle = (preset) => {
+    const titles = {
+      "led-arch": "Classic LED Arch",
+      "ghosting": "Ghosting Flashlight",
+      "snake-game": "Retro Snake Grid",
+      "gravity-matrix": "Gravity Cascade",
+      "dot-globe": "3D Dot Globe",
+      "streamline-pinch": "Converging Streams",
+      "flow-field": "Particle Flow-Field",
+      "constellation-field": "Constellation Field",
+      "particle-wheel": "Particle Orbit Wheel",
+      "tech-boxes": "Tech Boxes",
+      "space-galaxy": "Space Galaxy",
+      "data-stream": "Data Matrix",
+      "wave-grid": "Ocean Wave Grid",
+      "pixel-build": "Pixel Matrix Build",
+      "nodejs-particles": "Node.js Particles",
+      "halftone-waves": "Halftone Wave Grid",
+      "kinetic-grid": "Kinetic Grid Morph",
+      "pixel-cascade": "Pixel Game Wall Cascade",
+      "flying-eagle": "Cyber Flying Eagle",
+      "amber-dispersion": "Amber Halftone Dispersion",
+      "stacked-panels": "Stacked-Panel Wave",
+      "stack-box": "3D Stack Box Layer Grid",
+      "pixel-wall": "2D Pixel Pop Wall",
+      "cloth-wave": "3D Cloth Wave Grid",
+      "flow-vector-field": "Vector Flow Field"
+    };
+    return titles[preset] || (preset ? preset.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ") : "Ambient Visualizer");
+  };
+
+  // ── Standalone exports code generator for all 24 shaders ─────────
   const getPresetCode = (preset) => {
     switch (preset) {
       case "led-arch":
@@ -4702,7 +4734,7 @@
             ctx.fillStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + Math.min(1, intensity) + ")";
             ctx.fillRect(x - cellSize / 2, y - cellSize / 2, cellSize, cellSize);
           } else {
-            ctx.fillStyle = transparent ? "rgba(255,255,255,0.02)" : "rgba(255,255,255,0.04)";
+            ctx.fillStyle = transparent ? "rgba(" + baseR + "," + baseG + "," + baseB + ",0.02)" : "rgba(" + baseR + "," + baseG + "," + baseB + ",0.05)";
             ctx.fillRect(x - cellSize / 2, y - cellSize / 2, cellSize, cellSize);
           }
         }
@@ -4833,6 +4865,42 @@
       }
         `;
 
+      case "constellation-field":
+        return `
+      // 08. Constellation Field
+      const count = 120;
+      const maxDist = arcThickness * 1.1;
+      const points = [];
+
+      for (let i = 0; i < count; i++) {
+        const px = ((i * 137.5 + t * 25 * (1 + (i % 3) * 0.2)) % width);
+        const py = ((i * 269.3 + Math.sin(t * 0.8 + i) * 40) % height);
+        points.push({ x: px, y: py });
+
+        ctx.fillStyle = "rgba(" + baseR + "," + baseG + "," + baseB + ", 0.9)";
+        ctx.beginPath();
+        ctx.arc(px, py, Math.max(0.8, pixelSize / 8), 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.lineWidth = 0.6;
+      for (let i = 0; i < points.length; i++) {
+        for (let j = i + 1; j < points.length; j++) {
+          const dx = points[i].x - points[j].x;
+          const dy = points[i].y - points[j].y;
+          const d = Math.sqrt(dx * dx + dy * dy);
+          if (d < maxDist) {
+            const alpha = (1.0 - d / maxDist) * 0.35 * glowIntensity;
+            ctx.strokeStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + alpha + ")";
+            ctx.beginPath();
+            ctx.moveTo(points[i].x, points[i].y);
+            ctx.lineTo(points[j].x, points[j].y);
+            ctx.stroke();
+          }
+        }
+      }
+        `;
+
       case "particle-wheel":
         return `
       // 09. Central Particle Orbit Wheel
@@ -4856,42 +4924,6 @@
         ctx.beginPath();
         ctx.arc(px, py, Math.max(0.6, pSize), 0, Math.PI * 2);
         ctx.fill();
-      }
-        `;
-
-      case "constellation-field":
-        return `
-      // 08. Constellation Field
-      const count = 120;
-      const maxDist = arcThickness * 1.1;
-      const points = [];
-
-      for (let i = 0; i < count; i++) {
-        const px = ((i * 137.5 + t * 25 * (1 + (i % 3) * 0.2)) % width);
-        const py = ((i * 269.3 + Math.sin(t * 0.8 + i) * 40) % height);
-        points.push({ x: px, y: py });
-
-        ctx.fillStyle = "#ffffff";
-        ctx.beginPath();
-        ctx.arc(px, py, Math.max(0.8, pixelSize / 8), 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      ctx.lineWidth = 0.6;
-      for (let i = 0; i < points.length; i++) {
-        for (let j = i + 1; j < points.length; j++) {
-          const dx = points[i].x - points[j].x;
-          const dy = points[i].y - points[j].y;
-          const d = Math.sqrt(dx * dx + dy * dy);
-          if (d < maxDist) {
-            const alpha = (1.0 - d / maxDist) * 0.35 * glowIntensity;
-            ctx.strokeStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + alpha + ")";
-            ctx.beginPath();
-            ctx.moveTo(points[i].x, points[i].y);
-            ctx.lineTo(points[j].x, points[j].y);
-            ctx.stroke();
-          }
-        }
       }
         `;
 
@@ -4962,7 +4994,7 @@
           if (y >= 0 && y < height) {
             const isHead = (k === 0);
             const alpha = isHead ? 1.0 : ((1.0 - k / streamLen) * 0.85) * glowIntensity;
-            ctx.fillStyle = isHead ? "#ffffff" : ("rgba(" + baseR + "," + baseG + "," + baseB + "," + Math.min(1, alpha) + ")");
+            ctx.fillStyle = isHead ? ("rgb(" + baseR + "," + baseG + "," + baseB + ")") : ("rgba(" + baseR + "," + baseG + "," + baseB + "," + Math.min(1, alpha) + ")");
             ctx.fillRect(c * colWidth + 2, y, colWidth - 4, colWidth - 2);
           }
         }
@@ -4995,9 +5027,30 @@
       }
         `;
 
+      case "pixel-build":
+        return `
+      // 14. Pixel Matrix Build
+      const pitch = Math.max(14, pixelSize);
+      const cols = Math.floor(width / pitch);
+      const rows = Math.floor(height / pitch);
+      const cx = cols / 2, cy = rows / 2;
+
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const d = Math.hypot(c - cx, r - cy);
+          const wave = Math.sin(d * 0.4 - t * 2.0);
+          if (wave > 0.1) {
+            const alpha = Math.min(1.0, wave * glowIntensity);
+            ctx.fillStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + alpha + ")";
+            ctx.fillRect(c * pitch + 1, r * pitch + 1, pitch - 2, pitch - 2);
+          }
+        }
+      }
+        `;
+
       case "nodejs-particles":
         return `
-      // 14. Node.js 3D Particles
+      // 15. Node.js 3D Particles
       const r = 135;
       const swayX = Math.sin(t * 0.85) * 14.0;
       const swayY = Math.cos(t * 1.15) * 9.0;
@@ -5030,32 +5083,70 @@
 
       case "halftone-waves":
         return `
-      // 15. Halftone Wave Grid & Circus Starburst
-      const pitch = Math.max(10, Math.min(32, pixelSize));
-      const cols = Math.floor(width / pitch);
-      const rows = Math.floor(height / pitch);
-      const cx = width * 0.5, cy = height * 0.5;
-      const maxRadius = pitch * 0.45;
+      // 16. Halftone Wave Grid & Circus Starburst
+      const pitch = Math.max(10, Math.min(36, pixelSize));
+      const cols = Math.ceil(width / pitch) + 2;
+      const rows = Math.ceil(height / pitch) + 2;
+      const startX = -pitch;
+      const startY = -pitch;
+
+      const minRadius = (pitch / 2) * 0.08;
+      const maxRadius = (pitch / 2) * 1.15;
+      const elapsed = t;
+
+      const cx = width / 2;
+      const cy = height / 2;
+
+      // Background ambient glow
+      const radGlow = ctx.createRadialGradient(cx, cy, 40, cx, cy, Math.max(width, height) * 0.6);
+      radGlow.addColorStop(0, "rgba(" + baseR + "," + baseG + "," + baseB + ", 0.12)");
+      radGlow.addColorStop(1, "transparent");
+      ctx.fillStyle = radGlow;
+      ctx.fillRect(0, 0, width, height);
+
       const arms = 8;
+      const twist = 0.008;
 
       for (let r = 0; r < rows; r++) {
-        const y = r * pitch + pitch / 2;
+        const gridY = startY + r * pitch;
         for (let c = 0; c < cols; c++) {
-          const x = c * pitch + pitch / 2;
-          const dx = x - cx;
-          const dy = y - cy;
+          const gridX = startX + c * pitch;
+          const dx = gridX - cx;
+          const dy = gridY - cy;
           const dist = Math.hypot(dx, dy);
-          const angle = Math.atan2(dy, dx);
-          
-          const starburst = Math.sin(angle * arms + dist * 0.008 - t * 2.2);
-          const radial = Math.cos(dist * 0.04 - t * 3.0) * 0.5;
-          const density = Math.max(0, Math.min(1, (starburst + radial + 1.2) * 0.45));
-          const dotR = maxRadius * Math.pow(density, 1.4);
+          const theta = Math.atan2(dy, dx);
 
-          if (dotR > 0.8) {
-            ctx.fillStyle = density > 0.75 ? "#ffffff" : ("rgba(" + baseR + "," + baseG + "," + baseB + "," + (0.3 + density * 0.7) + ")");
+          const spiralAngle = theta * arms - dist * twist - elapsed * 1.8;
+          const spiralWave = Math.sin(spiralAngle);
+          const radialPulse = Math.cos(dist * 0.035 - elapsed * 2.2);
+          const diagWave = Math.sin(gridX * 0.015 + gridY * 0.015 + elapsed * 0.8);
+
+          const raw = spiralWave * 0.68 + radialPulse * 0.22 + diagWave * 0.10;
+          const wave = Math.pow(Math.max(0, Math.min(1, 0.5 + 0.5 * raw)), 1.4);
+
+          const dotRadius = minRadius + (maxRadius - minRadius) * wave;
+          if (dotRadius <= 0.4) continue;
+
+          // Outer bulb glow
+          if (wave > 0.65 && glowIntensity > 1.2) {
+            ctx.fillStyle = "rgba(" + baseR + "," + baseG + "," + baseB + ", 0.25)";
             ctx.beginPath();
-            ctx.arc(x, y, dotR, 0, Math.PI * 2);
+            ctx.arc(gridX, gridY, dotRadius * 1.8, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          // Main bulb with user accent color
+          const alpha = Math.max(0.25, Math.min(1.0, 0.35 + wave * 0.65 * (glowIntensity / 2.0)));
+          ctx.fillStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + alpha + ")";
+          ctx.beginPath();
+          ctx.arc(gridX, gridY, dotRadius, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Illuminated core highlight (pure accent color, no white wash)
+          if (wave > 0.72) {
+            ctx.fillStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + ((wave - 0.72) * 2.2) + ")";
+            ctx.beginPath();
+            ctx.arc(gridX, gridY, dotRadius * 0.45, 0, Math.PI * 2);
             ctx.fill();
           }
         }
@@ -5064,7 +5155,7 @@
 
       case "kinetic-grid":
         return `
-      // 16. 3D Kinetic Grid Morph
+      // 17. 3D Kinetic Grid Morph
       const pitch = Math.max(16, pixelSize * 1.1);
       const cols = 28, rows = 28;
       const cx = width * 0.5, cy = height * 0.5;
@@ -5091,7 +5182,7 @@
 
       case "pixel-cascade":
         return `
-      // 17. Pixel Game Wall Cascade
+      // 18. Pixel Game Wall Cascade
       const pitch = Math.max(12, pixelSize);
       const cols = Math.floor(width / pitch);
       const rows = Math.floor(height / pitch);
@@ -5099,7 +5190,8 @@
       for (let c = 0; c < cols; c++) {
         const colHeight = Math.floor((Math.sin(c * 0.4 + t * 1.2) * 0.3 + 0.5) * rows * 0.7);
         for (let r = rows - colHeight; r < rows; r++) {
-          ctx.fillStyle = (r % 2 === 0) ? ("rgb(" + baseR + "," + baseG + "," + baseB + ")") : "#ffffff";
+          const secondaryCol = "rgba(" + Math.min(255, Math.round(baseR * 0.75 + 40)) + "," + Math.min(255, Math.round(baseG * 0.75 + 40)) + "," + Math.min(255, Math.round(baseB * 0.75 + 40)) + ", 0.9)";
+          ctx.fillStyle = (r % 2 === 0) ? ("rgb(" + baseR + "," + baseG + "," + baseB + ")") : secondaryCol;
           ctx.fillRect(c * pitch + 1, r * pitch + 1, pitch - 2, pitch - 2);
         }
       }
@@ -5107,7 +5199,7 @@
 
       case "flying-eagle":
         return `
-      // 18. Cyber Flying Eagle
+      // 19. Cyber Flying Eagle
       const pitch = Math.max(10, pixelSize);
       const cols = Math.floor(width / pitch);
       const rows = Math.floor(height / pitch);
@@ -5141,28 +5233,84 @@
 
       case "amber-dispersion":
         return `
-      // 19. Amber Halftone Dispersion
+      // 20. Amber Halftone Dispersion
       const pitch = Math.max(10, Math.min(32, pixelSize));
-      const cols = Math.floor(width / pitch);
-      const rows = Math.floor(height / pitch);
-      const maxR = pitch * 0.46;
+      const cols = Math.ceil(width / pitch);
+      const rows = Math.ceil(height / pitch);
+      const maxRadius = (pitch / 2) * 0.94;
+      const elapsed = t * 1.5;
+
+      const fastNoise3D = (x, y, z) => {
+        const X = Math.floor(x) & 255, Y = Math.floor(y) & 255, Z = Math.floor(z) & 255;
+        const fx = x - Math.floor(x), fy = y - Math.floor(y), fz = z - Math.floor(z);
+        const u = fx * fx * fx * (fx * (fx * 6 - 15) + 10);
+        const v = fy * fy * fy * (fy * (fy * 6 - 15) + 10);
+        const w = fz * fz * fz * (fz * (fz * 6 - 15) + 10);
+        const hash = (i, j, k) => {
+          let h = (i * 374761393 + j * 668265263 + k * 362827313) ^ 0x5bf03635;
+          h = Math.imul(h ^ (h >>> 13), 1274126177);
+          return (h ^ (h >>> 16)) / 2147483648;
+        };
+        const x0 = hash(X, Y, Z), x1 = hash(X + 1, Y, Z);
+        const x2 = hash(X, Y + 1, Z), x3 = hash(X + 1, Y + 1, Z);
+        const y0 = x0 + u * (x1 - x0), y1 = x2 + u * (x3 - x2);
+        const z0 = y0 + v * (y1 - y0);
+        const x4 = hash(X, Y, Z + 1), x5 = hash(X + 1, Y, Z + 1);
+        const x6 = hash(X, Y + 1, Z + 1), x7 = hash(X + 1, Y + 1, Z + 1);
+        const y2 = x4 + u * (x5 - x4), y3 = x6 + u * (x7 - x6);
+        const z1 = y2 + v * (y3 - y2);
+        return z0 + w * (z1 - z0);
+      };
 
       for (let r = 0; r < rows; r++) {
-        const v = r / rows;
-        const y = r * pitch + pitch / 2;
+        const baseY = r * pitch + pitch / 2;
+        const vNorm = baseY / height;
         for (let c = 0; c < cols; c++) {
-          const u = c / cols;
-          const x = c * pitch + pitch / 2;
-          const wave1 = Math.sin(u * 7.0 + v * 5.0 - t * 2.8);
-          const wave2 = Math.cos(u * 11.0 - v * 7.0 + t * 2.0) * 0.45;
-          const diagonal = (1.0 - u * 0.6) * (0.4 + v * 0.8);
-          const density = Math.max(0, Math.min(1.0, (wave1 + wave2 + 1.5) * 0.38 * diagonal));
+          const baseX = c * pitch + pitch / 2;
+          const uNorm = baseX / width;
 
-          if (density > 0.08) {
-            const dotR = Math.max(0.6, maxR * Math.pow(density, 1.3));
-            ctx.fillStyle = density > 0.8 ? "#ffffff" : ("rgba(" + baseR + "," + baseG + "," + baseB + "," + (0.2 + density * 0.8) + ")");
+          const nx = uNorm * 3.4;
+          const ny = vNorm * 2.6;
+
+          const wave1 = Math.sin(uNorm * 7.0 + vNorm * 5.0 - elapsed * 2.8);
+          const wave2 = Math.cos(uNorm * 11.0 - vNorm * 7.0 + elapsed * 2.0) * 0.45;
+          const wave3 = Math.sin(vNorm * 14.0 - elapsed * 3.5) * 0.25;
+
+          const noiseWarp = fastNoise3D(nx + wave1 * 0.5, ny + wave2 * 0.5, elapsed * 0.3) * 0.6;
+          const diagonalBias = (1.0 - uNorm * 0.6) * (0.4 + vNorm * 0.8);
+          const compositeWave = (wave1 + wave2 + wave3 + noiseWarp + 1.6) * 0.35;
+          let density = compositeWave * diagonalBias * 1.35;
+          density = Math.max(0, Math.min(1.0, Math.pow(density, 1.3)));
+
+          const waveElev = (wave1 + wave2 * 0.7) * 7.5;
+          const lateralWave = Math.cos(uNorm * 7.0 - elapsed * 2.8) * 3.5;
+          const gx = baseX + lateralWave;
+          const gy = baseY + waveElev;
+
+          let dotRadius = 0;
+          let dotColor = "rgba(" + baseR + "," + baseG + "," + baseB + ", 0.08)";
+
+          if (density < 0.08) {
+            dotRadius = 0.8;
+            dotColor = "rgba(" + baseR + "," + baseG + "," + baseB + ", 0.08)";
+          } else if (density < 0.3) {
+            dotRadius = 1.2 + density * maxRadius * 0.85;
+            dotColor = "rgba(" + baseR + "," + baseG + "," + baseB + ", 0.65)";
+          } else if (density < 0.6) {
+            dotRadius = maxRadius * (0.35 + density * 0.5);
+            dotColor = "rgba(" + baseR + "," + baseG + "," + baseB + ", 0.85)";
+          } else if (density < 0.85) {
+            dotRadius = maxRadius * (0.55 + density * 0.4);
+            dotColor = "rgb(" + baseR + "," + baseG + "," + baseB + ")";
+          } else {
+            dotRadius = maxRadius * Math.min(1.0, 0.78 + density * 0.22);
+            dotColor = "rgb(" + baseR + "," + baseG + "," + baseB + ")";
+          }
+
+          if (dotRadius > 0.4) {
+            ctx.fillStyle = dotColor;
             ctx.beginPath();
-            ctx.arc(x, y, dotR, 0, Math.PI * 2);
+            ctx.arc(gx, gy, dotRadius, 0, Math.PI * 2);
             ctx.fill();
           }
         }
@@ -5171,7 +5319,7 @@
 
       case "stacked-panels":
         return `
-      // 20. 3D Isometric Stacked-Panel Wave
+      // 21. 3D Isometric Stacked-Panel Wave
       const cols = 24;
       const rows = 24;
       const spacingX = Math.max(16, pixelSize * 1.6);
@@ -5191,20 +5339,15 @@
         y: centerY + (wx + wz) * sinA - wy
       });
 
-      const mx = mouse.x * width;
-      const my = mouse.y * height;
-      const gmx = ((mx - centerX) / cosA + (my - centerY) / sinA) * 0.5;
-      const gmz = ((my - centerY) / sinA - (mx - centerX) / cosA) * 0.5;
-
       for (let depth = 0; depth <= (rows + cols - 2); depth++) {
         for (let r = 0; r < rows; r++) {
           const c = depth - r;
           if (c < 0 || c >= cols) continue;
           const wx = c * spacingX - halfGridX;
           const wz = r * spacingZ - halfGridZ;
-          const d = Math.hypot(wx - gmx, wz - gmz);
-          const wave = Math.exp(-Math.pow(d / 220, 2));
-          const h = 10 + wave * 130 * (arcThickness / 8) + Math.sin(wx * 0.02 + wz * 0.02 + t * 2) * 4;
+          const d = Math.hypot(wx, wz);
+          const wave = Math.sin(d * 0.02 - t * 2.5) * 0.5 + 0.5;
+          const h = 10 + wave * 90 * (arcThickness / 8);
 
           const hw = panelW / 2;
           const hd = panelD / 2;
@@ -5216,19 +5359,16 @@
           const t2 = project(wx + hw, h, wz + hd);
           const t3 = project(wx - hw, h, wz + hd);
 
-          // Left face
           ctx.fillStyle = "rgb(18, 20, 24)";
           ctx.beginPath();
           ctx.moveTo(b3.x, b3.y); ctx.lineTo(b2.x, b2.y); ctx.lineTo(t2.x, t2.y); ctx.lineTo(t3.x, t3.y);
           ctx.fill();
 
-          // Right face
           ctx.fillStyle = "rgb(28, 30, 38)";
           ctx.beginPath();
           ctx.moveTo(b2.x, b2.y); ctx.lineTo(b1.x, b1.y); ctx.lineTo(t1.x, t1.y); ctx.lineTo(t2.x, t2.y);
           ctx.fill();
 
-          // Top face
           ctx.fillStyle = wave > 0.3 ? "rgba(" + baseR + "," + baseG + "," + baseB + ", 0.9)" : "rgb(38, 42, 52)";
           ctx.beginPath();
           ctx.moveTo(t0.x, t0.y); ctx.lineTo(t1.x, t1.y); ctx.lineTo(t2.x, t2.y); ctx.lineTo(t3.x, t3.y);
@@ -5241,7 +5381,7 @@
 
       case "stack-box":
         return `
-      // 21. 3D Stack Box Layer Grid
+      // 22. 3D Stack Box Layer Grid
       const cols = 22;
       const rows = 22;
       const spacingX = Math.max(22, pixelSize * 2.0);
@@ -5261,11 +5401,6 @@
         y: centerY + (wx + wz) * sinA - wy
       });
 
-      const mx = mouse.x * width;
-      const my = mouse.y * height;
-      const gmx = ((mx - centerX) / cosA + (my - centerY) / sinA) * 0.5;
-      const gmz = ((my - centerY) / sinA - (mx - centerX) / cosA) * 0.5;
-
       const hw = boxW / 2;
       const hd = boxD / 2;
       const capHw = hw * 0.88;
@@ -5277,10 +5412,9 @@
           if (c < 0 || c >= cols) continue;
           const wx = c * spacingX - halfGridX;
           const wz = r * spacingZ - halfGridZ;
-          const d = Math.hypot(wx - gmx, wz - gmz);
-          const pop = Math.max(0, 1 - d / 200);
-          const popCurve = 0.5 * (1 + Math.cos((1 - pop) * Math.PI));
-          const h = 8 + (pop > 0 ? popCurve * 26 * (arcThickness / 8) : 0) + Math.sin(wx * 0.01 + wz * 0.01 + t * 1.5) * 3;
+          const d = Math.hypot(wx, wz);
+          const pop = Math.sin(d * 0.02 - t * 2.2) * 0.5 + 0.5;
+          const h = 8 + pop * 24 * (arcThickness / 8) + Math.sin(wx * 0.01 + wz * 0.01 + t * 1.5) * 3;
           const pH = h + (pop > 0.05 ? 4 : 0);
 
           const b0 = project(wx - hw, 0, wz - hd);
@@ -5293,39 +5427,34 @@
           const t2 = project(wx + hw, h, wz + hd);
           const t3 = project(wx - hw, h, wz + hd);
 
-          // Floor well
           ctx.strokeStyle = "rgba(255, 255, 255, 0.04)";
           ctx.beginPath();
           ctx.moveTo(b0.x, b0.y); ctx.lineTo(b1.x, b1.y); ctx.lineTo(b2.x, b2.y); ctx.lineTo(b3.x, b3.y);
           ctx.closePath();
           ctx.stroke();
 
-          // Left facet (Secondary dark)
-          ctx.fillStyle = pop > 0.1 ? "rgb(24, 28, 38)" : "rgb(14, 16, 22)";
+          ctx.fillStyle = pop > 0.3 ? "rgb(24, 28, 38)" : "rgb(14, 16, 22)";
           ctx.beginPath();
           ctx.moveTo(b3.x, b3.y); ctx.lineTo(b2.x, b2.y); ctx.lineTo(t2.x, t2.y); ctx.lineTo(t3.x, t3.y);
           ctx.fill();
 
-          // Right facet (Secondary midtone)
-          ctx.fillStyle = pop > 0.1 ? "rgb(36, 42, 56)" : "rgb(24, 28, 38)";
+          ctx.fillStyle = pop > 0.3 ? "rgb(36, 42, 56)" : "rgb(24, 28, 38)";
           ctx.beginPath();
           ctx.moveTo(b2.x, b2.y); ctx.lineTo(b1.x, b1.y); ctx.lineTo(t1.x, t1.y); ctx.lineTo(t2.x, t2.y);
           ctx.fill();
 
-          // Top face (Primary)
-          ctx.fillStyle = pop > 0.1 ? "rgba(" + baseR + "," + baseG + "," + baseB + ", 0.85)" : "rgb(38, 44, 58)";
+          ctx.fillStyle = pop > 0.3 ? "rgba(" + baseR + "," + baseG + "," + baseB + ", 0.85)" : "rgb(38, 44, 58)";
           ctx.beginPath();
           ctx.moveTo(t0.x, t0.y); ctx.lineTo(t1.x, t1.y); ctx.lineTo(t2.x, t2.y); ctx.lineTo(t3.x, t3.y);
           ctx.fill();
-          ctx.strokeStyle = pop > 0.1 ? "rgba(255, 255, 255, 0.3)" : "rgba(255, 255, 255, 0.08)";
+          ctx.strokeStyle = pop > 0.3 ? "rgba(255, 255, 255, 0.3)" : "rgba(255, 255, 255, 0.08)";
           ctx.stroke();
 
-          // Floating Top Cap Plate
           const cap0 = project(wx - capHw, pH, wz - capHd);
           const cap1 = project(wx + capHw, pH, wz - capHd);
           const cap2 = project(wx + capHw, pH, wz + capHd);
           const cap3 = project(wx - capHw, pH, wz + capHd);
-          ctx.fillStyle = pop > 0.1 ? "rgba(255, 255, 255, 0.95)" : "rgba(100, 116, 139, 0.85)";
+          ctx.fillStyle = pop > 0.3 ? "rgba(" + baseR + "," + baseG + "," + baseB + ", 0.95)" : "rgba(100, 116, 139, 0.85)";
           ctx.beginPath();
           ctx.moveTo(cap0.x, cap0.y); ctx.lineTo(cap1.x, cap1.y); ctx.lineTo(cap2.x, cap2.y); ctx.lineTo(cap3.x, cap3.y);
           ctx.closePath();
@@ -5337,7 +5466,7 @@
 
       case "pixel-wall":
         return `
-      // 22. 2D Pixel Pop Wall
+      // 23. 2D Pixel Pop Wall
       const tileSize = Math.max(16, pixelSize * 1.5);
       const gap = 3;
       const stride = tileSize + gap;
@@ -5345,19 +5474,17 @@
       const rows = Math.ceil(height / stride) + 1;
       const offsetX = (width - ((cols - 1) * stride + tileSize)) * 0.5;
       const offsetY = (height - ((rows - 1) * stride + tileSize)) * 0.5;
-
-      const mx = mouse.x * width;
-      const my = mouse.y * height;
+      const cx = width * 0.5, cy = height * 0.5;
 
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
           const x = offsetX + c * stride;
           const y = offsetY + r * stride;
-          const cx = x + tileSize * 0.5;
-          const cy = y + tileSize * 0.5;
-          const d = Math.hypot(cx - mx, cy - my);
-          const pop = Math.max(0, 1 - d / 120);
-          const popOffset = pop > 0 ? (0.5 * (1 + Math.cos((1 - pop) * Math.PI))) * 14 * (arcThickness / 8) : 0;
+          const cellCx = x + tileSize * 0.5;
+          const cellCy = y + tileSize * 0.5;
+          const d = Math.hypot(cellCx - cx, cellCy - cy);
+          const pop = Math.max(0, Math.sin(d * 0.02 - t * 2.5));
+          const popOffset = pop * 14 * (arcThickness / 8);
 
           if (popOffset > 0.5) {
             ctx.fillStyle = "#080a0e";
@@ -5371,15 +5498,15 @@
           ctx.strokeStyle = pop > 0.1 ? "rgba(255, 255, 255, 0.4)" : "rgba(255, 255, 255, 0.08)";
           ctx.strokeRect(x + 0.5, topY + 0.5, tileSize - 1, tileSize - 1);
 
-          ctx.fillStyle = pop > 0.1 ? "#ffffff" : "rgba(255, 255, 255, 0.15)";
-          ctx.fillRect(cx - 1, topY + tileSize * 0.5 - 1, 2, 2);
+          ctx.fillStyle = pop > 0.1 ? "rgb(" + baseR + "," + baseG + "," + baseB + ")" : "rgba(255, 255, 255, 0.15)";
+          ctx.fillRect(cellCx - 1, topY + tileSize * 0.5 - 1, 2, 2);
         }
       }
         `;
 
       case "cloth-wave":
         return `
-      // 23. 3D Cloth Wave Grid
+      // 24. 3D Cloth Wave Grid
       const cols = 40;
       const rows = 40;
       const spacingX = Math.max(16, pixelSize * 1.3);
@@ -5392,8 +5519,7 @@
       const sinPitch = Math.sin(camPitch);
       const camFov = 420;
       const camDist = 600;
-      const camElev = 260 + (mouse.y - 0.5) * 80;
-      const camOffsetX = (mouse.x - 0.5) * 160;
+      const camElev = 260;
       const cx = width * 0.5;
       const cy = height * 0.52;
 
@@ -5414,7 +5540,7 @@
           const wy = rawH * 32 * (arcThickness / 8);
           const normElev = Math.max(0, Math.min(1, (rawH + 2.2) / 4.4));
 
-          const relX = wx - camOffsetX;
+          const relX = wx;
           const relY = wy - camElev;
           const relZ = wz + camDist;
 
@@ -5442,14 +5568,51 @@
           bDot = Math.round(vb + (baseB - vb) * f);
         } else {
           const f = (n - 0.5) * 2.0;
-          rDot = Math.round(baseR + (255 - baseR) * f);
-          gDot = Math.round(baseG + (255 - baseG) * f);
-          bDot = Math.round(baseB + (255 - baseB) * f);
+          rDot = Math.round(baseR + (255 - baseR) * f * 0.4);
+          gDot = Math.round(baseG + (255 - baseG) * f * 0.4);
+          bDot = Math.round(baseB + (255 - baseB) * f * 0.4);
         }
         ctx.fillStyle = "rgba(" + rDot + "," + gDot + "," + bDot + "," + (0.2 + n * 0.75) + ")";
         ctx.beginPath();
         ctx.arc(p.sx, p.sy, p.rad, 0, Math.PI * 2);
         ctx.fill();
+      }
+        `;
+
+      case "flow-vector-field":
+        return `
+      // 25. Vector Flow Field
+      const spacing = Math.max(14, Math.min(36, pixelSize * 1.2));
+      const dashLength = Math.max(10, Math.min(30, spacing * 0.75));
+      const thickness = Math.max(1.4, Math.min(4.0, arcThickness / 45));
+      const cols = Math.ceil(width / spacing) + 2;
+      const rows = Math.ceil(height / spacing) + 2;
+      const offsetX = (width - (cols - 1) * spacing) * 0.5;
+      const offsetY = (height - (rows - 1) * spacing) * 0.5;
+      const cx = width * 0.5, cy = height * 0.5;
+
+      ctx.lineCap = "round";
+      ctx.lineWidth = thickness;
+
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const x = offsetX + c * spacing;
+          const y = offsetY + r * spacing;
+          const dx = x - cx, dy = y - cy;
+          const dist = Math.hypot(dx, dy);
+          const angle = Math.atan2(dy, dx) + Math.sin(dist * 0.02 - t * 2.0) * 0.8;
+          const intensity = Math.max(0.15, Math.min(1.0, 0.4 + Math.sin(dist * 0.015 - t * 1.5) * 0.6));
+          const len = dashLength * intensity;
+
+          const hx = Math.cos(angle) * (len * 0.5);
+          const hy = Math.sin(angle) * (len * 0.5);
+
+          ctx.strokeStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + intensity * glowIntensity + ")";
+          ctx.beginPath();
+          ctx.moveTo(x - hx, y - hy);
+          ctx.lineTo(x + hx, y + hy);
+          ctx.stroke();
+        }
       }
         `;
 
@@ -5462,7 +5625,6 @@
       const rows = Math.floor(height / pitch);
       const offsetX = (width - cols * pitch) / 2;
       const offsetY = (height - rows * pitch) / 2;
-      
       const cx = width * 0.5;
       const cy = height * 0.5;
 
@@ -5490,29 +5652,32 @@
   const copyJsModuleCode = () => {
     const preset = presetMode;
     const cleanPresetName = preset.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join("");
+    const presetTitle = getPresetTitle(preset);
     const isTransparent = transparentBgCheckbox ? transparentBgCheckbox.checked : false;
 
     let codeStr = `/**
- * Standalone Canvas 2D Visualizer: ${cleanPresetName}
+ * Standalone Canvas 2D Visualizer: ${presetTitle}
+ * Preset Key: ${preset}
  * Primary Accent Color: ${color}
- * Throttled to 90 FPS
+ * Native 60+ FPS Hardware-Accelerated Animation Loop
  */
 export class ${cleanPresetName}Visualizer {
   constructor(canvas, options = {}) {
     this.canvas = canvas;
     this.ctx = canvas.getContext("2d");
     this.color = options.color || "${color}";
-    this.speed = options.speed || ${speed};
-    this.pixelSize = options.pixelSize || ${pixelSize};
-    this.arcThickness = options.arcThickness || ${arcThickness};
-    this.glowIntensity = options.glowIntensity || ${glowIntensity};
+    this.speed = options.speed !== undefined ? options.speed : ${speed};
+    this.pixelSize = options.pixelSize !== undefined ? options.pixelSize : ${pixelSize};
+    this.arcThickness = options.arcThickness !== undefined ? options.arcThickness : ${arcThickness};
+    this.glowIntensity = options.glowIntensity !== undefined ? options.glowIntensity : ${glowIntensity};
     this.transparent = options.transparent !== undefined ? options.transparent : ${isTransparent};
     
     this.width = 0;
     this.height = 0;
     this.raf = 0;
-    this.lastFrameTime = performance.now();
-    this.fpsInterval = 1000 / 90;
+    this.startTime = performance.now();
+    this.mouse = { x: 0, y: 0, isHover: false };
+    this._rgb = this.hexToRgb(this.color);
     
     this.init();
   }
@@ -5520,7 +5685,13 @@ export class ${cleanPresetName}Visualizer {
   init() {
     this.resize = this.resize.bind(this);
     this.draw = this.draw.bind(this);
+    this.onPointerMove = (e) => {
+      this.mouse.x = e.clientX;
+      this.mouse.y = e.clientY;
+      this.mouse.isHover = true;
+    };
     window.addEventListener("resize", this.resize);
+    window.addEventListener("pointermove", this.onPointerMove);
     this.resize();
     this.raf = requestAnimationFrame(this.draw);
   }
@@ -5528,21 +5699,13 @@ export class ${cleanPresetName}Visualizer {
   resize() {
     this.width = window.innerWidth;
     this.height = window.innerHeight;
-    const dpr = window.devicePixelRatio || 1;
-    this.canvas.width = this.width * dpr;
-    this.canvas.height = this.height * dpr;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    this.canvas.width = Math.floor(this.width * dpr);
+    this.canvas.height = Math.floor(this.height * dpr);
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
-  draw(time) {
-    const now = performance.now();
-    const elapsedFrame = now - this.lastFrameTime;
-    if (elapsedFrame < this.fpsInterval) {
-      this.raf = requestAnimationFrame(this.draw);
-      return;
-    }
-    this.lastFrameTime = now - (elapsedFrame % this.fpsInterval);
-
+   draw(time) {
     const ctx = this.ctx;
     const width = this.width;
     const height = this.height;
@@ -5555,13 +5718,16 @@ export class ${cleanPresetName}Visualizer {
       ctx.fillRect(0, 0, width, height);
     }
 
-    const t = time * 0.001 * this.speed;
-    const [baseR, baseG, baseB] = this.hexToRgb(this.color);
+    const t = ((time || performance.now()) - this.startTime) * 0.001 * this.speed;
+    const baseR = this._rgb[0], baseG = this._rgb[1], baseB = this._rgb[2];
     const speed = this.speed;
     const pixelSize = this.pixelSize;
     const arcThickness = this.arcThickness;
     const glowIntensity = this.glowIntensity;
     const transparent = this.transparent;
+    const mouse = this.mouse;
+    const color = this.color;
+    const hexToRgb = this.hexToRgb.bind(this);
 
     ${getPresetCode(preset).trim()}
 
@@ -5569,22 +5735,24 @@ export class ${cleanPresetName}Visualizer {
   }
 
   hexToRgb(hex) {
-    const val = hex.replace("#", "");
+    let value = (hex || "#f07c00").replace("#", "");
+    if (value.length === 3) value = value.split("").map(c => c + c).join("");
     return [
-      parseInt(val.substring(0, 2), 16),
-      parseInt(val.substring(2, 4), 16),
-      parseInt(val.substring(4, 6), 16)
+      parseInt(value.substring(0, 2), 16) || 240,
+      parseInt(value.substring(2, 4), 16) || 124,
+      parseInt(value.substring(4, 6), 16) || 0
     ];
   }
 
   destroy() {
     cancelAnimationFrame(this.raf);
     window.removeEventListener("resize", this.resize);
+    window.removeEventListener("pointermove", this.onPointerMove);
   }
 }`;
 
     navigator.clipboard.writeText(codeStr)
-      .then(() => alert(`Clean ES Module class code for ${cleanPresetName} copied to clipboard!`))
+      .then(() => alert("Clean ES Module class code for " + presetTitle + " copied to clipboard!"))
       .catch(err => {
         console.error("Could not copy text: ", err);
         alert("Clipboard copy failed. Standalone code generated:\n\n" + codeStr.substring(0, 200) + "...");
@@ -5593,105 +5761,172 @@ export class ${cleanPresetName}Visualizer {
 
   const downloadStandaloneHTML = () => {
     const preset = presetMode;
-    const cleanPresetName = preset.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join("");
+    const presetTitle = getPresetTitle(preset);
     const isTransparent = transparentBgCheckbox ? transparentBgCheckbox.checked : false;
+    const accentColor = color || "#f07c00";
+
+    // Pre-compute RGB from hex so it's baked into the exported file as constants
+    const hexVal = accentColor.replace("#", "");
+    const exportBaseR = parseInt(hexVal.substring(0, 2), 16) || 240;
+    const exportBaseG = parseInt(hexVal.substring(2, 4), 16) || 124;
+    const exportBaseB = parseInt(hexVal.substring(4, 6), 16) || 0;
 
     let htmlContent = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${cleanPresetName} - Standalone Visualizer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>${presetTitle} — Mizo Shader Visualizer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
-    body, html {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 100%; height: 100%; overflow: hidden;
       background: ${isTransparent ? 'transparent' : '#030704'};
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      user-select: none;
+      cursor: crosshair;
     }
-    #visualizer-canvas {
-      display: block;
-      width: 100%;
-      height: 100%;
+
+    #c {
+      display: block; width: 100%; height: 100%;
+      position: absolute; inset: 0; z-index: 1;
+    }
+
+    .h { position: fixed; z-index: 10; pointer-events: none; }
+
+    .tl {
+      top: 20px; left: 24px;
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .tl h1 {
+      font-size: 13px; font-weight: 600; margin: 0;
+      color: rgba(255,255,255,0.88);
+      letter-spacing: 0.5px; text-transform: uppercase;
+      text-shadow: 0 1px 8px rgba(0,0,0,0.6);
+    }
+    .tl p {
+      font-size: 11px; font-weight: 400; margin: 0;
+      color: rgba(255,255,255,0.45); letter-spacing: 0.3px;
+    }
+
+    .br {
+      bottom: 16px; right: 20px;
+      display: flex; align-items: center; gap: 10px;
+    }
+
+    .p {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 10px; border-radius: 6px;
+      background: rgba(255,255,255,0.06);
+      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,0.08);
+      font-size: 10px; font-weight: 500;
+      color: rgba(255,255,255,0.55);
+      letter-spacing: 0.4px; text-transform: uppercase;
+    }
+    .p .d {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: ${accentColor}; box-shadow: 0 0 6px ${accentColor}80;
+    }
+
+    .bl { bottom: 16px; left: 24px; }
+    .cb {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 10px; border-radius: 6px;
+      background: rgba(255,255,255,0.05);
+      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,0.08);
+      font-size: 10px; font-weight: 500;
+      color: rgba(255,255,255,0.50); letter-spacing: 0.3px;
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+    }
+    .cs {
+      width: 10px; height: 10px; border-radius: 3px;
+      background: ${accentColor}; border: 1px solid rgba(255,255,255,0.15);
     }
   </style>
 </head>
 <body>
-  <canvas id="visualizer-canvas"></canvas>
+  <canvas id="c"></canvas>
+  <div class="h tl"><h1>${presetTitle}</h1><p>Mizo Shader Suite • Standalone</p></div>
+  <div class="h bl"><div class="cb"><span class="cs"></span>${accentColor.toUpperCase()}</div></div>
+  <div class="h br"><div class="p"><span class="d"></span><span id="f">-- FPS</span></div><div class="p">CANVAS 2D</div></div>
+
   <script>
-    // Standalone Canvas visualizer code for ${cleanPresetName}
-    const canvas = document.getElementById("visualizer-canvas");
-    const ctx = canvas.getContext("2d");
-    
-    let width = window.innerWidth;
-    let height = window.innerHeight;
-    let raf = 0;
-    
-    const color = "${color}";
-    const speed = ${speed};
-    const pixelSize = ${pixelSize};
-    const arcThickness = ${arcThickness};
-    const glowIntensity = ${glowIntensity};
-    const transparent = ${isTransparent};
+    // ${presetTitle} — Standalone (${preset})
+    // Color: ${accentColor} | Zero dependencies | file:// safe
+    "use strict";
 
-    let lastFrameTime = performance.now();
-    const fpsInterval = 1000 / 90;
+    var canvas = document.getElementById("c");
+    var ctx = canvas.getContext("2d");
+    var W = 0, H = 0, raf = 0, t0 = performance.now();
 
-    // Hex to RGB Helper
-    const hexToRgb = (hex) => {
-      const value = hex.replace("#", "");
-      return [
-        parseInt(value.substring(0, 2), 16),
-        parseInt(value.substring(2, 4), 16),
-        parseInt(value.substring(4, 6), 16)
-      ];
+    // Baked color constants — no per-frame parsing
+    var color = "${accentColor}";
+    var speed = ${speed};
+    var pixelSize = ${pixelSize};
+    var arcThickness = ${arcThickness};
+    var glowIntensity = ${glowIntensity};
+    var transparent = ${isTransparent};
+    var baseR = ${exportBaseR}, baseG = ${exportBaseG}, baseB = ${exportBaseB};
+
+    // hexToRgb kept for presets that call it internally
+    var hexToRgb = function(hex) {
+      var v = (hex || "#f07c00").replace("#", "");
+      if (v.length === 3) v = v[0]+v[0]+v[1]+v[1]+v[2]+v[2];
+      return [parseInt(v.substring(0,2),16)||240, parseInt(v.substring(2,4),16)||124, parseInt(v.substring(4,6),16)||0];
     };
 
-    const resize = () => {
-      width = window.innerWidth;
-      height = window.innerHeight;
-      const dpr = window.devicePixelRatio || 1;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
+    var width, height;
+    function resize() {
+      W = window.innerWidth; H = window.innerHeight;
+      width = W; height = H;
+      var dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = (W * dpr) | 0;
+      canvas.height = (H * dpr) | 0;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    };
-
+    }
     window.addEventListener("resize", resize);
     resize();
 
-    // Render loop
-    const draw = (time) => {
-      const now = performance.now();
-      const elapsed = now - lastFrameTime;
-      if (elapsed < fpsInterval) {
-        raf = requestAnimationFrame(draw);
-        return;
-      }
-      lastFrameTime = now - (elapsed % fpsInterval);
+    // Mouse
+    var mouse = { x: W * 0.5, y: H * 0.5, isHover: false };
+    window.addEventListener("pointermove", function(e) {
+      mouse.x = e.clientX; mouse.y = e.clientY; mouse.isHover = true;
+    });
 
-      if (transparent) {
-        ctx.clearRect(0, 0, width, height);
-      } else {
-        ctx.fillStyle = "#030704";
-        ctx.fillRect(0, 0, width, height);
-      }
+    // FPS
+    var fc = 0, ft = performance.now(), fEl = document.getElementById("f");
 
-      const t = time * 0.001 * speed;
-      const [baseR, baseG, baseB] = hexToRgb(color);
+    function draw(time) {
+      // FPS
+      fc++;
+      var now = performance.now();
+      if (now - ft >= 1000) { fEl.textContent = fc + " FPS"; fc = 0; ft = now; }
+
+      width = W; height = H;
+
+      if (transparent) { ctx.clearRect(0, 0, W, H); }
+      else { ctx.fillStyle = "#030704"; ctx.fillRect(0, 0, W, H); }
+
+      var t = ((time || performance.now()) - t0) * 0.001 * speed;
 
       ${getPresetCode(preset).trim()}
 
       raf = requestAnimationFrame(draw);
-    };
+    }
 
     raf = requestAnimationFrame(draw);
   </script>
 </body>
 </html>`;
 
-    const blob = new Blob([htmlContent], { type: "text/html" });
+    const blob = new Blob([htmlContent], { type: "text/html;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -5706,12 +5941,13 @@ export class ${cleanPresetName}Visualizer {
   let recordedChunks = [];
   let isRecording = false;
 
-  const recordWebmVideo = () => {
+  const recordVideo = (format = "webm") => {
     if (isRecording) return;
     isRecording = true;
 
     recordedChunks = [];
-    if (webmBtnText) webmBtnText.textContent = "Recording (5s)...";
+    const isMp4 = format === "mp4";
+    if (webmBtnText) webmBtnText.textContent = `Recording (${isMp4 ? "MP4" : "WebM"} 5s)...`;
     if (exportWebmBtn) {
       exportWebmBtn.style.background = "rgba(220, 38, 38, 0.15)";
       exportWebmBtn.style.borderColor = "rgba(220, 38, 38, 0.4)";
@@ -5720,18 +5956,38 @@ export class ${cleanPresetName}Visualizer {
     const stream = canvas.captureStream(60); 
     
     let options = { mimeType: "video/webm;codecs=vp9" };
-    if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-      options = { mimeType: "video/webm;codecs=vp8" };
+    let fileExt = "webm";
+    let blobMime = "video/webm";
+
+    if (isMp4) {
+      if (typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported("video/mp4;codecs=avc1")) {
+        options = { mimeType: "video/mp4;codecs=avc1" };
+        fileExt = "mp4";
+        blobMime = "video/mp4";
+      } else if (typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported("video/mp4")) {
+        options = { mimeType: "video/mp4" };
+        fileExt = "mp4";
+        blobMime = "video/mp4";
+      } else {
+        fileExt = "webm";
+      }
     }
-    if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-      options = { mimeType: "video/webm" };
+
+    if (fileExt === "webm") {
+      if (typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported("video/webm;codecs=vp9")) {
+        options = { mimeType: "video/webm;codecs=vp9" };
+      } else if (typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported("video/webm;codecs=vp8")) {
+        options = { mimeType: "video/webm;codecs=vp8" };
+      } else {
+        options = { mimeType: "video/webm" };
+      }
     }
 
     try {
       mediaRecorder = new MediaRecorder(stream, options);
     } catch (e) {
       console.error("MediaRecorder creation failed:", e);
-      alert("Transparent WebM recording is not supported in this browser. Try Chrome or Firefox!");
+      alert("Video recording is not supported in this browser. Try Chrome or Firefox!");
       resetWebmButton();
       return;
     }
@@ -5743,16 +5999,19 @@ export class ${cleanPresetName}Visualizer {
     };
 
     mediaRecorder.onstop = () => {
-      const blob = new Blob(recordedChunks, { type: "video/webm" });
+      const blob = new Blob(recordedChunks, { type: blobMime });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${presetMode}-transparent-visualizer.webm`;
+      a.download = `${presetMode || "visualizer"}-${fileExt === "mp4" ? "video.mp4" : "transparent-visualizer.webm"}`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       resetWebmButton();
+      if (typeof showToast === "function") {
+        showToast(`${fileExt.toUpperCase()} video downloaded!`);
+      }
     };
 
     mediaRecorder.start();
@@ -5764,6 +6023,8 @@ export class ${cleanPresetName}Visualizer {
       }
     }, 5000);
   };
+
+  const recordWebmVideo = () => recordVideo("webm");
 
   const resetWebmButton = () => {
     isRecording = false;
@@ -5777,29 +6038,33 @@ export class ${cleanPresetName}Visualizer {
   const downloadMdIntegrationGuide = () => {
     const preset = presetMode;
     const cleanPresetName = preset.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join("");
+    const presetTitle = getPresetTitle(preset);
     const isTransparent = transparentBgCheckbox ? transparentBgCheckbox.checked : false;
+    const accentColor = color || "#f07c00";
 
     const classCode = `/**
- * Standalone Canvas 2D Visualizer: ${cleanPresetName}
- * Primary Accent Color: ${color}
- * Throttled to 90 FPS
+ * Standalone Canvas 2D Visualizer: ${presetTitle}
+ * Preset Key: ${preset}
+ * Primary Accent Color: ${accentColor}
+ * Native 60+ FPS Hardware-Accelerated Animation Loop
  */
 export class ${cleanPresetName}Visualizer {
   constructor(canvas, options = {}) {
     this.canvas = canvas;
     this.ctx = canvas.getContext("2d");
-    this.color = options.color || "${color}";
-    this.speed = options.speed || ${speed};
-    this.pixelSize = options.pixelSize || ${pixelSize};
-    this.arcThickness = options.arcThickness || ${arcThickness};
-    this.glowIntensity = options.glowIntensity || ${glowIntensity};
+    this.color = options.color || "${accentColor}";
+    this.speed = options.speed !== undefined ? options.speed : ${speed};
+    this.pixelSize = options.pixelSize !== undefined ? options.pixelSize : ${pixelSize};
+    this.arcThickness = options.arcThickness !== undefined ? options.arcThickness : ${arcThickness};
+    this.glowIntensity = options.glowIntensity !== undefined ? options.glowIntensity : ${glowIntensity};
     this.transparent = options.transparent !== undefined ? options.transparent : ${isTransparent};
     
     this.width = 0;
     this.height = 0;
     this.raf = 0;
-    this.lastFrameTime = performance.now();
-    this.fpsInterval = 1000 / 90;
+    this.startTime = performance.now();
+    this.mouse = { x: 0, y: 0, isHover: false };
+    this._rgb = this.hexToRgb(this.color);
     
     this.init();
   }
@@ -5807,7 +6072,13 @@ export class ${cleanPresetName}Visualizer {
   init() {
     this.resize = this.resize.bind(this);
     this.draw = this.draw.bind(this);
+    this.onPointerMove = (e) => {
+      this.mouse.x = e.clientX;
+      this.mouse.y = e.clientY;
+      this.mouse.isHover = true;
+    };
     window.addEventListener("resize", this.resize);
+    window.addEventListener("pointermove", this.onPointerMove);
     this.resize();
     this.raf = requestAnimationFrame(this.draw);
   }
@@ -5815,26 +6086,17 @@ export class ${cleanPresetName}Visualizer {
   resize() {
     this.width = window.innerWidth;
     this.height = window.innerHeight;
-    const dpr = window.devicePixelRatio || 1;
-    this.canvas.width = this.width * dpr;
-    this.canvas.height = this.height * dpr;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    this.canvas.width = Math.floor(this.width * dpr);
+    this.canvas.height = Math.floor(this.height * dpr);
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
   draw(time) {
-    const now = performance.now();
-    const elapsedFrame = now - this.lastFrameTime;
-    if (elapsedFrame < this.fpsInterval) {
-      this.raf = requestAnimationFrame(this.draw);
-      return;
-    }
-    this.lastFrameTime = now - (elapsedFrame % this.fpsInterval);
-
     const ctx = this.ctx;
     const width = this.width;
     const height = this.height;
 
-    // Clear background
     if (this.transparent) {
       ctx.clearRect(0, 0, width, height);
     } else {
@@ -5842,13 +6104,16 @@ export class ${cleanPresetName}Visualizer {
       ctx.fillRect(0, 0, width, height);
     }
 
-    const t = time * 0.001 * this.speed;
-    const [baseR, baseG, baseB] = this.hexToRgb(this.color);
+    const t = ((time || performance.now()) - this.startTime) * 0.001 * this.speed;
+    const baseR = this._rgb[0], baseG = this._rgb[1], baseB = this._rgb[2];
+    const color = this.color;
+    const hexToRgb = this.hexToRgb.bind(this);
     const speed = this.speed;
     const pixelSize = this.pixelSize;
     const arcThickness = this.arcThickness;
     const glowIntensity = this.glowIntensity;
     const transparent = this.transparent;
+    const mouse = this.mouse;
 
     ${getPresetCode(preset).trim()}
 
@@ -5856,27 +6121,30 @@ export class ${cleanPresetName}Visualizer {
   }
 
   hexToRgb(hex) {
-    const val = hex.replace("#", "");
+    let value = (hex || "#f07c00").replace("#", "");
+    if (value.length === 3) value = value.split("").map(c => c + c).join("");
     return [
-      parseInt(val.substring(0, 2), 16),
-      parseInt(val.substring(2, 4), 16),
-      parseInt(val.substring(4, 6), 16)
+      parseInt(value.substring(0, 2), 16) || 240,
+      parseInt(value.substring(2, 4), 16) || 124,
+      parseInt(value.substring(4, 6), 16) || 0
     ];
   }
 
   destroy() {
     cancelAnimationFrame(this.raf);
     window.removeEventListener("resize", this.resize);
+    window.removeEventListener("pointermove", this.onPointerMove);
   }
 }`;
 
-    const mdContent = `# Developer Integration Guide: ${cleanPresetName} Visualizer
+    const mdContent = `# Developer Integration Guide: ${presetTitle} Visualizer
 
-This guide provides the complete standalone integration code and instructions for embedding the **${cleanPresetName}** visualizer inside your own projects.
+This guide provides the complete standalone integration code and instructions for embedding the **${presetTitle}** (\`${preset}\`) visualizer inside your own projects.
 
 ## Visualizer Configuration
-* **Preset Variant**: \`${preset}\`
-* **Primary Accent Color**: \`${color}\`
+* **Preset Title**: \`${presetTitle}\`
+* **Preset Key**: \`${preset}\`
+* **Primary Accent Color**: \`${accentColor}\`
 * **Block Dimension**: \`${pixelSize}px\`
 * **Wave Spread**: \`${arcThickness}px\`
 * **Glow Bloom**: \`${glowIntensity}x\`
@@ -5913,7 +6181,7 @@ import { ${cleanPresetName}Visualizer } from "./visualizer.js";
 
 const canvas = document.getElementById("my-visualizer-canvas");
 const visualizer = new ${cleanPresetName}Visualizer(canvas, {
-  color: "${color}",
+  color: "${accentColor}",
   speed: ${speed},
   pixelSize: ${pixelSize},
   arcThickness: ${arcThickness},
@@ -5926,7 +6194,7 @@ const visualizer = new ${cleanPresetName}Visualizer(canvas, {
 \`\`\`
 `;
 
-    const blob = new Blob([mdContent], { type: "text/markdown" });
+    const blob = new Blob([mdContent], { type: "text/markdown;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -6720,19 +6988,27 @@ const visualizer = new ${cleanPresetName}Visualizer(canvas, {
         closeExportDropdown();
         const settings = {
           name: "mizo-shaders",
+          version: "2.0",
           preset: presetMode,
-          accentColor: color,
+          presetTitle: getPresetTitle(presetMode),
+          accentColor: color || "#f07c00",
           speed: speed,
-          blockSize: pixelSize,
-          waveSpread: arcThickness,
-          glowBloom: glowIntensity,
-          transparentBackground: transparentBgCheckbox ? transparentBgCheckbox.checked : false
+          pixelSize: pixelSize,
+          arcThickness: arcThickness,
+          glowIntensity: glowIntensity,
+          transparentBackground: transparentBgCheckbox ? transparentBgCheckbox.checked : false,
+          canvasWidth: width,
+          canvasHeight: height,
+          devicePixelRatio: Math.min(window.devicePixelRatio || 1, 2),
+          exportedAt: new Date().toISOString()
         };
-        const blob = new Blob([JSON.stringify(settings, null, 2)], { type: "application/json" });
+        const blob = new Blob([JSON.stringify(settings, null, 2)], { type: "application/json;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
-        link.download = `mizo-shader-${presetMode || "ambient"}-settings.json`;
-        link.href = URL.createObjectURL(blob);
+        link.download = `${presetMode || "ambient"}-settings.json`;
+        link.href = url;
         link.click();
+        URL.revokeObjectURL(url);
         showToast("JSON settings downloaded!");
       });
     }
@@ -6752,7 +7028,7 @@ const visualizer = new ${cleanPresetName}Visualizer(canvas, {
       exportMp4Btn.addEventListener("click", (e) => {
         e.stopPropagation();
         closeExportDropdown();
-        recordWebmVideo();
+        recordVideo("mp4");
       });
     }
 

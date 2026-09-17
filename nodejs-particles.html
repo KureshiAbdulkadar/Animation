@@ -3,11 +3,361 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Node.js — Authentic Pixel Art & Particle Matrix Visualizer</title>
+  <title>Node.js — 3D Pixel Art & Particle Matrix (Standalone)</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="effects/nodejs-particles/styles.css">
+  <style>
+    /* ── Reset & Base Layout ─────────────────────────────────────────────── */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #06080a;
+      font-family: 'JetBrains Mono', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace;
+      color: #e2e8f0;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      user-select: none;
+    }
+
+    .nj-frame {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: radial-gradient(circle at 50% 50%, #0d1217 0%, #050709 100%);
+    }
+
+    .nj-canvas-container {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+
+    /* ── Top Brand Bar ─────────────────────────────────────────────────── */
+    .nj-topbar {
+      position: absolute;
+      top: 20px;
+      left: 24px;
+      right: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 20;
+      pointer-events: none;
+    }
+
+    .nj-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(13, 18, 24, 0.7);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      padding: 8px 16px;
+      border-radius: 9999px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      pointer-events: auto;
+    }
+
+    .nj-brand-node-icon {
+      width: 18px;
+      height: 18px;
+      fill: #83cd29;
+      filter: drop-shadow(0 0 6px rgba(131, 205, 41, 0.5));
+    }
+
+    .nj-brand-title {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      color: #f8fafc;
+    }
+
+    .nj-brand-tag {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #94a3b8;
+      background: rgba(255, 255, 255, 0.06);
+      padding: 2px 8px;
+      border-radius: 12px;
+    }
+
+    .nj-topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      pointer-events: auto;
+    }
+
+    .nj-action-btn {
+      background: rgba(13, 18, 24, 0.7);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: #e2e8f0;
+      padding: 8px 14px;
+      border-radius: 9999px;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .nj-action-btn:hover {
+      background: rgba(30, 41, 59, 0.8);
+      border-color: rgba(255, 255, 255, 0.2);
+      color: #fff;
+      transform: translateY(-1px);
+    }
+
+    /* ── Floating HUD Control Panel ────────────────────────────────────── */
+    .nj-hud-panel {
+      position: absolute;
+      top: 80px;
+      right: 24px;
+      width: 320px;
+      max-height: calc(100vh - 120px);
+      background: rgba(13, 18, 24, 0.75);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .nj-hud-panel.collapsed {
+      height: 48px;
+    }
+
+    .nj-hud-panel.collapsed .nj-hud-content {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .nj-hud-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 18px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .nj-hud-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      color: #f1f5f9;
+      text-transform: uppercase;
+    }
+
+    .nj-hud-title span:first-child {
+      color: #83cd29;
+    }
+
+    .nj-toggle-btn {
+      background: none;
+      border: none;
+      color: #94a3b8;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+
+    .nj-toggle-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+    }
+
+    .nj-hud-panel.collapsed .nj-toggle-btn svg {
+      transform: rotate(180deg);
+    }
+
+    .nj-hud-content {
+      padding: 16px 18px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      transition: opacity 0.2s;
+    }
+
+    .nj-hud-content::-webkit-scrollbar {
+      width: 4px;
+    }
+    .nj-hud-content::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 4px;
+    }
+
+    /* ── Controls ────────────────────────────────────────────────────── */
+    .nj-control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .nj-control-label-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: #94a3b8;
+      font-weight: 500;
+    }
+
+    .nj-val-badge {
+      font-family: inherit;
+      color: #f1f5f9;
+      font-size: 11px;
+      background: rgba(255, 255, 255, 0.06);
+      padding: 1px 6px;
+      border-radius: 4px;
+    }
+
+    .nj-select {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #f1f5f9;
+      padding: 7px 10px;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 12px;
+      outline: none;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+
+    .nj-select:focus {
+      border-color: rgba(131, 205, 41, 0.5);
+    }
+
+    .nj-slider {
+      width: 100%;
+      height: 4px;
+      -webkit-appearance: none;
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 2px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .nj-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #f8fafc;
+      box-shadow: 0 0 8px rgba(0, 0, 0, 0.6);
+      cursor: pointer;
+      transition: transform 0.1s, background 0.2s;
+    }
+
+    .nj-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+      background: #83cd29;
+    }
+
+    .nj-palette-row {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+    }
+
+    .nj-color-btn {
+      height: 24px;
+      border-radius: 6px;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .nj-color-btn:hover {
+      transform: translateY(-2px);
+    }
+
+    .nj-color-btn.active {
+      border-color: #ffffff;
+      box-shadow: 0 0 10px rgba(255, 255, 255, 0.4);
+    }
+
+    .nj-bottom-bar {
+      position: absolute;
+      bottom: 20px;
+      left: 24px;
+      right: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 20;
+      pointer-events: none;
+    }
+
+    .nj-status-pill {
+      font-size: 11px;
+      color: #64748b;
+      background: rgba(13, 18, 24, 0.6);
+      backdrop-filter: blur(10px);
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      pointer-events: auto;
+    }
+
+    @media (max-width: 768px) {
+      .nj-hud-panel {
+        top: auto;
+        bottom: 20px;
+        right: 16px;
+        left: 16px;
+        width: auto;
+        max-height: 60vh;
+      }
+      .nj-topbar {
+        top: 14px;
+        left: 16px;
+        right: 16px;
+      }
+      .nj-bottom-bar {
+        display: none;
+      }
+    }
+  </style>
 </head>
 <body>
   <div class="nj-frame">
@@ -31,7 +381,7 @@
           </svg>
           <span>All Shaders</span>
         </a>
-        <button id="nj-shockwave-btn" class="nj-action-btn" title="Trigger Click Shockwave">
+        <button id="nj-shockwave-btn" class="nj-action-btn" title="Trigger Shockwave">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="10"></circle>
             <line x1="12" y1="8" x2="12" y2="12"></line>
@@ -185,10 +535,721 @@
     </div>
   </div>
 
-  <script type="module">
-    import { NodeJSParticles } from './effects/nodejs-particles/NodeJSParticles.js';
+  <script>
+    /**
+     * Self-contained NodeJSParticles Engine
+     */
+    class NodeJSParticles {
+      constructor(container, options = {}) {
+        this.container = typeof container === 'string' ? document.querySelector(container) : container;
+        if (!this.container) throw new Error('Invalid container element');
 
-    // Mount visualizer instance
+        this.options = Object.assign({
+          logoMode: 'emblem',
+          pixelStyle: 'square',
+          pixelPitch: 10,
+          colorScheme: 'official',
+          logoSize: 1.0,
+          brightness: 1.2,
+          swaySpeed: 1.0,
+          rainIntensity: 1.0,
+          scanlines: true,
+          interactive: true,
+          scatterForce: 1.0,
+          reducedMotion: false,
+          dprCap: 2
+        }, options);
+
+        this.canvas = document.createElement('canvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.canvas.style.display = 'block';
+        this.canvas.style.width = '100%';
+        this.canvas.style.height = '100%';
+        this.container.appendChild(this.canvas);
+
+        this.width = 0;
+        this.height = 0;
+        this.dpr = 1;
+        this.rafId = null;
+        this.startTime = performance.now();
+        this.lastTime = this.startTime;
+        this.isRunning = false;
+
+        this.mouse = {
+          x: -9999, y: -9999, targetX: -9999, targetY: -9999,
+          vx: 0, vy: 0, isHovering: false
+        };
+
+        this.shockwaves = [];
+        this.pixels = [];
+        this.rainDrops = [];
+
+        this.handleResize();
+        this.initLogoPixels();
+        this.initRain();
+        this.bindEvents();
+        this.start();
+      }
+
+      getColorPalette(scheme) {
+        switch (scheme) {
+          case 'official':
+            return {
+              topFacet: '#83cd29',
+              leftFacet: '#43853d',
+              rightFacet: '#215732',
+              accent: '#339933',
+              wordmark: '#ffffff',
+              glow: 'rgba(131, 205, 41, 0.45)',
+              rain: '#539e43',
+              backgroundGlow: 'rgba(51, 153, 51, 0.08)'
+            };
+          case 'emerald':
+            return {
+              topFacet: '#4ade80',
+              leftFacet: '#16a34a',
+              rightFacet: '#065f46',
+              accent: '#22c55e',
+              wordmark: '#f0fdf4',
+              glow: 'rgba(74, 222, 128, 0.5)',
+              rain: '#22c55e',
+              backgroundGlow: 'rgba(34, 197, 94, 0.1)'
+            };
+          case 'matrix':
+            return {
+              topFacet: '#00ff41',
+              leftFacet: '#00bb2d',
+              rightFacet: '#005510',
+              accent: '#00ff41',
+              wordmark: '#d0ffd0',
+              glow: 'rgba(0, 255, 65, 0.6)',
+              rain: '#00ff41',
+              backgroundGlow: 'rgba(0, 255, 65, 0.09)'
+            };
+          case 'gameboy':
+            return {
+              topFacet: '#9bbc0f',
+              leftFacet: '#8bac0f',
+              rightFacet: '#0f380f',
+              accent: '#306230',
+              wordmark: '#9bbc0f',
+              glow: 'rgba(155, 188, 15, 0.35)',
+              rain: '#8bac0f',
+              backgroundGlow: 'rgba(139, 172, 15, 0.06)'
+            };
+          case 'synth':
+            return {
+              topFacet: '#f43f5e',
+              leftFacet: '#a855f7',
+              rightFacet: '#4338ca',
+              accent: '#06b6d4',
+              wordmark: '#fdf4ff',
+              glow: 'rgba(244, 63, 94, 0.5)',
+              rain: '#06b6d4',
+              backgroundGlow: 'rgba(168, 85, 247, 0.1)'
+            };
+          case 'gold':
+            return {
+              topFacet: '#fde047',
+              leftFacet: '#ca8a04',
+              rightFacet: '#713f12',
+              accent: '#eab308',
+              wordmark: '#fefce8',
+              glow: 'rgba(253, 224, 71, 0.5)',
+              rain: '#eab308',
+              backgroundGlow: 'rgba(234, 179, 8, 0.08)'
+            };
+          case 'silver':
+          default:
+            return {
+              topFacet: '#f8fafc',
+              leftFacet: '#94a3b8',
+              rightFacet: '#334155',
+              accent: '#cbd5e1',
+              wordmark: '#ffffff',
+              glow: 'rgba(255, 255, 255, 0.4)',
+              rain: '#94a3b8',
+              backgroundGlow: 'rgba(255, 255, 255, 0.06)'
+            };
+        }
+      }
+
+      initLogoPixels() {
+        this.pixels = [];
+        const pitch = Math.max(4, Math.min(28, this.options.pixelPitch));
+        const mode = this.options.logoMode;
+        const palette = this.getColorPalette(this.options.colorScheme);
+
+        if (mode === 'wordmark') {
+          this.generateWordmarkPixels(pitch, palette);
+        } else if (mode === 'n-cutout') {
+          this.generateNCutoutPixels(pitch, palette);
+        } else if (mode === 'voxel3d') {
+          this.generateVoxel3DPixels(pitch, palette);
+        } else {
+          this.generateEmblemPixels(pitch, palette);
+        }
+      }
+
+      generateEmblemPixels(pitch, palette) {
+        const radius = Math.floor(140 * this.options.logoSize);
+        const cols = Math.ceil((radius * 2.2) / pitch);
+        const rows = Math.ceil((radius * 2.4) / pitch);
+        const centerC = Math.floor(cols / 2);
+        const centerR = Math.floor(rows / 2);
+
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            const px = (c - centerC) * pitch;
+            const py = (r - centerR) * pitch;
+
+            const qx = Math.abs(px) / (radius * 0.866025);
+            const qy = Math.abs(py) / radius;
+            const inHex = (qx * 0.5 + qy * 0.5 <= 0.5) && (qx <= 1.0);
+
+            if (!inHex) continue;
+
+            let facet = 'top';
+            let color = palette.topFacet;
+            let zDepth = 0;
+
+            const isNotch = (px > radius * 0.35 && px < radius * 0.75 && py < -radius * 0.45 && py > -radius * 0.85);
+            const isCenterRidge = Math.abs(px) < pitch * 0.6 && py > 0;
+            const isTopLeftRidge = Math.abs(py - (-px * 0.577)) < pitch * 0.7 && px < 0;
+            const isTopRightRidge = Math.abs(py - (px * 0.577)) < pitch * 0.7 && px > 0;
+            const isRidge = isCenterRidge || isTopLeftRidge || isTopRightRidge;
+
+            if (py <= 0 && (py < -Math.abs(px) * 0.577 || py < 0 && Math.abs(px) < radius * 0.7)) {
+              facet = 'top';
+              color = isNotch ? '#9fe83c' : palette.topFacet;
+              zDepth = 15 - (py / radius) * 10;
+            } else if (px <= 0) {
+              facet = 'left';
+              color = palette.leftFacet;
+              zDepth = 8 + (px / radius) * 8;
+            } else {
+              facet = 'right';
+              color = palette.rightFacet;
+              zDepth = 8 - (px / radius) * 8;
+            }
+
+            if (isRidge) {
+              color = '#ffffff';
+              zDepth += 8;
+            }
+
+            this.addPixel({
+              originX: px, originY: py, originZ: zDepth,
+              color, pitch, facet,
+              isHighlight: isRidge || isNotch,
+              char: this.getRandomHexChar()
+            });
+          }
+        }
+      }
+
+      generateWordmarkPixels(pitch, palette) {
+        const offWidth = 720, offHeight = 220;
+        const offCanvas = document.createElement('canvas');
+        offCanvas.width = offWidth;
+        offCanvas.height = offHeight;
+        const octx = offCanvas.getContext('2d', { willReadFrequently: true });
+
+        const hx = 110, hy = 110, hr = 72;
+        octx.beginPath();
+        octx.moveTo(hx, hy - hr);
+        octx.lineTo(hx + hr * 0.866, hy - hr * 0.5);
+        octx.lineTo(hx, hy);
+        octx.lineTo(hx - hr * 0.866, hy - hr * 0.5);
+        octx.closePath();
+        octx.fillStyle = palette.topFacet;
+        octx.fill();
+
+        octx.beginPath();
+        octx.moveTo(hx - hr * 0.866, hy - hr * 0.5);
+        octx.lineTo(hx, hy);
+        octx.lineTo(hx, hy + hr);
+        octx.lineTo(hx - hr * 0.866, hy + hr * 0.5);
+        octx.closePath();
+        octx.fillStyle = palette.leftFacet;
+        octx.fill();
+
+        octx.beginPath();
+        octx.moveTo(hx, hy);
+        octx.lineTo(hx + hr * 0.866, hy - hr * 0.5);
+        octx.lineTo(hx + hr * 0.866, hy + hr * 0.5);
+        octx.lineTo(hx, hy + hr);
+        octx.closePath();
+        octx.fillStyle = palette.rightFacet;
+        octx.fill();
+
+        octx.beginPath();
+        octx.moveTo(hx + hr * 0.4, hy - hr * 0.7);
+        octx.lineTo(hx + hr * 0.7, hy - hr * 0.55);
+        octx.lineTo(hx + hr * 0.55, hy - hr * 0.4);
+        octx.closePath();
+        octx.fillStyle = '#b4f54c';
+        octx.fill();
+
+        octx.fillStyle = palette.wordmark;
+        octx.font = 'bold 112px "JetBrains Mono", monospace';
+        octx.textAlign = 'left';
+        octx.textBaseline = 'middle';
+        octx.fillText('node', 210, 110);
+
+        octx.fillStyle = palette.accent;
+        octx.fillText('.', 500, 110);
+
+        octx.fillStyle = palette.wordmark;
+        octx.fillText('js', 545, 110);
+
+        const imgData = octx.getImageData(0, 0, offWidth, offHeight);
+        const data = imgData.data;
+        const sampleStep = Math.max(4, Math.floor(pitch * 0.9));
+        const halfW = offWidth / 2, halfH = offHeight / 2;
+
+        for (let y = 0; y < offHeight; y += sampleStep) {
+          for (let x = 0; x < offWidth; x += sampleStep) {
+            const idx = (y * offWidth + x) * 4;
+            if (data[idx + 3] > 90) {
+              const r = data[idx], g = data[idx + 1], b = data[idx + 2];
+              const color = `rgb(${r},${g},${b})`;
+              const isAccent = (g > 160 && r < 140) || (x < 190);
+              const zDepth = isAccent ? 12 : 0;
+              const px = (x - halfW) * (this.options.logoSize * 0.95);
+              const py = (y - halfH) * (this.options.logoSize * 0.95);
+
+              this.addPixel({
+                originX: px, originY: py, originZ: zDepth,
+                color, pitch: sampleStep,
+                facet: x < 190 ? 'emblem' : 'letter',
+                isHighlight: isAccent,
+                char: this.getRandomHexChar()
+              });
+            }
+          }
+        }
+      }
+
+      generateNCutoutPixels(pitch, palette) {
+        const radius = Math.floor(140 * this.options.logoSize);
+        const cols = Math.ceil((radius * 2.2) / pitch);
+        const rows = Math.ceil((radius * 2.4) / pitch);
+        const centerC = Math.floor(cols / 2);
+        const centerR = Math.floor(rows / 2);
+
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            const px = (c - centerC) * pitch;
+            const py = (r - centerR) * pitch;
+
+            const qx = Math.abs(px) / (radius * 0.866025);
+            const qy = Math.abs(py) / radius;
+            const inHex = (qx * 0.5 + qy * 0.5 <= 0.5) && (qx <= 1.0);
+
+            if (!inHex) continue;
+
+            const inLeftPillar = (px >= -radius * 0.38 && px <= -radius * 0.16 && Math.abs(py) <= radius * 0.65);
+            const inRightPillar = (px >= radius * 0.16 && px <= radius * 0.38 && Math.abs(py) <= radius * 0.65);
+            const diagDist = Math.abs(py - (px * 1.7));
+            const inDiagonal = (diagDist <= radius * 0.22 && px >= -radius * 0.22 && px <= radius * 0.22 && Math.abs(py) <= radius * 0.5);
+
+            const isN = inLeftPillar || inRightPillar || inDiagonal;
+            let color, facet, zDepth;
+
+            if (isN) {
+              color = '#ffffff';
+              facet = 'n-cutout';
+              zDepth = 22;
+            } else {
+              if (py <= 0 && py < -Math.abs(px) * 0.577) {
+                color = palette.topFacet;
+                facet = 'top';
+                zDepth = 8;
+              } else if (px <= 0) {
+                color = palette.leftFacet;
+                facet = 'left';
+                zDepth = 4;
+              } else {
+                color = palette.rightFacet;
+                facet = 'right';
+                zDepth = 4;
+              }
+            }
+
+            this.addPixel({
+              originX: px, originY: py, originZ: zDepth,
+              color, pitch, facet,
+              isHighlight: isN,
+              char: isN ? 'N' : this.getRandomHexChar()
+            });
+          }
+        }
+      }
+
+      generateVoxel3DPixels(pitch, palette) {
+        const radius = Math.floor(120 * this.options.logoSize);
+        const layers = [-28, -14, 0, 14, 28];
+
+        for (const z of layers) {
+          const layerScale = 1.0 - Math.abs(z) * 0.003;
+          const rScale = radius * layerScale;
+          const cols = Math.ceil((rScale * 2.2) / pitch);
+          const rows = Math.ceil((rScale * 2.4) / pitch);
+          const centerC = Math.floor(cols / 2);
+          const centerR = Math.floor(rows / 2);
+
+          for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+              const px = (c - centerC) * pitch;
+              const py = (r - centerR) * pitch;
+
+              const qx = Math.abs(px) / (rScale * 0.866025);
+              const qy = Math.abs(py) / rScale;
+              const inHex = (qx * 0.5 + qy * 0.5 <= 0.5) && (qx <= 1.0);
+
+              if (!inHex) continue;
+
+              const isRim = (qx * 0.5 + qy * 0.5 >= 0.38) || (qx >= 0.76);
+              const isCore = Math.hypot(px, py) < rScale * 0.35 && z === 0;
+
+              if (!isRim && !isCore && z !== 0) continue;
+
+              let color;
+              if (py <= 0) color = palette.topFacet;
+              else if (px <= 0) color = palette.leftFacet;
+              else color = palette.rightFacet;
+
+              if (isCore) color = '#ffffff';
+
+              this.addPixel({
+                originX: px, originY: py, originZ: z,
+                color, pitch, facet: 'voxel3d',
+                isHighlight: isCore || isRim,
+                char: this.getRandomHexChar()
+              });
+            }
+          }
+        }
+      }
+
+      addPixel(config) {
+        this.pixels.push({
+          ...config,
+          x: config.originX,
+          y: config.originY,
+          z: config.originZ,
+          vx: 0, vy: 0, vz: 0,
+          projX: 0, projY: 0, projScale: 1,
+          alpha: 0.85 + Math.random() * 0.15,
+          baseAlpha: 0.85 + Math.random() * 0.15,
+          flickerOffset: Math.random() * Math.PI * 2,
+          flickerSpeed: 1.5 + Math.random() * 3.0,
+          glitchOffset: 0
+        });
+      }
+
+      getRandomHexChar() {
+        const chars = '0123456789abcdefNODE';
+        return chars[Math.floor(Math.random() * chars.length)];
+      }
+
+      initRain() {
+        this.rainDrops = [];
+        const count = Math.floor(90 * this.options.rainIntensity);
+        for (let i = 0; i < count; i++) {
+          this.rainDrops.push({
+            x: (Math.random() - 0.2) * 1.4,
+            y: Math.random(),
+            speed: 0.003 + Math.random() * 0.007,
+            length: 8 + Math.random() * 24,
+            char: this.getRandomHexChar(),
+            alpha: 0.2 + Math.random() * 0.5
+          });
+        }
+      }
+
+      bindEvents() {
+        this._onResize = () => this.handleResize();
+        window.addEventListener('resize', this._onResize);
+
+        this.canvas.addEventListener('mousemove', (e) => {
+          const rect = this.canvas.getBoundingClientRect();
+          this.mouse.targetX = (e.clientX - rect.left) - this.width / 2;
+          this.mouse.targetY = (e.clientY - rect.top) - this.height / 2;
+          this.mouse.isHovering = true;
+        });
+
+        this.canvas.addEventListener('mouseleave', () => {
+          this.mouse.targetX = -9999;
+          this.mouse.targetY = -9999;
+          this.mouse.isHovering = false;
+        });
+
+        this.canvas.addEventListener('mousedown', (e) => {
+          const rect = this.canvas.getBoundingClientRect();
+          this.triggerShockwave((e.clientX - rect.left) - this.width / 2, (e.clientY - rect.top) - this.height / 2);
+        });
+
+        this.canvas.addEventListener('touchmove', (e) => {
+          if (!e.touches[0]) return;
+          const rect = this.canvas.getBoundingClientRect();
+          this.mouse.targetX = (e.touches[0].clientX - rect.left) - this.width / 2;
+          this.mouse.targetY = (e.touches[0].clientY - rect.top) - this.height / 2;
+          this.mouse.isHovering = true;
+        }, { passive: true });
+
+        this.canvas.addEventListener('touchend', () => {
+          this.mouse.targetX = -9999;
+          this.mouse.targetY = -9999;
+          this.mouse.isHovering = false;
+        });
+      }
+
+      triggerShockwave(originX, originY) {
+        this.shockwaves.push({
+          x: originX, y: originY,
+          radius: 0,
+          maxRadius: Math.max(this.width, this.height) * 0.45,
+          speed: 16,
+          force: 45 * this.options.scatterForce,
+          alpha: 1.0
+        });
+      }
+
+      handleResize() {
+        const rect = this.container.getBoundingClientRect();
+        this.width = rect.width || window.innerWidth;
+        this.height = rect.height || window.innerHeight;
+        this.dpr = Math.min(this.options.dprCap, window.devicePixelRatio || 1);
+        this.canvas.width = Math.floor(this.width * this.dpr);
+        this.canvas.height = Math.floor(this.height * this.dpr);
+      }
+
+      start() {
+        if (this.isRunning) return;
+        this.isRunning = true;
+        this.lastTime = performance.now();
+
+        const loop = (time) => {
+          if (!this.isRunning) return;
+          const dt = Math.min((time - this.lastTime) / 1000, 0.05);
+          this.lastTime = time;
+
+          this.update(dt, (time - this.startTime) / 1000);
+          this.render();
+
+          this.rafId = requestAnimationFrame(loop);
+        };
+        this.rafId = requestAnimationFrame(loop);
+      }
+
+      update(dt, elapsed) {
+        const reduced = this.options.reducedMotion;
+        const swayFactor = reduced ? 0.15 : this.options.swaySpeed;
+
+        if (this.mouse.isHovering) {
+          this.mouse.x += (this.mouse.targetX - this.mouse.x) * 0.2;
+          this.mouse.y += (this.mouse.targetY - this.mouse.y) * 0.2;
+        } else {
+          this.mouse.x = -9999;
+          this.mouse.y = -9999;
+        }
+
+        const rotY = Math.sin(elapsed * 0.65 * swayFactor) * 0.18 + (this.mouse.isHovering ? (this.mouse.x / this.width) * 0.35 : 0);
+        const rotX = Math.cos(elapsed * 0.50 * swayFactor) * 0.12 + (this.mouse.isHovering ? -(this.mouse.y / this.height) * 0.25 : 0);
+        const floatY = Math.sin(elapsed * 1.2 * swayFactor) * 8.0;
+
+        const cosY = Math.cos(rotY), sinY = Math.sin(rotY);
+        const cosX = Math.cos(rotX), sinX = Math.sin(rotX);
+        const cameraZ = 650;
+
+        for (let i = this.shockwaves.length - 1; i >= 0; i--) {
+          const sw = this.shockwaves[i];
+          sw.radius += sw.speed;
+          sw.alpha = 1.0 - (sw.radius / sw.maxRadius);
+          if (sw.radius >= sw.maxRadius) this.shockwaves.splice(i, 1);
+        }
+
+        const springK = 0.085;
+        const friction = 0.82;
+
+        for (let i = 0; i < this.pixels.length; i++) {
+          const p = this.pixels[i];
+
+          if (this.mouse.isHovering) {
+            const dx = p.x - this.mouse.x;
+            const dy = p.y - this.mouse.y;
+            const dist = Math.hypot(dx, dy);
+            const repelRadius = 120 * this.options.scatterForce;
+
+            if (dist < repelRadius && dist > 1) {
+              const power = Math.pow((1 - dist / repelRadius), 1.6) * (18 * this.options.scatterForce);
+              const angle = Math.atan2(dy, dx);
+              p.vx += Math.cos(angle) * power;
+              p.vy += Math.sin(angle) * power;
+              p.vz += (Math.random() - 0.5) * power * 1.5;
+            }
+          }
+
+          for (const sw of this.shockwaves) {
+            const dx = p.x - sw.x;
+            const dy = p.y - sw.y;
+            const dist = Math.hypot(dx, dy);
+            const waveDelta = Math.abs(dist - sw.radius);
+
+            if (waveDelta < 35) {
+              const waveForce = (1 - waveDelta / 35) * sw.force * sw.alpha;
+              const angle = Math.atan2(dy, dx);
+              p.vx += Math.cos(angle) * waveForce;
+              p.vy += Math.sin(angle) * waveForce;
+              p.vz += (Math.random() - 0.5) * waveForce * 2.0;
+            }
+          }
+
+          p.vx = (p.vx + (p.originX - p.x) * springK) * friction;
+          p.vy = (p.vy + (p.originY - p.y) * springK) * friction;
+          p.vz = (p.vz + (p.originZ - p.z) * springK) * friction;
+
+          p.x += p.vx;
+          p.y += p.vy;
+          p.z += p.vz;
+
+          let x1 = p.x * cosY + p.z * sinY;
+          let y1 = p.y + floatY;
+          let z1 = -p.x * sinY + p.z * cosY;
+
+          let x2 = x1;
+          let y2 = y1 * cosX - z1 * sinX;
+          let z2 = y1 * sinX + z1 * cosX;
+
+          const projScale = cameraZ / (cameraZ + z2);
+          p.projX = x2 * projScale + this.width / 2;
+          p.projY = y2 * projScale + this.height / 2;
+          p.projScale = projScale;
+
+          const flick = Math.sin(elapsed * p.flickerSpeed + p.flickerOffset);
+          p.alpha = Math.max(0.15, Math.min(1.0, p.baseAlpha + flick * 0.15));
+
+          if (Math.random() < 0.0006) {
+            p.glitchOffset = (Math.random() - 0.5) * 12;
+          } else {
+            p.glitchOffset *= 0.8;
+          }
+        }
+
+        this.pixels.sort((a, b) => b.projScale - a.projScale);
+
+        for (const drop of this.rainDrops) {
+          drop.y += drop.speed * (reduced ? 0.4 : 1.0);
+          if (drop.y > 1.2) {
+            drop.y = -0.2;
+            drop.x = (Math.random() - 0.2) * 1.4;
+            drop.char = this.getRandomHexChar();
+          }
+        }
+      }
+
+      render() {
+        const ctx = this.ctx;
+        ctx.save();
+        ctx.scale(this.dpr, this.dpr);
+
+        ctx.fillStyle = '#06080a';
+        ctx.fillRect(0, 0, this.width, this.height);
+
+        const palette = this.getColorPalette(this.options.colorScheme);
+
+        const bgGrad = ctx.createRadialGradient(
+          this.width / 2, this.height / 2, 40,
+          this.width / 2, this.height / 2, Math.max(this.width, this.height) * 0.6
+        );
+        bgGrad.addColorStop(0, palette.backgroundGlow);
+        bgGrad.addColorStop(1, 'rgba(6, 8, 10, 0)');
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(0, 0, this.width, this.height);
+
+        // Rain
+        ctx.fillStyle = palette.rain;
+        ctx.font = '10px monospace';
+        for (const drop of this.rainDrops) {
+          const rx = (drop.x - drop.y * 0.15) * this.width;
+          const ry = drop.y * this.height;
+          ctx.globalAlpha = drop.alpha * 0.45;
+          ctx.fillRect(rx, ry, 2, drop.length);
+        }
+        ctx.globalAlpha = 1.0;
+
+        // Shockwaves
+        for (const sw of this.shockwaves) {
+          ctx.beginPath();
+          ctx.arc(sw.x + this.width / 2, sw.y + this.height / 2, sw.radius, 0, Math.PI * 2);
+          ctx.strokeStyle = palette.glow;
+          ctx.lineWidth = Math.max(1, 4 * sw.alpha);
+          ctx.stroke();
+        }
+
+        // Pixels
+        const style = this.options.pixelStyle;
+        for (let i = 0; i < this.pixels.length; i++) {
+          const p = this.pixels[i];
+          const px = p.projX + p.glitchOffset;
+          const py = p.projY;
+          const pSize = Math.max(1.5, p.pitch * p.projScale * (this.options.pixelPitch / 10));
+
+          ctx.globalAlpha = p.alpha * this.options.brightness;
+
+          if (style === 'rounded') {
+            ctx.fillStyle = p.color;
+            const cornerR = Math.max(1, pSize * 0.25);
+            ctx.beginPath();
+            ctx.roundRect ? ctx.roundRect(px - pSize / 2, py - pSize / 2, pSize - 1, pSize - 1, cornerR) : ctx.rect(px - pSize / 2, py - pSize / 2, pSize - 1, pSize - 1);
+            ctx.fill();
+          } else if (style === 'phosphor') {
+            ctx.shadowColor = p.color;
+            ctx.shadowBlur = 8 * this.options.brightness;
+            ctx.fillStyle = p.color;
+            ctx.fillRect(px - pSize / 2, py - pSize / 2, pSize - 1, pSize - 1);
+            ctx.shadowBlur = 0;
+          } else if (style === 'matrix') {
+            ctx.fillStyle = p.color;
+            ctx.font = `bold ${Math.max(9, Math.floor(pSize * 1.2))}px monospace`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(p.char, px, py);
+          } else {
+            ctx.fillStyle = p.color;
+            const gap = pSize > 5 ? 1 : 0.4;
+            ctx.fillRect(px - pSize / 2, py - pSize / 2, pSize - gap, pSize - gap);
+
+            if (p.isHighlight) {
+              ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+              ctx.fillRect(px - pSize / 2, py - pSize / 2, (pSize - gap) * 0.5, (pSize - gap) * 0.5);
+            }
+          }
+        }
+
+        ctx.globalAlpha = 1.0;
+
+        if (this.options.scanlines) {
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.18)';
+          for (let y = 0; y < this.height; y += 4) {
+            ctx.fillRect(0, y, this.width, 1.5);
+          }
+        }
+
+        ctx.restore();
+      }
+
+      setOption(key, val) {
+        this.options[key] = val;
+        if (key === 'logoMode' || key === 'pixelPitch' || key === 'logoSize' || key === 'colorScheme') {
+          this.initLogoPixels();
+        }
+      }
+    }
+
+    // Mount instance
     const visualizer = new NodeJSParticles('#nj-container', {
       logoMode: 'emblem',
       pixelStyle: 'square',
@@ -205,24 +1266,23 @@
     // UI Binding
     const hud = document.getElementById('nj-hud');
     const hudHeader = document.getElementById('nj-hud-header');
-    hudHeader.addEventListener('click', () => {
+    const toggleBtn = document.getElementById('nj-toggle');
+    const toggleHud = (e) => {
+      if (e) e.stopPropagation();
       hud.classList.toggle('collapsed');
-    });
+    };
+    if (hudHeader) hudHeader.addEventListener('click', toggleHud);
+    if (toggleBtn) toggleBtn.addEventListener('click', toggleHud);
 
-    // Logo Mode Selector
-    const modeSelect = document.getElementById('nj-logo-mode');
-    modeSelect.addEventListener('change', (e) => {
+    document.getElementById('nj-logo-mode').addEventListener('change', (e) => {
       visualizer.setOption('logoMode', e.target.value);
       updateFpsPill();
     });
 
-    // Pixel Style Selector
-    const styleSelect = document.getElementById('nj-pixel-style');
-    styleSelect.addEventListener('change', (e) => {
+    document.getElementById('nj-pixel-style').addEventListener('change', (e) => {
       visualizer.setOption('pixelStyle', e.target.value);
     });
 
-    // Color Palette Buttons
     const colorBtns = document.querySelectorAll('.nj-color-btn');
     colorBtns.forEach(btn => {
       btn.addEventListener('click', () => {
@@ -232,7 +1292,6 @@
       });
     });
 
-    // Pitch / Chunkiness Slider
     const pitchSlider = document.getElementById('nj-pitch-slider');
     const pitchVal = document.getElementById('nj-pitch-val');
     pitchSlider.addEventListener('input', (e) => {
@@ -242,7 +1301,6 @@
       updateFpsPill();
     });
 
-    // Size Slider
     const sizeSlider = document.getElementById('nj-size-slider');
     const sizeVal = document.getElementById('nj-size-val');
     sizeSlider.addEventListener('input', (e) => {
@@ -252,7 +1310,6 @@
       updateFpsPill();
     });
 
-    // Brightness Slider
     const glowSlider = document.getElementById('nj-glow-slider');
     const glowVal = document.getElementById('nj-glow-val');
     glowSlider.addEventListener('input', (e) => {
@@ -261,7 +1318,6 @@
       visualizer.setOption('brightness', v);
     });
 
-    // Sway Slider
     const swaySlider = document.getElementById('nj-sway-slider');
     const swayVal = document.getElementById('nj-sway-val');
     swaySlider.addEventListener('input', (e) => {
@@ -270,7 +1326,6 @@
       visualizer.setOption('swaySpeed', v);
     });
 
-    // Scatter Slider
     const scatterSlider = document.getElementById('nj-scatter-slider');
     const scatterVal = document.getElementById('nj-scatter-val');
     scatterSlider.addEventListener('input', (e) => {
@@ -279,7 +1334,6 @@
       visualizer.setOption('scatterForce', v);
     });
 
-    // Rain Slider
     const rainSlider = document.getElementById('nj-rain-slider');
     const rainVal = document.getElementById('nj-rain-val');
     rainSlider.addEventListener('input', (e) => {
@@ -289,18 +1343,14 @@
       visualizer.initRain();
     });
 
-    // Scanlines Select
-    const scanlineSelect = document.getElementById('nj-scanline-select');
-    scanlineSelect.addEventListener('change', (e) => {
+    document.getElementById('nj-scanline-select').addEventListener('change', (e) => {
       visualizer.setOption('scanlines', e.target.value === 'on');
     });
 
-    // Shockwave Button
     document.getElementById('nj-shockwave-btn').addEventListener('click', () => {
       visualizer.triggerShockwave(0, 0);
     });
 
-    // FPS & Pixel status tracker
     const fpsText = document.getElementById('nj-fps-text');
     let frameCount = 0;
     let lastFpsCalc = performance.now();
@@ -324,12 +1374,11 @@
     }
     fpsLoop();
 
-    // Snapshot export button
     document.getElementById('nj-snapshot-btn').addEventListener('click', () => {
-      const link = document.createElement('a');
-      link.download = 'nodejs-pixel-logo.png';
-      link.href = visualizer.canvas.toDataURL('image/png');
-      link.click();
+      const a = document.createElement('a');
+      a.download = 'nodejs-pixel-logo.png';
+      a.href = visualizer.canvas.toDataURL('image/png');
+      a.click();
     });
   </script>
 </body>

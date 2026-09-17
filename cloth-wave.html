@@ -3,283 +3,305 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>3D Cloth Wave Grid — Flowing Silk Particle Surface</title>
-  <meta name="description" content="A 60+ FPS 3D particle grid flowing like silk cloth with surface normal specular sheen, multi-harmonic wave modes, and peak bloom depth shading.">
-  <link rel="stylesheet" href="./effects/cloth-wave/styles.css">
+  <title>3D Cloth Wave Grid — Standalone Visualizer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #000000; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #fff; }
+    #canvas-container { position: absolute; inset: 0; width: 100%; height: 100%; background: #000000; }
+    canvas { display: block; width: 100%; height: 100%; }
+    .badge {
+      position: absolute; top: 16px; left: 16px; z-index: 10;
+      background: rgba(12, 14, 20, 0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px;
+      padding: 10px 16px; font-size: 13px; font-weight: 500;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.6); pointer-events: none;
+    }
+    .badge small { display: block; font-size: 11px; color: #94a3b8; font-weight: normal; margin-top: 2px; }
+  </style>
 </head>
 <body>
   <div id="canvas-container"></div>
-
-  <!-- Top Brand / Title -->
-  <header class="top-header">
-    <div class="brand-icon">3D</div>
-    <div class="title-group">
-      <h1>3D Cloth Wave Grid</h1>
-      <span class="subtitle">Silky Flowing Surface · Specular Slope Sheen &amp; Peak Bloom</span>
-    </div>
-  </header>
-
-  <!-- Top Actions -->
-  <nav class="top-actions">
-    <a href="./index.html" class="action-btn">← All Presets</a>
-    <a href="./pixel-wall.html" class="action-btn">2D Pixel Wall</a>
-    <button id="btn-toggle-hud" class="action-btn" title="Toggle HUD Controls (H)">HUD: ON</button>
-    <button id="btn-export-code" class="action-btn accent">Export HTML</button>
-  </nav>
-
-  <!-- Interactive HUD Controls -->
-  <aside class="hud-panel" id="hud-panel">
-    <div class="hud-header">
-      <h2>Cloth Wave Config</h2>
-    </div>
-
-    <!-- Motion Mode -->
-    <div class="control-group">
-      <label>Wave Flow Pattern</label>
-      <div class="mode-grid">
-        <button class="mode-pill active" data-mode="silk">Silk Flow</button>
-        <button class="mode-pill" data-mode="ocean">Ocean Swell</button>
-        <button class="mode-pill" data-mode="ripple">Matrix Ripple</button>
-        <button class="mode-pill" data-mode="vortex">Cosmic Vortex</button>
-      </div>
-    </div>
-
-    <!-- Theme Selection -->
-    <div class="control-group">
-      <label>Color Theme</label>
-      <div class="theme-grid">
-        <button class="theme-pill active" data-theme="cyan">Cyan Silk</button>
-        <button class="theme-pill" data-theme="emerald">Emerald Sea</button>
-        <button class="theme-pill" data-theme="amber">Amber Glow</button>
-        <button class="theme-pill" data-theme="violet">Neon Violet</button>
-        <button class="theme-pill" data-theme="silver">Silver Monolith</button>
-        <button class="theme-pill" data-theme="crimson">Crimson Velvet</button>
-        <button class="theme-pill" data-theme="sunset">Cyber Sunset</button>
-      </div>
-    </div>
-
-    <!-- Wave Amplitude -->
-    <div class="control-group">
-      <label for="slider-amp">Wave Height (Amplitude) <span class="val" id="val-amp">65px</span></label>
-      <input type="range" id="slider-amp" min="20" max="140" value="65" step="1">
-    </div>
-
-    <!-- Wave Speed -->
-    <div class="control-group">
-      <label for="slider-speed">Wave Flow Speed <span class="val" id="val-speed">0.85x</span></label>
-      <input type="range" id="slider-speed" min="0.2" max="2.5" value="0.85" step="0.05">
-    </div>
-
-    <!-- Grid Density (Cols x Rows) -->
-    <div class="control-group">
-      <label for="slider-density">Grid Density <span class="val" id="val-density">64 x 38</span></label>
-      <input type="range" id="slider-density" min="32" max="80" value="64" step="2">
-    </div>
-
-    <!-- Camera Tilt Angle -->
-    <div class="control-group">
-      <label for="slider-pitch">Camera Tilt Angle <span class="val" id="val-pitch">28°</span></label>
-      <input type="range" id="slider-pitch" min="15" max="60" value="28" step="1">
-    </div>
-
-    <!-- Peak Dot Size -->
-    <div class="control-group">
-      <label for="slider-peak-dot">Peak Dot Size <span class="val" id="val-peak-dot">3.4px</span></label>
-      <input type="range" id="slider-peak-dot" min="1.5" max="6.0" value="3.4" step="0.1">
-    </div>
-
-    <!-- Valley Dot Size -->
-    <div class="control-group">
-      <label for="slider-valley-dot">Valley Dot Size <span class="val" id="val-valley-dot">1.2px</span></label>
-      <input type="range" id="slider-valley-dot" min="0.4" max="2.5" value="1.2" step="0.1">
-    </div>
-
-    <!-- Peak Glow Bloom Intensity -->
-    <div class="control-group">
-      <label for="slider-glow">Peak Bloom Glow <span class="val" id="val-glow">1.0x</span></label>
-      <input type="range" id="slider-glow" min="0.0" max="2.0" value="1.0" step="0.1">
-    </div>
-
-    <!-- Toggles -->
-    <div class="toggle-row">
-      <span>Cloth Mesh Lattice</span>
-      <label class="switch">
-        <input type="checkbox" id="toggle-mesh" checked>
-        <span class="slider-round"></span>
-      </label>
-    </div>
-
-    <div class="toggle-row">
-      <span>Specular Silk Sheen</span>
-      <label class="switch">
-        <input type="checkbox" id="toggle-specular" checked>
-        <span class="slider-round"></span>
-      </label>
-    </div>
-
-    <div class="toggle-row">
-      <span>Peak Glow Bloom</span>
-      <label class="switch">
-        <input type="checkbox" id="toggle-glow" checked>
-        <span class="slider-round"></span>
-      </label>
-    </div>
-
-    <div class="toggle-row">
-      <span>Horizon Depth Fog</span>
-      <label class="switch">
-        <input type="checkbox" id="toggle-fog" checked>
-        <span class="slider-round"></span>
-      </label>
-    </div>
-  </aside>
-
-  <!-- Bottom Info Badge -->
-  <div class="info-badge">
-    <div class="fps-dot"></div>
-    <span id="fps-counter">60 FPS</span>
-    <span>·</span>
-    <span id="dot-count">2,432 Dots</span>
-    <span>·</span>
-    <span id="mode-indicator">Silk Flow</span>
+  <div class="badge">
+    <strong>3D Cloth Wave Grid</strong>
+    <small>60+ FPS Silk Flow · Specular Sheen &amp; Peak Bloom</small>
   </div>
 
-  <script type="module">
-    import { ClothWave, THEMES } from './effects/cloth-wave/ClothWave.js';
+  <script>
+    /* ═══════════════════════════════════════════════════════════════
+       COLOR THEMES & CONFIGURATION
+       ═══════════════════════════════════════════════════════════════ */
+    const THEMES = {
+      cyan: '#38bdf8',
+      emerald: '#10b981',
+      amber: '#f59e0b',
+      violet: '#a855f7',
+      silver: '#94a3b8',
+      crimson: '#f43f5e',
+      sunset: '#ec4899'
+    };
+
+    let ACCENT_COLOR = THEMES.cyan;
+
+    const GRID_COLS = 64;
+    const GRID_ROWS = 38;
+    const SPACING_X = 28;
+    const SPACING_Z = 22;
+    const WAVE_AMPLITUDE = 65;
+    const WAVE_SPEED = 0.85;
+    const PEAK_DOT_RADIUS = 3.4;
+    const VALLEY_DOT_RADIUS = 1.2;
+    const SHOW_LATTICE_LINES = true;
+    const SHOW_SPECULAR = true;
+    const SHOW_GLOW = true;
+    const ENABLE_DEPTH_FOG = true;
+
+    function parseHex(hex) {
+      if (!hex) return [56, 189, 248];
+      let c = hex.replace('#', '');
+      if (c.length === 3) c = c.split('').map(x => x + x).join('');
+      const num = parseInt(c, 16);
+      return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
+    }
+
+    const rgb = parseHex(ACCENT_COLOR);
+    const vr = Math.round(rgb[0] * 0.16);
+    const vg = Math.round(rgb[1] * 0.16);
+    const vb = Math.round(rgb[2] * 0.16);
+    const peakR = Math.round(rgb[0] * 0.15 + 255 * 0.85);
+    const peakG = Math.round(rgb[1] * 0.15 + 255 * 0.85);
+    const peakB = Math.round(rgb[2] * 0.15 + 255 * 0.85);
+    const meshLineStyle = `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0.12)`;
+
+    // Pre-rendered offscreen bloom glow sprite for 60+ FPS
+    const glowCanvas = document.createElement('canvas');
+    glowCanvas.width = 64;
+    glowCanvas.height = 64;
+    const gctx = glowCanvas.getContext('2d');
+    const grad = gctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+    grad.addColorStop(0, `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 1)`);
+    grad.addColorStop(0.35, `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0.45)`);
+    grad.addColorStop(0.7, `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0.12)`);
+    grad.addColorStop(1, `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, 0)`);
+    gctx.fillStyle = grad;
+    gctx.fillRect(0, 0, 64, 64);
 
     const container = document.getElementById('canvas-container');
-    const engine = new ClothWave(container, {
-      cols: 64,
-      rows: 38,
-      spacingX: 28,
-      spacingZ: 22,
-      waveAmplitude: 65,
-      waveSpeed: 0.85,
-      peakDotRadius: 3.4,
-      baseDotRadius: 1.2,
-      cameraPitch: (28 * Math.PI) / 180,
-      motionMode: 'silk',
-      showMeshLines: true,
-      showSpecular: true,
-      showGlow: true,
-      glowIntensity: 1.0,
-      enableDepthFog: true
-    });
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    container.appendChild(canvas);
 
-    // Stats Monitor (FPS + Dot Count)
-    let frameTimes = [];
-    const fpsCounter = document.getElementById('fps-counter');
-    const dotCounter = document.getElementById('dot-count');
-    const modeIndicator = document.getElementById('mode-indicator');
+    let width = window.innerWidth;
+    let height = window.innerHeight;
+    let dpr = Math.min(window.devicePixelRatio || 1, 2);
 
-    function updateStats(timestamp) {
-      while (frameTimes.length > 0 && frameTimes[0] <= timestamp - 1000) {
-        frameTimes.shift();
-      }
-      frameTimes.push(timestamp);
-      if (fpsCounter && frameTimes.length > 1) {
-        fpsCounter.textContent = `${frameTimes.length} FPS`;
-      }
-      if (dotCounter) {
-        dotCounter.textContent = `${engine.particles.length.toLocaleString()} Dots`;
-      }
-      requestAnimationFrame(updateStats);
+    function resize() {
+      width = window.innerWidth;
+      height = window.innerHeight;
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.floor(width * dpr);
+      canvas.height = Math.floor(height * dpr);
+      canvas.style.width = width + 'px';
+      canvas.style.height = height + 'px';
     }
-    requestAnimationFrame(updateStats);
+    window.addEventListener('resize', resize);
+    resize();
 
-    // Wave Mode Selector
-    const modePills = document.querySelectorAll('.mode-pill');
-    modePills.forEach(pill => {
-      pill.addEventListener('click', () => {
-        modePills.forEach(p => p.classList.remove('active'));
-        pill.classList.add('active');
-        const mode = pill.getAttribute('data-mode');
-        engine.setOptions({ motionMode: mode });
-        if (modeIndicator) {
-          modeIndicator.textContent = pill.textContent;
+    // 3D Grid Initialization
+    const halfW = ((GRID_COLS - 1) * SPACING_X) * 0.5;
+    const halfD = ((GRID_ROWS - 1) * SPACING_Z) * 0.5;
+    const particles = [];
+
+    for (let r = 0; r < GRID_ROWS; r++) {
+      for (let c = 0; c < GRID_COLS; c++) {
+        const wx = c * SPACING_X - halfW;
+        const wz = r * SPACING_Z - halfD;
+        const edgeU = Math.min(c, GRID_COLS - 1 - c) / (GRID_COLS * 0.16);
+        const edgeV = Math.min(r, GRID_ROWS - 1 - r) / (GRID_ROWS * 0.16);
+        const edgeFactor = Math.max(0, Math.min(1, Math.min(edgeU, edgeV)));
+
+        particles.push({
+          c, r,
+          wx, wz, wy: 0,
+          screenX: 0,
+          screenY: 0,
+          screenRadius: 1,
+          elevationNorm: 0.5,
+          specular: 0,
+          depthFogAlpha: 1,
+          edgeFactor,
+          visible: true
+        });
+      }
+    }
+
+    // Stable 3D Camera Constants
+    const CAMERA_PITCH = 0.48; // ~27.5 degrees downwards tilt
+    const cosPitch = Math.cos(CAMERA_PITCH);
+    const sinPitch = Math.sin(CAMERA_PITCH);
+    const CAMERA_DIST = 720;
+    const CAMERA_HEIGHT = 340;
+    const CAMERA_FOV = 520;
+
+    let time = 0;
+    let lastTime = performance.now();
+
+    function animate(timestamp) {
+      const dt = Math.min((timestamp - lastTime) * 0.001, 0.05);
+      lastTime = timestamp;
+      time += dt * WAVE_SPEED;
+
+      const cx = width * 0.5;
+      const cy = height * 0.58;
+      const lx = 0.577, ly = 0.577, lz = -0.577;
+
+      // 1. Calculate Wave Physics & 3D Projections
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        const wx = p.wx;
+        const wz = p.wz;
+
+        // Fluid silk multi-harmonics
+        const a1 = wx * 0.006 * 1.3 + wz * 0.008 * 1.1 + time * 1.4;
+        const a2 = wx * 0.006 * 0.8 - wz * 0.008 * 1.6 + time * 0.9;
+        const a3 = (wx + wz) * 0.006 * 1.5 + time * 1.8;
+        const dist = Math.hypot(wx, wz);
+        const a4 = dist * 0.006 - time * 1.2;
+
+        const rawH = Math.sin(a1) + Math.cos(a2) * 0.7 + Math.sin(a3) * 0.45 + Math.cos(a4) * 0.35;
+        const invDist = dist > 0.001 ? 1 / dist : 0;
+        const dh_dx = (Math.cos(a1) * 0.006 * 1.3 - Math.sin(a2) * 0.7 * 0.006 * 0.8 + Math.cos(a3) * 0.45 * 0.006 * 1.5 - Math.sin(a4) * 0.35 * 0.006 * (wx * invDist));
+        const dh_dz = (Math.cos(a1) * 0.008 * 1.1 + Math.sin(a2) * 0.7 * 0.008 * 1.6 + Math.cos(a3) * 0.45 * 0.006 * 1.5 - Math.sin(a4) * 0.35 * 0.006 * (wz * invDist));
+
+        p.wy = rawH * (WAVE_AMPLITUDE * 0.45);
+        p.elevationNorm = Math.max(0, Math.min(1, (rawH + 2.5) / 5.0));
+
+        // Specular Slope Lighting
+        if (SHOW_SPECULAR) {
+          const nx = -dh_dx * (WAVE_AMPLITUDE * 0.45) * 0.15;
+          const ny = 1.0;
+          const nz = -dh_dz * (WAVE_AMPLITUDE * 0.45) * 0.15;
+          const nLen = Math.hypot(nx, ny, nz) || 1.0;
+          const dotL = Math.max(0, (nx / nLen) * lx + (ny / nLen) * ly + (nz / nLen) * lz);
+          p.specular = Math.pow(dotL, 4.0) * 0.75 + (p.elevationNorm > 0.65 ? (p.elevationNorm - 0.65) * 0.8 : 0);
+        } else {
+          p.specular = 0;
         }
-      });
-    });
 
-    // Theme selector
-    const themePills = document.querySelectorAll('.theme-pill');
-    themePills.forEach(pill => {
-      pill.addEventListener('click', () => {
-        themePills.forEach(p => p.classList.remove('active'));
-        pill.classList.add('active');
-        const themeKey = pill.getAttribute('data-theme');
-        if (THEMES[themeKey]) {
-          engine.setTheme(themeKey);
+        // Stable 3D Camera Transformation
+        const dx = wx;
+        const dy = p.wy - CAMERA_HEIGHT;
+        const dz = wz - CAMERA_DIST;
+
+        const camSpaceX = dx;
+        const camSpaceY = dy * cosPitch - dz * sinPitch;
+        const camSpaceZ = -dy * sinPitch - dz * cosPitch;
+
+        if (camSpaceZ <= 10) {
+          p.visible = false;
+          continue;
         }
-      });
-    });
 
-    // Range sliders
-    function bindSlider(id, valId, unit, optKey, parseFn = parseFloat) {
-      const slider = document.getElementById(id);
-      const val = document.getElementById(valId);
-      if (!slider || !val) return;
-      slider.addEventListener('input', (e) => {
-        const parsed = parseFn(e.target.value);
-        val.textContent = `${parsed}${unit}`;
-        engine.setOptions({ [optKey]: parsed });
-      });
+        p.visible = true;
+        const scale = CAMERA_FOV / camSpaceZ;
+        p.screenX = cx + camSpaceX * scale;
+        p.screenY = cy - camSpaceY * scale;
+        p.screenRadius = Math.max(0.5, (VALLEY_DOT_RADIUS + (PEAK_DOT_RADIUS - VALLEY_DOT_RADIUS) * p.elevationNorm) * scale * 1.25);
+
+        if (ENABLE_DEPTH_FOG) {
+          const fogFactor = Math.max(0, Math.min(1, 1 - (camSpaceZ - 450) / 750));
+          p.depthFogAlpha = fogFactor * p.edgeFactor;
+        } else {
+          p.depthFogAlpha = p.edgeFactor;
+        }
+      }
+
+      // 2. Render
+      ctx.save();
+      ctx.scale(dpr, dpr);
+
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, width, height);
+
+      // Connecting lattice mesh lines
+      if (SHOW_LATTICE_LINES) {
+        ctx.lineWidth = 0.85;
+        ctx.strokeStyle = meshLineStyle;
+        ctx.beginPath();
+        for (let r = 0; r < GRID_ROWS; r++) {
+          let drawing = false;
+          for (let c = 0; c < GRID_COLS; c++) {
+            const p = particles[r * GRID_COLS + c];
+            if (!p.visible || p.depthFogAlpha < 0.02) { drawing = false; continue; }
+            if (!drawing) { ctx.moveTo(p.screenX, p.screenY); drawing = true; }
+            else { ctx.lineTo(p.screenX, p.screenY); }
+          }
+        }
+        for (let c = 0; c < GRID_COLS; c++) {
+          let drawing = false;
+          for (let r = 0; r < GRID_ROWS; r++) {
+            const p = particles[r * GRID_COLS + c];
+            if (!p.visible || p.depthFogAlpha < 0.02) { drawing = false; continue; }
+            if (!drawing) { ctx.moveTo(p.screenX, p.screenY); drawing = true; }
+            else { ctx.lineTo(p.screenX, p.screenY); }
+          }
+        }
+        ctx.stroke();
+      }
+
+      // Soft Bloom Halos on Peaks (GPU Sprite)
+      if (SHOW_GLOW) {
+        for (let i = 0; i < particles.length; i++) {
+          const p = particles[i];
+          if (!p.visible || p.elevationNorm < 0.68 || p.depthFogAlpha < 0.1) continue;
+          const glowSize = p.screenRadius * (4.2 + p.elevationNorm * 3.0);
+          const glowAlpha = (p.elevationNorm - 0.68) * 3.0 * 0.35 * p.depthFogAlpha;
+          ctx.globalAlpha = Math.min(1.0, Math.max(0, glowAlpha));
+          ctx.drawImage(glowCanvas, p.screenX - glowSize, p.screenY - glowSize, glowSize * 2, glowSize * 2);
+        }
+        ctx.globalAlpha = 1.0;
+      }
+
+      // Shaded Dots (Hue Accurate)
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        if (!p.visible || p.depthFogAlpha < 0.01) continue;
+
+        const norm = p.elevationNorm;
+        let rDot, gDot, bDot;
+
+        if (norm < 0.5) {
+          const f = norm * 2.0;
+          rDot = Math.round(vr + (rgb[0] - vr) * f);
+          gDot = Math.round(vg + (rgb[1] - vg) * f);
+          bDot = Math.round(vb + (rgb[2] - vb) * f);
+        } else {
+          const f = (norm - 0.5) * 2.0;
+          rDot = Math.round(rgb[0] + (peakR - rgb[0]) * f);
+          gDot = Math.round(rgb[1] + (peakG - rgb[1]) * f);
+          bDot = Math.round(rgb[2] + (peakB - rgb[2]) * f);
+        }
+
+        if (p.specular > 0.05) {
+          const specFactor = Math.min(1.0, p.specular) * 0.75;
+          rDot = Math.round(rDot + (255 - rDot) * specFactor);
+          gDot = Math.round(gDot + (255 - gDot) * specFactor);
+          bDot = Math.round(bDot + (255 - bDot) * specFactor);
+        }
+
+        const baseAlpha = 0.25 + norm * 0.75;
+        const finalAlpha = Math.max(0, Math.min(1, baseAlpha * p.depthFogAlpha));
+
+        ctx.fillStyle = `rgba(${rDot}, ${gDot}, ${bDot}, ${finalAlpha.toFixed(2)})`;
+        ctx.beginPath();
+        ctx.arc(p.screenX, p.screenY, p.screenRadius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.restore();
+      requestAnimationFrame(animate);
     }
 
-    bindSlider('slider-amp', 'val-amp', 'px', 'waveAmplitude');
-    bindSlider('slider-speed', 'val-speed', 'x', 'waveSpeed');
-    bindSlider('slider-peak-dot', 'val-peak-dot', 'px', 'peakDotRadius');
-    bindSlider('slider-valley-dot', 'val-valley-dot', 'px', 'baseDotRadius');
-    bindSlider('slider-glow', 'val-glow', 'x', 'glowIntensity');
-
-    const densitySlider = document.getElementById('slider-density');
-    const densityVal = document.getElementById('val-density');
-    densitySlider.addEventListener('input', (e) => {
-      const cols = parseInt(e.target.value, 10);
-      const rows = Math.round(cols * (38 / 64));
-      densityVal.textContent = `${cols} x ${rows}`;
-      engine.setOptions({ cols, rows });
-    });
-
-    const pitchSlider = document.getElementById('slider-pitch');
-    const pitchVal = document.getElementById('val-pitch');
-    pitchSlider.addEventListener('input', (e) => {
-      const deg = parseInt(e.target.value, 10);
-      pitchVal.textContent = `${deg}°`;
-      engine.setOptions({ cameraPitch: (deg * Math.PI) / 180 });
-    });
-
-    // Feature Toggles
-    document.getElementById('toggle-mesh').addEventListener('change', (e) => {
-      engine.setOptions({ showMeshLines: e.target.checked });
-    });
-    document.getElementById('toggle-specular').addEventListener('change', (e) => {
-      engine.setOptions({ showSpecular: e.target.checked });
-    });
-    document.getElementById('toggle-glow').addEventListener('change', (e) => {
-      engine.setOptions({ showGlow: e.target.checked });
-    });
-    document.getElementById('toggle-fog').addEventListener('change', (e) => {
-      engine.setOptions({ enableDepthFog: e.target.checked });
-    });
-
-    // HUD Toggle
-    const hudPanel = document.getElementById('hud-panel');
-    const btnToggleHud = document.getElementById('btn-toggle-hud');
-    function toggleHud() {
-      hudPanel.classList.toggle('hidden');
-      const isHidden = hudPanel.classList.contains('hidden');
-      btnToggleHud.textContent = isHidden ? 'HUD: OFF' : 'HUD: ON';
-    }
-    btnToggleHud.addEventListener('click', toggleHud);
-    window.addEventListener('keydown', (e) => {
-      if (e.key === 'h' || e.key === 'H') toggleHud();
-    });
-
-    // Export HTML
-    document.getElementById('btn-export-code').addEventListener('click', () => {
-      window.open('./cloth-wave-standalone.html', '_blank');
-    });
+    requestAnimationFrame(animate);
   </script>
 </body>
 </html>

@@ -3,223 +3,507 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>3D Stack Box Layer Grid — Interactive Background Animation</title>
-  <meta name="description" content="A high-performance 3D isometric stacked box layer grid background animation with spring lift hover physics and two-tone facet shading.">
-  <link rel="stylesheet" href="./effects/stack-box/styles.css">
+  <title>3D Stack Box Layer Grid — Standalone Visualizer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #000000; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #fff; }
+    #canvas-container { position: absolute; inset: 0; width: 100%; height: 100%; background: #000000; }
+    canvas { display: block; width: 100%; height: 100%; }
+    .badge {
+      position: absolute; top: 16px; left: 16px; z-index: 10;
+      background: rgba(12, 14, 20, 0.85); backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px;
+      padding: 10px 16px; font-size: 13px; font-weight: 500;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.6); pointer-events: none;
+    }
+    .badge small { display: block; font-size: 11px; color: #94a3b8; font-weight: normal; margin-top: 2px; }
+  </style>
 </head>
 <body>
   <div id="canvas-container"></div>
-
-  <!-- Top Brand / Title -->
-  <header class="top-header">
-    <div class="brand-icon">3D</div>
-    <div class="title-group">
-      <h1>3D Stack Box Layer Grid</h1>
-      <span class="subtitle">Interactive Isometric Matrix · 120 FPS Engine</span>
-    </div>
-  </header>
-
-  <!-- Top Actions -->
-  <nav class="top-actions">
-    <a href="/" class="action-btn">← All Presets</a>
-    <a href="./stacked-panels.html" class="action-btn">Stacked Panels</a>
-    <button id="btn-toggle-hud" class="action-btn" title="Toggle HUD Controls (H)">HUD: ON</button>
-    <button id="btn-export-code" class="action-btn accent">Export HTML</button>
-  </nav>
-
-  <!-- Interactive HUD Controls -->
-  <aside class="hud-panel" id="hud-panel">
-    <div class="hud-header">
-      <h2>Grid & 3D Layer Config</h2>
-    </div>
-
-    <!-- Theme Selection -->
-    <div class="control-group">
-      <label>Color Theme</label>
-      <div class="theme-grid">
-        <button class="theme-pill active" data-theme="titanium">Titanium</button>
-        <button class="theme-pill" data-theme="obsidian">Obsidian</button>
-        <button class="theme-pill" data-theme="cyan">Cyan</button>
-        <button class="theme-pill" data-theme="amber">Amber</button>
-        <button class="theme-pill" data-theme="emerald">Emerald</button>
-      </div>
-    </div>
-
-    <!-- Box Hover Pop Height -->
-    <div class="control-group">
-      <label for="slider-pop-height">Hover Pop Height <span class="val" id="val-pop-height">24px</span></label>
-      <input type="range" id="slider-pop-height" min="8" max="60" value="24" step="1">
-    </div>
-
-    <!-- Hover Radius -->
-    <div class="control-group">
-      <label for="slider-radius">Hover Radius <span class="val" id="val-radius">180px</span></label>
-      <input type="range" id="slider-radius" min="80" max="360" value="180" step="5">
-    </div>
-
-    <!-- Spring Speed / Responsiveness -->
-    <div class="control-group">
-      <label for="slider-spring">Spring Speed <span class="val" id="val-spring">14.0</span></label>
-      <input type="range" id="slider-spring" min="4" max="30" value="14" step="0.5">
-    </div>
-
-    <!-- Idle Wave Amplitude -->
-    <div class="control-group">
-      <label for="slider-wave-amp">Idle Wave Height <span class="val" id="val-wave-amp">4.0px</span></label>
-      <input type="range" id="slider-wave-amp" min="0" max="15" value="4" step="0.5">
-    </div>
-
-    <!-- Idle Wave Speed -->
-    <div class="control-group">
-      <label for="slider-wave-speed">Wave Speed <span class="val" id="val-wave-speed">1.2x</span></label>
-      <input type="range" id="slider-wave-speed" min="0" max="4" value="1.2" step="0.1">
-    </div>
-
-    <!-- Grid Density / Box Size -->
-    <div class="control-group">
-      <label for="slider-box-size">Box Size <span class="val" id="val-box-size">34px</span></label>
-      <input type="range" id="slider-box-size" min="20" max="60" value="34" step="2">
-    </div>
-
-    <!-- Floating Top Plate Toggle -->
-    <div class="toggle-row">
-      <span>Layered Floating Plate</span>
-      <label class="switch">
-        <input type="checkbox" id="toggle-floating-plate" checked>
-        <span class="slider-round"></span>
-      </label>
-    </div>
-
-    <!-- Base Floor Well Toggle -->
-    <div class="toggle-row">
-      <span>Base Floor Well Outline</span>
-      <label class="switch">
-        <input type="checkbox" id="toggle-floor-well" checked>
-        <span class="slider-round"></span>
-      </label>
-    </div>
-
-    <!-- Click Cascading Shockwave -->
-    <div class="toggle-row">
-      <span>Click Pop Shockwave</span>
-      <label class="switch">
-        <input type="checkbox" id="toggle-click-shockwave" checked>
-        <span class="slider-round"></span>
-      </label>
-    </div>
-  </aside>
-
-  <!-- Bottom Info Badge -->
-  <div class="info-badge">
-    <div class="fps-dot"></div>
-    <span id="fps-counter">60 FPS</span>
-    <span>·</span>
-    <span id="box-count">0 Boxes</span>
+  <div class="badge">
+    <strong>3D Stack Box Layer Grid</strong>
+    <small>Hover near layers to pop up · Click to send ripple</small>
   </div>
 
-  <script type="module">
-    import { StackBoxEngine } from './effects/stack-box/StackBox.js';
+  <script>
+    class StackBoxEngine {
+      constructor(container, options = {}) {
+        this.container = container;
+        this.canvas = document.createElement('canvas');
+        this.ctx = this.canvas.getContext('2d', { alpha: false });
+        this.container.appendChild(this.canvas);
+
+        this.opts = Object.assign({
+          boxWidth: 34,
+          boxDepth: 34,
+          boxBaseHeight: 8,
+          popHeight: 24,
+          gap: 12,
+          hoverRadius: 180,
+          springSpeed: 14.0,
+          idleWaveAmp: 4.0,
+          idleWaveSpeed: 1.2,
+          theme: 'titanium',
+          showFloatingPlate: true,
+          showFloorWell: true,
+          enableShockwaves: true
+        }, options);
+
+        this.themes = {
+          obsidian: {
+            bg: '#000000',
+            topFace: 'rgba(28, 32, 42, 0.8)',
+            leftFace: 'rgba(12, 14, 20, 0.95)',
+            rightFace: 'rgba(20, 24, 32, 0.9)',
+            topActive: 'rgba(48, 56, 72, 0.95)',
+            leftActive: 'rgba(18, 22, 30, 0.98)',
+            rightActive: 'rgba(32, 38, 50, 0.95)',
+            edgeRest: 'rgba(255, 255, 255, 0.08)',
+            edgeActive: 'rgba(255, 255, 255, 0.22)',
+            plateRest: 'rgba(60, 70, 88, 0.9)',
+            plateActive: 'rgba(100, 116, 139, 1.0)',
+            floorWell: 'rgba(255, 255, 255, 0.04)'
+          },
+          titanium: {
+            bg: '#000000',
+            topFace: 'rgba(45, 52, 65, 0.85)',
+            leftFace: 'rgba(18, 22, 30, 0.95)',
+            rightFace: 'rgba(30, 36, 48, 0.9)',
+            topActive: 'rgba(80, 94, 118, 0.98)',
+            leftActive: 'rgba(28, 34, 46, 0.98)',
+            rightActive: 'rgba(50, 60, 78, 0.95)',
+            edgeRest: 'rgba(255, 255, 255, 0.12)',
+            edgeActive: 'rgba(255, 255, 255, 0.35)',
+            plateRest: 'rgba(110, 126, 150, 0.95)',
+            plateActive: 'rgba(200, 215, 235, 1.0)',
+            floorWell: 'rgba(255, 255, 255, 0.05)'
+          },
+          cyan: {
+            bg: '#000000',
+            topFace: 'rgba(14, 40, 56, 0.85)',
+            leftFace: 'rgba(6, 20, 30, 0.95)',
+            rightFace: 'rgba(10, 28, 42, 0.9)',
+            topActive: 'rgba(22, 78, 110, 0.98)',
+            leftActive: 'rgba(12, 38, 54, 0.98)',
+            rightActive: 'rgba(16, 56, 80, 0.95)',
+            edgeRest: 'rgba(56, 189, 248, 0.15)',
+            edgeActive: 'rgba(56, 189, 248, 0.45)',
+            plateRest: 'rgba(56, 189, 248, 0.8)',
+            plateActive: 'rgba(186, 230, 253, 1.0)',
+            floorWell: 'rgba(56, 189, 248, 0.06)'
+          },
+          amber: {
+            bg: '#000000',
+            topFace: 'rgba(50, 36, 14, 0.85)',
+            leftFace: 'rgba(24, 16, 6, 0.95)',
+            rightFace: 'rgba(36, 24, 10, 0.9)',
+            topActive: 'rgba(100, 70, 22, 0.98)',
+            leftActive: 'rgba(46, 30, 10, 0.98)',
+            rightActive: 'rgba(72, 48, 16, 0.95)',
+            edgeRest: 'rgba(245, 158, 11, 0.15)',
+            edgeActive: 'rgba(245, 158, 11, 0.45)',
+            plateRest: 'rgba(245, 158, 11, 0.8)',
+            plateActive: 'rgba(254, 243, 199, 1.0)',
+            floorWell: 'rgba(245, 158, 11, 0.06)'
+          },
+          emerald: {
+            bg: '#000000',
+            topFace: 'rgba(12, 44, 30, 0.85)',
+            leftFace: 'rgba(5, 22, 14, 0.95)',
+            rightFace: 'rgba(8, 32, 20, 0.9)',
+            topActive: 'rgba(20, 85, 55, 0.98)',
+            leftActive: 'rgba(10, 42, 26, 0.98)',
+            rightActive: 'rgba(14, 60, 38, 0.95)',
+            edgeRest: 'rgba(16, 185, 129, 0.15)',
+            edgeActive: 'rgba(16, 185, 129, 0.45)',
+            plateRest: 'rgba(16, 185, 129, 0.8)',
+            plateActive: 'rgba(209, 250, 229, 1.0)',
+            floorWell: 'rgba(16, 185, 129, 0.06)'
+          }
+        };
+
+        this.currentColors = this.themes[this.opts.theme] || this.themes.titanium;
+
+        this.width = 0;
+        this.height = 0;
+        this.dpr = 1;
+        this.boxes = [];
+        this.shockwaves = [];
+
+        this.isoAngle = Math.PI / 6;
+        this.cosA = Math.cos(this.isoAngle);
+        this.sinA = Math.sin(this.isoAngle);
+
+        this.ox0 = 0; this.oy0 = 0;
+        this.ox1 = 0; this.oy1 = 0;
+        this.ox2 = 0; this.oy2 = 0;
+        this.ox3 = 0; this.oy3 = 0;
+
+        this.capOx0 = 0; this.capOy0 = 0;
+        this.capOx1 = 0; this.capOy1 = 0;
+        this.capOx2 = 0; this.capOy2 = 0;
+        this.capOx3 = 0; this.capOy3 = 0;
+
+        this.mouse = {
+          screenX: -9999,
+          screenY: -9999,
+          isoX: -9999,
+          isoY: -9999,
+          active: false
+        };
+
+        this.lastTime = performance.now();
+        this.elapsed = 0;
+        this.rafId = null;
+
+        this._onResize = this._onResize.bind(this);
+        this._onMouseMove = this._onMouseMove.bind(this);
+        this._onMouseLeave = this._onMouseLeave.bind(this);
+        this._onPointerDown = this._onPointerDown.bind(this);
+        this._loop = this._loop.bind(this);
+
+        this._init();
+      }
+
+      _init() {
+        this._updatePrecalculatedOffsets();
+        this._resizeCanvas();
+        this._buildGrid();
+
+        window.addEventListener('resize', this._onResize, { passive: true });
+        window.addEventListener('mousemove', this._onMouseMove, { passive: true });
+        window.addEventListener('mouseleave', this._onMouseLeave, { passive: true });
+        window.addEventListener('pointerdown', this._onPointerDown, { passive: true });
+
+        this.rafId = requestAnimationFrame(this._loop);
+      }
+
+      _updatePrecalculatedOffsets() {
+        const halfW = this.opts.boxWidth * 0.5;
+        const halfD = this.opts.boxDepth * 0.5;
+        const cosA = this.cosA;
+        const sinA = this.sinA;
+
+        this.ox0 = (-halfW + halfD) * cosA;
+        this.oy0 = (-halfW - halfD) * sinA;
+        this.ox1 = (halfW + halfD) * cosA;
+        this.oy1 = (halfW - halfD) * sinA;
+        this.ox2 = (halfW - halfD) * cosA;
+        this.oy2 = (halfW + halfD) * sinA;
+        this.ox3 = (-halfW - halfD) * cosA;
+        this.oy3 = (-halfW + halfD) * sinA;
+
+        const capHalfW = halfW * 0.88;
+        const capHalfD = halfD * 0.88;
+        this.capOx0 = (-capHalfW + capHalfD) * cosA;
+        this.capOy0 = (-capHalfW - capHalfD) * sinA;
+        this.capOx1 = (capHalfW + capHalfD) * cosA;
+        this.capOy1 = (capHalfW - capHalfD) * sinA;
+        this.capOx2 = (capHalfW - capHalfD) * cosA;
+        this.capOy2 = (capHalfW + capHalfD) * sinA;
+        this.capOx3 = (-capHalfW - capHalfD) * cosA;
+        this.capOy3 = (-capHalfW + capHalfD) * sinA;
+      }
+
+      _resizeCanvas() {
+        this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+        this.width = window.innerWidth;
+        this.height = window.innerHeight;
+
+        this.canvas.width = Math.floor(this.width * this.dpr);
+        this.canvas.height = Math.floor(this.height * this.dpr);
+        this.canvas.style.width = `${this.width}px`;
+        this.canvas.style.height = `${this.height}px`;
+
+        this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+      }
+
+      _onResize() {
+        this._resizeCanvas();
+        this._buildGrid();
+      }
+
+      _buildGrid() {
+        this.boxes = [];
+        const cellStride = this.opts.boxWidth + this.opts.gap;
+        const diagDist = Math.hypot(this.width, this.height);
+        const halfCount = Math.ceil((diagDist * 0.7) / cellStride) + 3;
+
+        const centerX = this.width * 0.5;
+        const centerY = this.height * 0.52;
+        const cosA = this.cosA;
+        const sinA = this.sinA;
+
+        for (let gx = -halfCount; gx <= halfCount; gx++) {
+          for (let gy = -halfCount; gy <= halfCount; gy++) {
+            const worldX = gx * cellStride;
+            const worldY = gy * cellStride;
+
+            const baseScreenX = centerX + (worldX - worldY) * cosA;
+            const baseScreenY = centerY + (worldX + worldY) * sinA;
+
+            if (baseScreenX < -150 || baseScreenX > this.width + 150 ||
+                baseScreenY < -150 || baseScreenY > this.height + 250) {
+              continue;
+            }
+
+            const distFromCenter = Math.hypot(worldX, worldY);
+
+            this.boxes.push({
+              gx, gy,
+              worldX, worldY,
+              baseScreenX, baseScreenY,
+              depthSortKey: gx + gy,
+              centerDist: distFromCenter,
+              currentH: this.opts.boxBaseHeight,
+              targetH: this.opts.boxBaseHeight,
+              plateH: this.opts.boxBaseHeight + 2,
+              popFactor: 0.0
+            });
+          }
+        }
+
+        this.boxes.sort((a, b) => a.depthSortKey - b.depthSortKey);
+      }
+
+      _screenToIso(sx, sy) {
+        const centerX = this.width * 0.5;
+        const centerY = this.height * 0.52;
+        const dx = sx - centerX;
+        const dy = sy - centerY;
+
+        const u = dx / (2 * this.cosA);
+        const v = dy / (2 * this.sinA);
+
+        return { x: u + v, y: v - u };
+      }
+
+      _onMouseMove(e) {
+        this.mouse.screenX = e.clientX;
+        this.mouse.screenY = e.clientY;
+        const iso = this._screenToIso(e.clientX, e.clientY);
+        this.mouse.isoX = iso.x;
+        this.mouse.isoY = iso.y;
+        this.mouse.active = true;
+      }
+
+      _onMouseLeave() {
+        this.mouse.active = false;
+        this.mouse.isoX = -9999;
+        this.mouse.isoY = -9999;
+      }
+
+      _onPointerDown(e) {
+        if (!this.opts.enableShockwaves) return;
+        const iso = this._screenToIso(e.clientX, e.clientY);
+        this.shockwaves.push({
+          x: iso.x,
+          y: iso.y,
+          radius: 0,
+          maxRadius: Math.max(this.width, this.height) * 0.8,
+          speed: 480,
+          intensity: 1.0,
+          decay: 0.95
+        });
+      }
+
+      _loop(timestamp) {
+        const dt = Math.min((timestamp - this.lastTime) * 0.001, 0.1);
+        this.lastTime = timestamp;
+        this.elapsed += dt * this.opts.idleWaveSpeed;
+
+        this._update(dt);
+        this._draw();
+
+        this.rafId = requestAnimationFrame(this._loop);
+      }
+
+      _update(dt) {
+        const mouseIsoX = this.mouse.isoX;
+        const mouseIsoY = this.mouse.isoY;
+        const hoverRadius = this.opts.hoverRadius;
+        const popHeight = this.opts.popHeight;
+        const baseH = this.opts.boxBaseHeight;
+        const waveAmp = this.opts.idleWaveAmp;
+        const elapsed = this.elapsed;
+
+        const springFactor = 1.0 - Math.exp(-this.opts.springSpeed * dt);
+
+        // Update shockwaves
+        for (let s = this.shockwaves.length - 1; s >= 0; s--) {
+          const sw = this.shockwaves[s];
+          sw.radius += sw.speed * dt;
+          sw.intensity *= Math.pow(sw.decay, dt * 60);
+          if (sw.radius > sw.maxRadius || sw.intensity < 0.01) {
+            this.shockwaves.splice(s, 1);
+          }
+        }
+
+        const numShockwaves = this.shockwaves.length;
+
+        for (let i = 0; i < this.boxes.length; i++) {
+          const b = this.boxes[i];
+
+          let targetPop = 0;
+          if (this.mouse.active) {
+            const dIsoX = b.worldX - mouseIsoX;
+            const dIsoY = b.worldY - mouseIsoY;
+            const dist = Math.hypot(dIsoX, dIsoY);
+
+            if (dist < hoverRadius) {
+              const norm = dist / hoverRadius;
+              const popCurve = 0.5 * (1 + Math.cos(norm * Math.PI));
+              targetPop = popHeight * popCurve;
+            }
+          }
+
+          if (numShockwaves > 0) {
+            for (let s = 0; s < numShockwaves; s++) {
+              const sw = this.shockwaves[s];
+              const distSw = Math.hypot(b.worldX - sw.x, b.worldY - sw.y);
+              const ringDist = Math.abs(distSw - sw.radius);
+              if (ringDist < 60) {
+                const ringFactor = 0.5 * (1 + Math.cos((ringDist / 60) * Math.PI));
+                targetPop += popHeight * 0.8 * ringFactor * sw.intensity;
+              }
+            }
+          }
+
+          let idleWave = 0;
+          if (waveAmp > 0) {
+            idleWave = Math.sin(b.worldX * 0.008 + b.worldY * 0.006 + elapsed) *
+                       Math.cos(b.worldX * 0.005 - b.worldY * 0.007 + elapsed * 0.8) *
+                       waveAmp;
+          }
+
+          b.targetH = baseH + targetPop + idleWave;
+          b.currentH += (b.targetH - b.currentH) * springFactor;
+
+          const plateTarget = b.targetH + (targetPop > 1.0 ? 4.0 : 0.0);
+          b.plateH += (plateTarget - b.plateH) * (springFactor * 1.15);
+
+          b.popFactor = Math.max(0, Math.min(1, targetPop / (popHeight || 1)));
+        }
+      }
+
+      _draw() {
+        const ctx = this.ctx;
+        ctx.fillStyle = this.currentColors.bg;
+        ctx.fillRect(0, 0, this.width, this.height);
+
+        const colors = this.currentColors;
+        const showPlate = this.opts.showFloatingPlate;
+        const showWell = this.opts.showFloorWell;
+
+        const ox0 = this.ox0, oy0 = this.oy0;
+        const ox1 = this.ox1, oy1 = this.oy1;
+        const ox2 = this.ox2, oy2 = this.oy2;
+        const ox3 = this.ox3, oy3 = this.oy3;
+
+        const capOx0 = this.capOx0, capOy0 = this.capOy0;
+        const capOx1 = this.capOx1, capOy1 = this.capOy1;
+        const capOx2 = this.capOx2, capOy2 = this.capOy2;
+        const capOx3 = this.capOx3, capOy3 = this.capOy3;
+
+        ctx.lineWidth = 1;
+
+        for (let i = 0; i < this.boxes.length; i++) {
+          const b = this.boxes[i];
+          const bx = b.baseScreenX;
+          const by = b.baseScreenY;
+          const h = b.currentH;
+          const pH = b.plateH;
+          const pop = b.popFactor;
+
+          // 1. Base floor well outline
+          if (showWell) {
+            ctx.strokeStyle = colors.floorWell;
+            ctx.beginPath();
+            ctx.moveTo(bx + ox0, by + oy0);
+            ctx.lineTo(bx + ox1, by + oy1);
+            ctx.lineTo(bx + ox2, by + oy2);
+            ctx.lineTo(bx + ox3, by + oy3);
+            ctx.closePath();
+            ctx.stroke();
+          }
+
+          // 2. Left side facet (Secondary dark shade)
+          ctx.fillStyle = pop > 0.1 ? colors.leftActive : colors.leftFace;
+          ctx.beginPath();
+          ctx.moveTo(bx + ox3, by + oy3);
+          ctx.lineTo(bx + ox3, by + oy3 - h);
+          ctx.lineTo(bx + ox2, by + oy2 - h);
+          ctx.lineTo(bx + ox2, by + oy2);
+          ctx.closePath();
+          ctx.fill();
+
+          // 3. Right side facet (Secondary midtone shade)
+          ctx.fillStyle = pop > 0.1 ? colors.rightActive : colors.rightFace;
+          ctx.beginPath();
+          ctx.moveTo(bx + ox2, by + oy2);
+          ctx.lineTo(bx + ox2, by + oy2 - h);
+          ctx.lineTo(bx + ox1, by + oy1 - h);
+          ctx.lineTo(bx + ox1, by + oy1);
+          ctx.closePath();
+          ctx.fill();
+
+          // 4. Top Face (Primary Accent tone)
+          ctx.fillStyle = pop > 0.1 ? colors.topActive : colors.topFace;
+          ctx.beginPath();
+          ctx.moveTo(bx + ox0, by + oy0 - h);
+          ctx.lineTo(bx + ox1, by + oy1 - h);
+          ctx.lineTo(bx + ox2, by + oy2 - h);
+          ctx.lineTo(bx + ox3, by + oy3 - h);
+          ctx.closePath();
+          ctx.fill();
+
+          // Edge lines
+          ctx.strokeStyle = pop > 0.1 ? colors.edgeActive : colors.edgeRest;
+          ctx.beginPath();
+          ctx.moveTo(bx + ox0, by + oy0 - h);
+          ctx.lineTo(bx + ox1, by + oy1 - h);
+          ctx.lineTo(bx + ox2, by + oy2 - h);
+          ctx.lineTo(bx + ox3, by + oy3 - h);
+          ctx.closePath();
+          ctx.moveTo(bx + ox2, by + oy2 - h);
+          ctx.lineTo(bx + ox2, by + oy2);
+          ctx.stroke();
+
+          // 5. Floating Top Plate
+          if (showPlate) {
+            ctx.fillStyle = pop > 0.1 ? colors.plateActive : colors.plateRest;
+            ctx.beginPath();
+            ctx.moveTo(bx + capOx0, by + capOy0 - pH);
+            ctx.lineTo(bx + capOx1, by + capOy1 - pH);
+            ctx.lineTo(bx + capOx2, by + capOy2 - pH);
+            ctx.lineTo(bx + capOx3, by + capOy3 - pH);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = pop > 0.1 ? colors.edgeActive : colors.edgeRest;
+            ctx.stroke();
+          }
+        }
+      }
+
+      setOptions(newOpts) {
+        Object.assign(this.opts, newOpts);
+        if ('boxWidth' in newOpts || 'boxDepth' in newOpts || 'gap' in newOpts) {
+          this._updatePrecalculatedOffsets();
+          this._buildGrid();
+        }
+      }
+
+      setTheme(themeName) {
+        if (this.themes[themeName]) {
+          this.opts.theme = themeName;
+          this.currentColors = this.themes[themeName];
+        }
+      }
+    }
 
     const container = document.getElementById('canvas-container');
-    const engine = new StackBoxEngine(container, {
-      boxWidth: 34,
-      boxDepth: 34,
-      boxBaseHeight: 8,
-      popHeight: 24,
-      hoverRadius: 180,
-      springSpeed: 14.0,
-      idleWaveAmp: 4.0,
-      idleWaveSpeed: 1.2,
-      theme: 'titanium',
-      showFloatingPlate: true,
-      showFloorWell: true,
-      enableShockwaves: true
-    });
-
-    // FPS and Box Count monitors
-    let frameTimes = [];
-    const fpsCounter = document.getElementById('fps-counter');
-    const boxCounter = document.getElementById('box-count');
-
-    function updateStats(timestamp) {
-      while (frameTimes.length > 0 && frameTimes[0] <= timestamp - 1000) {
-        frameTimes.shift();
-      }
-      frameTimes.push(timestamp);
-      if (fpsCounter && frameTimes.length > 1) {
-        fpsCounter.textContent = `${frameTimes.length} FPS`;
-      }
-      if (boxCounter) {
-        boxCounter.textContent = `${engine.boxes.length} Boxes`;
-      }
-      requestAnimationFrame(updateStats);
-    }
-    requestAnimationFrame(updateStats);
-
-    // Theme selector
-    const themePills = document.querySelectorAll('.theme-pill');
-    themePills.forEach(pill => {
-      pill.addEventListener('click', () => {
-        themePills.forEach(p => p.classList.remove('active'));
-        pill.classList.add('active');
-        engine.setTheme(pill.getAttribute('data-theme'));
-      });
-    });
-
-    // Range sliders
-    function bindSlider(id, valId, unit, optKey, parseFn = parseFloat) {
-      const slider = document.getElementById(id);
-      const val = document.getElementById(valId);
-      if (!slider || !val) return;
-      slider.addEventListener('input', (e) => {
-        const parsed = parseFn(e.target.value);
-        val.textContent = `${parsed}${unit}`;
-        engine.setOptions({ [optKey]: parsed });
-      });
-    }
-
-    bindSlider('slider-pop-height', 'val-pop-height', 'px', 'popHeight');
-    bindSlider('slider-radius', 'val-radius', 'px', 'hoverRadius');
-    bindSlider('slider-spring', 'val-spring', '', 'springSpeed');
-    bindSlider('slider-wave-amp', 'val-wave-amp', 'px', 'idleWaveAmp');
-    bindSlider('slider-wave-speed', 'val-wave-speed', 'x', 'idleWaveSpeed');
-
-    const boxSizeSlider = document.getElementById('slider-box-size');
-    const boxSizeVal = document.getElementById('val-box-size');
-    boxSizeSlider.addEventListener('input', (e) => {
-      const size = parseInt(e.target.value, 10);
-      boxSizeVal.textContent = `${size}px`;
-      engine.setOptions({ boxWidth: size, boxDepth: size });
-    });
-
-    // Switches
-    document.getElementById('toggle-floating-plate').addEventListener('change', (e) => {
-      engine.setOptions({ showFloatingPlate: e.target.checked });
-    });
-    document.getElementById('toggle-floor-well').addEventListener('change', (e) => {
-      engine.setOptions({ showFloorWell: e.target.checked });
-    });
-    document.getElementById('toggle-click-shockwave').addEventListener('change', (e) => {
-      engine.setOptions({ enableShockwaves: e.target.checked });
-    });
-
-    // HUD Toggle
-    const hudPanel = document.getElementById('hud-panel');
-    const btnToggleHud = document.getElementById('btn-toggle-hud');
-    function toggleHud() {
-      hudPanel.classList.toggle('hidden');
-      const isHidden = hudPanel.classList.contains('hidden');
-      btnToggleHud.textContent = isHidden ? 'HUD: OFF' : 'HUD: ON';
-    }
-    btnToggleHud.addEventListener('click', toggleHud);
-    window.addEventListener('keydown', (e) => {
-      if (e.key === 'h' || e.key === 'H') toggleHud();
-    });
-
-    // Export HTML
-    document.getElementById('btn-export-code').addEventListener('click', () => {
-      window.open('./stack-box-standalone.html', '_blank');
-    });
+    const engine = new StackBoxEngine(container);
   </script>
 </body>
 </html>

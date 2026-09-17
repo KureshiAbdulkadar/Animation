@@ -3,188 +3,267 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>2D Pixel Pop Wall — Interactive Background Animation</title>
-  <meta name="description" content="A high-performance 2D frontal pixel wall background animation where clicking tiles pops them slightly upward with spring physics.">
-  <link rel="stylesheet" href="./effects/pixel-wall/styles.css">
+  <title>2D Pixel Pop Wall — Standalone Visualizer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #000000; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #fff; }
+    #canvas-container { position: absolute; inset: 0; width: 100%; height: 100%; background: #000000; }
+    canvas { display: block; width: 100%; height: 100%; }
+    .badge {
+      position: absolute; top: 16px; left: 16px; z-index: 10;
+      background: rgba(12, 14, 20, 0.85); backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 10px;
+      padding: 10px 16px; font-size: 13px; font-weight: 500;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.6); pointer-events: none;
+    }
+    .badge small { display: block; font-size: 11px; color: #94a3b8; font-weight: normal; margin-top: 2px; }
+  </style>
 </head>
 <body>
   <div id="canvas-container"></div>
-
-  <!-- Top Brand / Title -->
-  <header class="top-header">
-    <div class="brand-icon">2D</div>
-    <div class="title-group">
-      <h1>2D Pixel Pop Wall</h1>
-      <span class="subtitle">Tactile Pixel Matrix · Click & Hover Pop Engine</span>
-    </div>
-  </header>
-
-  <!-- Top Actions -->
-  <nav class="top-actions">
-    <a href="/" class="action-btn">← All Presets</a>
-    <a href="./stack-box.html" class="action-btn">3D Stack Box</a>
-    <button id="btn-toggle-hud" class="action-btn" title="Toggle HUD Controls (H)">HUD: ON</button>
-    <button id="btn-export-code" class="action-btn accent">Export HTML</button>
-  </nav>
-
-  <!-- Interactive HUD Controls -->
-  <aside class="hud-panel" id="hud-panel">
-    <div class="hud-header">
-      <h2>Pixel Wall Config</h2>
-    </div>
-
-    <!-- Theme Selection -->
-    <div class="control-group">
-      <label>Color Theme</label>
-      <div class="theme-grid">
-        <button class="theme-pill active" data-theme="obsidian">Obsidian</button>
-        <button class="theme-pill" data-theme="titanium">Titanium</button>
-        <button class="theme-pill" data-theme="cyan">Cyan</button>
-        <button class="theme-pill" data-theme="amber">Amber</button>
-        <button class="theme-pill" data-theme="emerald">Emerald</button>
-      </div>
-    </div>
-
-    <!-- Click Pop Height -->
-    <div class="control-group">
-      <label for="slider-click-pop">Click Pop Height <span class="val" id="val-click-pop">14px</span></label>
-      <input type="range" id="slider-click-pop" min="4" max="36" value="14" step="1">
-    </div>
-
-    <!-- Hover Micro-Lift -->
-    <div class="control-group">
-      <label for="slider-hover-pop">Hover Micro-Lift <span class="val" id="val-hover-pop">5px</span></label>
-      <input type="range" id="slider-hover-pop" min="0" max="15" value="5" step="1">
-    </div>
-
-    <!-- Hover Radius -->
-    <div class="control-group">
-      <label for="slider-radius">Hover Radius <span class="val" id="val-radius">100px</span></label>
-      <input type="range" id="slider-radius" min="40" max="250" value="100" step="5">
-    </div>
-
-    <!-- Spring Responsiveness -->
-    <div class="control-group">
-      <label for="slider-spring">Spring Speed <span class="val" id="val-spring">18.0</span></label>
-      <input type="range" id="slider-spring" min="6" max="36" value="18" step="0.5">
-    </div>
-
-    <!-- Tile Size -->
-    <div class="control-group">
-      <label for="slider-tile-size">Pixel Tile Size <span class="val" id="val-tile-size">32px</span></label>
-      <input type="range" id="slider-tile-size" min="16" max="64" value="32" step="2">
-    </div>
-
-    <!-- Bottom Shadow Bevel Reveal Toggle -->
-    <div class="toggle-row">
-      <span>Bottom Depth Bevel</span>
-      <label class="switch">
-        <input type="checkbox" id="toggle-bevel" checked>
-        <span class="slider-round"></span>
-      </label>
-    </div>
-  </aside>
-
-  <!-- Bottom Info Badge -->
-  <div class="info-badge">
-    <div class="fps-dot"></div>
-    <span id="fps-counter">60 FPS</span>
-    <span>·</span>
-    <span id="tile-count">0 Pixels</span>
+  <div class="badge">
+    <strong>2D Pixel Pop Wall</strong>
+    <small>Hover to micro-lift · Click to pop pixel tiles</small>
   </div>
 
-  <script type="module">
-    import { PixelWallEngine } from './effects/pixel-wall/PixelWall.js';
+  <script>
+    class PixelWall {
+      constructor(container, options = {}) {
+        this.container = container;
+        this.canvas = document.createElement('canvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.canvas.style.display = 'block';
+        this.canvas.style.width = '100%';
+        this.canvas.style.height = '100%';
+        this.container.appendChild(this.canvas);
+
+        this.options = Object.assign({
+          tileSize: 32,
+          gap: 3,
+          clickPopHeight: 14,
+          hoverPopHeight: 5,
+          hoverRadius: 100,
+          springSpeed: 18.0,
+          rippleSpeed: 380,
+          theme: 'obsidian',
+          showBottomBevel: true,
+          dprCap: 2
+        }, options);
+
+        this.width = 0;
+        this.height = 0;
+        this.dpr = 1;
+        this.cols = 0;
+        this.rows = 0;
+        this.tiles = [];
+        this.ripples = [];
+
+        this.mouse = { x: -9999, y: -9999, isHovering: false };
+
+        this.themes = {
+          obsidian: {
+            bg: '#000000',
+            tileBase: '#12151c',
+            tileActive: '#262d3d',
+            bevelShadow: '#080a0e',
+            border: 'rgba(255, 255, 255, 0.08)',
+            borderActive: 'rgba(255, 255, 255, 0.28)',
+            accentDot: 'rgba(255, 255, 255, 0.15)',
+            accentDotActive: '#ffffff'
+          }
+        };
+
+        this.currentTheme = this.themes.obsidian;
+        this.isRunning = false;
+        this.rafId = null;
+        this.lastTime = performance.now();
+
+        this.handleResize();
+        this.initWall();
+        this.bindEvents();
+        this.start();
+      }
+
+      initWall() {
+        this.tiles = [];
+        const stride = this.options.tileSize + this.options.gap;
+        this.cols = Math.ceil(this.width / stride) + 1;
+        this.rows = Math.ceil(this.height / stride) + 1;
+
+        const offsetX = (this.width - ((this.cols - 1) * stride + this.options.tileSize)) * 0.5;
+        const offsetY = (this.height - ((this.rows - 1) * stride + this.options.tileSize)) * 0.5;
+
+        for (let r = 0; r < this.rows; r++) {
+          for (let c = 0; c < this.cols; c++) {
+            const x = offsetX + c * stride;
+            const y = offsetY + r * stride;
+            const cx = x + this.options.tileSize * 0.5;
+            const cy = y + this.options.tileSize * 0.5;
+
+            this.tiles.push({
+              c, r, x, y, cx, cy,
+              currentPop: 0,
+              targetPop: 0,
+              activeFactor: 0
+            });
+          }
+        }
+      }
+
+      handleResize() {
+        const rect = this.container.getBoundingClientRect();
+        this.width = rect.width || window.innerWidth;
+        this.height = rect.height || window.innerHeight;
+        this.dpr = Math.min(this.options.dprCap, window.devicePixelRatio || 1);
+        this.canvas.width = Math.floor(this.width * this.dpr);
+        this.canvas.height = Math.floor(this.height * this.dpr);
+        this.initWall();
+      }
+
+      bindEvents() {
+        window.addEventListener('resize', () => this.handleResize());
+
+        const onMove = (clientX, clientY) => {
+          const rect = this.canvas.getBoundingClientRect();
+          this.mouse.x = clientX - rect.left;
+          this.mouse.y = clientY - rect.top;
+          this.mouse.isHovering = true;
+        };
+
+        this.canvas.addEventListener('mousemove', (e) => onMove(e.clientX, e.clientY));
+        this.canvas.addEventListener('mouseleave', () => {
+          this.mouse.isHovering = false;
+          this.mouse.x = -9999;
+          this.mouse.y = -9999;
+        });
+
+        this.canvas.addEventListener('pointerdown', (e) => {
+          const rect = this.canvas.getBoundingClientRect();
+          this.ripples.push({
+            x: e.clientX - rect.left,
+            y: e.clientY - rect.top,
+            radius: 0,
+            maxRadius: Math.max(this.width, this.height) * 0.75,
+            speed: this.options.rippleSpeed,
+            strength: 1.0,
+            decay: 1.5
+          });
+        });
+      }
+
+      start() {
+        if (this.isRunning) return;
+        this.isRunning = true;
+        this.lastTime = performance.now();
+
+        const loop = (time) => {
+          if (!this.isRunning) return;
+          const dt = Math.min((time - this.lastTime) / 1000, 0.05);
+          this.lastTime = time;
+
+          this.update(dt);
+          this.render();
+
+          this.rafId = requestAnimationFrame(loop);
+        };
+        this.rafId = requestAnimationFrame(loop);
+      }
+
+      update(dt) {
+        const mx = this.mouse.x;
+        const my = this.mouse.y;
+        const isHover = this.mouse.isHovering;
+        const hoverRadius = this.options.hoverRadius;
+        const hoverPop = this.options.hoverPopHeight;
+        const clickPop = this.options.clickPopHeight;
+        const springFactor = 1.0 - Math.exp(-this.options.springSpeed * dt);
+
+        for (let i = this.ripples.length - 1; i >= 0; i--) {
+          const rp = this.ripples[i];
+          rp.radius += rp.speed * dt;
+          rp.strength -= rp.decay * dt;
+          if (rp.strength <= 0 || rp.radius >= rp.maxRadius) {
+            this.ripples.splice(i, 1);
+          }
+        }
+
+        const numRipples = this.ripples.length;
+
+        for (let i = 0; i < this.tiles.length; i++) {
+          const tile = this.tiles[i];
+          let target = 0;
+
+          if (isHover) {
+            const d = Math.hypot(tile.cx - mx, tile.cy - my);
+            if (d < hoverRadius) {
+              const norm = d / hoverRadius;
+              const curve = 0.5 * (1.0 + Math.cos(norm * Math.PI));
+              target += hoverPop * curve;
+            }
+          }
+
+          if (numRipples > 0) {
+            for (let j = 0; j < numRipples; j++) {
+              const rp = this.ripples[j];
+              const dist = Math.hypot(tile.cx - rp.x, tile.cy - rp.y);
+              const ringDist = Math.abs(dist - rp.radius);
+              if (ringDist < 60) {
+                const ringFactor = 0.5 * (1.0 + Math.cos((ringDist / 60) * Math.PI));
+                target += clickPop * ringFactor * rp.strength;
+              }
+            }
+          }
+
+          tile.targetPop = target;
+          tile.currentPop += (tile.targetPop - tile.currentPop) * springFactor;
+          tile.activeFactor = Math.max(0, Math.min(1, tile.currentPop / (clickPop || 1)));
+        }
+      }
+
+      render() {
+        const ctx = this.ctx;
+        const theme = this.currentTheme;
+        const size = this.options.tileSize;
+
+        ctx.save();
+        ctx.scale(this.dpr, this.dpr);
+
+        ctx.fillStyle = theme.bg;
+        ctx.fillRect(0, 0, this.width, this.height);
+
+        ctx.lineWidth = 1;
+
+        for (let i = 0; i < this.tiles.length; i++) {
+          const tile = this.tiles[i];
+          const pop = tile.currentPop;
+          const act = tile.activeFactor;
+          const x = tile.x;
+          const y = tile.y;
+
+          if (pop > 0.5) {
+            ctx.fillStyle = theme.bevelShadow;
+            ctx.fillRect(x, y + size - pop, size, pop);
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+            ctx.strokeRect(x, y + size - pop, size, pop);
+          }
+
+          const topY = y - pop;
+          ctx.fillStyle = act > 0.1 ? theme.tileActive : theme.tileBase;
+          ctx.fillRect(x, topY, size, size);
+
+          ctx.strokeStyle = act > 0.1 ? theme.borderActive : theme.border;
+          ctx.strokeRect(x + 0.5, topY + 0.5, size - 1, size - 1);
+
+          ctx.fillStyle = act > 0.1 ? theme.accentDotActive : theme.accentDot;
+          ctx.fillRect(x + size * 0.5 - 1, topY + size * 0.5 - 1, 2, 2);
+        }
+
+        ctx.restore();
+      }
+    }
 
     const container = document.getElementById('canvas-container');
-    const engine = new PixelWallEngine(container, {
-      tileSize: 32,
-      gap: 3,
-      clickPopHeight: 14,
-      hoverPopHeight: 5,
-      hoverRadius: 100,
-      springSpeed: 18.0,
-      theme: 'obsidian',
-      showBottomBevel: true
-    });
-
-    // FPS and Tile Count monitors
-    let frameTimes = [];
-    const fpsCounter = document.getElementById('fps-counter');
-    const tileCounter = document.getElementById('tile-count');
-
-    function updateStats(timestamp) {
-      while (frameTimes.length > 0 && frameTimes[0] <= timestamp - 1000) {
-        frameTimes.shift();
-      }
-      frameTimes.push(timestamp);
-      if (fpsCounter && frameTimes.length > 1) {
-        fpsCounter.textContent = `${frameTimes.length} FPS`;
-      }
-      if (tileCounter) {
-        tileCounter.textContent = `${engine.tiles.length} Pixels`;
-      }
-      requestAnimationFrame(updateStats);
-    }
-    requestAnimationFrame(updateStats);
-
-    // Theme selector
-    const themePills = document.querySelectorAll('.theme-pill');
-    themePills.forEach(pill => {
-      pill.addEventListener('click', () => {
-        themePills.forEach(p => p.classList.remove('active'));
-        pill.classList.add('active');
-        engine.setTheme(pill.getAttribute('data-theme'));
-      });
-    });
-
-    // Range sliders
-    function bindSlider(id, valId, unit, optKey, parseFn = parseFloat) {
-      const slider = document.getElementById(id);
-      const val = document.getElementById(valId);
-      if (!slider || !val) return;
-      slider.addEventListener('input', (e) => {
-        const parsed = parseFn(e.target.value);
-        val.textContent = `${parsed}${unit}`;
-        engine.setOptions({ [optKey]: parsed });
-      });
-    }
-
-    bindSlider('slider-click-pop', 'val-click-pop', 'px', 'clickPopHeight');
-    bindSlider('slider-hover-pop', 'val-hover-pop', 'px', 'hoverPopHeight');
-    bindSlider('slider-radius', 'val-radius', 'px', 'hoverRadius');
-    bindSlider('slider-spring', 'val-spring', '', 'springSpeed');
-
-    const tileSizeSlider = document.getElementById('slider-tile-size');
-    const tileSizeVal = document.getElementById('val-tile-size');
-    tileSizeSlider.addEventListener('input', (e) => {
-      const size = parseInt(e.target.value, 10);
-      tileSizeVal.textContent = `${size}px`;
-      engine.setOptions({ tileSize: size });
-    });
-
-    // Switches
-    document.getElementById('toggle-bevel').addEventListener('change', (e) => {
-      engine.setOptions({ showBottomBevel: e.target.checked });
-    });
-
-    // HUD Toggle
-    const hudPanel = document.getElementById('hud-panel');
-    const btnToggleHud = document.getElementById('btn-toggle-hud');
-    function toggleHud() {
-      hudPanel.classList.toggle('hidden');
-      const isHidden = hudPanel.classList.contains('hidden');
-      btnToggleHud.textContent = isHidden ? 'HUD: OFF' : 'HUD: ON';
-    }
-    btnToggleHud.addEventListener('click', toggleHud);
-    window.addEventListener('keydown', (e) => {
-      if (e.key === 'h' || e.key === 'H') toggleHud();
-    });
-
-    // Export HTML
-    document.getElementById('btn-export-code').addEventListener('click', () => {
-      window.open('./pixel-wall-standalone.html', '_blank');
-    });
+    const engine = new PixelWall(container);
   </script>
 </body>
 </html>
