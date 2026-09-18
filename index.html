@@ -112,7 +112,7 @@
             </button>
             <div class="dropdown-menu-divider"></div>
             <button type="button" class="dropdown-menu-item" id="export-html-btn" role="menuitem">
-              <span>HTML Code</span>
+              <span>HTML View & Code</span>
             </button>
             <button type="button" class="dropdown-menu-item" id="export-js-btn" role="menuitem">
               <span>Copy JS Module</span>
@@ -611,6 +611,48 @@
         </svg>
       </button>
     </main>
+  </div>
+
+  <!-- HTML View & Code Reader Modal -->
+  <div class="html-view-modal-backdrop" id="html-view-modal-backdrop" aria-hidden="true">
+    <div class="html-view-modal" role="dialog" aria-modal="true" aria-labelledby="html-modal-title">
+      <div class="html-modal-header">
+        <div class="html-modal-header-left">
+          <div class="html-modal-badge">HTML View</div>
+          <h2 class="html-modal-title" id="html-modal-title">Preset Standalone HTML</h2>
+          <span class="html-modal-color" id="html-modal-color-tag">#F07C00</span>
+        </div>
+        <div class="html-modal-tabs">
+          <button type="button" class="html-tab-btn active" id="html-tab-preview">Live Animation</button>
+          <button type="button" class="html-tab-btn" id="html-tab-code">Read HTML Code</button>
+        </div>
+        <div class="html-modal-header-actions">
+          <button type="button" class="modal-action-btn" id="html-modal-newtab-btn" title="Open Fullscreen in New Tab">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+            <span>New Tab</span>
+          </button>
+          <button type="button" class="modal-action-btn" id="html-modal-copy-btn" title="Copy HTML Code">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            <span id="html-modal-copy-text">Copy HTML</span>
+          </button>
+          <button type="button" class="modal-action-btn solid-action-btn" id="html-modal-download-btn" title="Download .html file">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            <span>Download</span>
+          </button>
+          <button type="button" class="modal-close-btn" id="html-modal-close-btn" aria-label="Close modal">✕</button>
+        </div>
+      </div>
+      <div class="html-modal-body">
+        <!-- Live Animation View Tab -->
+        <div class="html-tab-pane active" id="html-pane-preview">
+          <iframe id="html-modal-iframe" title="Live HTML Preview" sandbox="allow-scripts allow-same-origin"></iframe>
+        </div>
+        <!-- Read HTML Code Tab -->
+        <div class="html-tab-pane" id="html-pane-code">
+          <pre><code id="html-modal-code"></code></pre>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script type="module" src="app.js"></script>

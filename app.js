@@ -5759,8 +5759,7 @@ export class ${cleanPresetName}Visualizer {
       });
   };
 
-  const downloadStandaloneHTML = () => {
-    const preset = presetMode;
+  const getStandaloneHTML = (preset = presetMode) => {
     const presetTitle = getPresetTitle(preset);
     const isTransparent = transparentBgCheckbox ? transparentBgCheckbox.checked : false;
     const accentColor = color || "#f07c00";
@@ -5771,7 +5770,7 @@ export class ${cleanPresetName}Visualizer {
     const exportBaseG = parseInt(hexVal.substring(2, 4), 16) || 124;
     const exportBaseB = parseInt(hexVal.substring(4, 6), 16) || 0;
 
-    let htmlContent = `<!DOCTYPE html>
+    return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -5779,7 +5778,7 @@ export class ${cleanPresetName}Visualizer {
   <title>${presetTitle} — Mizo Shader Visualizer</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -5814,6 +5813,29 @@ export class ${cleanPresetName}Visualizer {
       color: rgba(255,255,255,0.45); letter-spacing: 0.3px;
     }
 
+    .tr {
+      top: 20px; right: 24px;
+      pointer-events: auto;
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    .code-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 12px; border-radius: 8px;
+      background: rgba(255,255,255,0.08);
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.12);
+      font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.85);
+      cursor: pointer; transition: all 0.2s ease;
+      font-family: 'Inter', sans-serif;
+    }
+    .code-btn:hover {
+      background: rgba(255,255,255,0.15);
+      border-color: rgba(255,255,255,0.25);
+      color: #fff;
+      transform: translateY(-1px);
+    }
+
     .br {
       bottom: 16px; right: 20px;
       display: flex; align-items: center; gap: 10px;
@@ -5843,19 +5865,73 @@ export class ${cleanPresetName}Visualizer {
       border: 1px solid rgba(255,255,255,0.08);
       font-size: 10px; font-weight: 500;
       color: rgba(255,255,255,0.50); letter-spacing: 0.3px;
-      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      font-family: 'JetBrains Mono', 'SF Mono', monospace;
     }
     .cs {
       width: 10px; height: 10px; border-radius: 3px;
       background: ${accentColor}; border: 1px solid rgba(255,255,255,0.15);
+    }
+
+    /* HTML Code Reader Drawer */
+    .drawer {
+      position: fixed; inset: 0; z-index: 100;
+      background: rgba(0,0,0,0.65); backdrop-filter: blur(8px);
+      display: none; justify-content: flex-end;
+      opacity: 0; transition: opacity 0.25s ease;
+    }
+    .drawer.open { display: flex; opacity: 1; }
+    .drawer-panel {
+      width: 640px; max-width: 92vw; height: 100%;
+      background: rgba(10, 14, 22, 0.96);
+      border-left: 1px solid rgba(255,255,255,0.12);
+      display: flex; flex-direction: column;
+      box-shadow: -10px 0 40px rgba(0,0,0,0.8);
+      transform: translateX(100%); transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .drawer.open .drawer-panel { transform: translateX(0); }
+    .drawer-header {
+      padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.08);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .drawer-title { font-size: 13px; font-weight: 600; color: #fff; text-transform: uppercase; letter-spacing: 0.5px; }
+    .drawer-actions { display: flex; align-items: center; gap: 8px; }
+    .btn-sm {
+      padding: 5px 12px; border-radius: 6px; font-size: 11px; font-weight: 500;
+      cursor: pointer; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.08);
+      color: #e2e8f0; transition: all 0.15s ease;
+    }
+    .btn-sm:hover { background: rgba(255,255,255,0.16); color: #fff; }
+    .btn-close {
+      background: none; border: none; color: rgba(255,255,255,0.5); cursor: pointer; font-size: 18px; line-height: 1; padding: 4px;
+    }
+    .btn-close:hover { color: #fff; }
+    .drawer-body {
+      flex: 1; overflow: auto; padding: 20px;
+      font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 1.55;
+      color: #94a3b8; background: #060910; white-space: pre-wrap; word-break: break-all;
     }
   </style>
 </head>
 <body>
   <canvas id="c"></canvas>
   <div class="h tl"><h1>${presetTitle}</h1><p>Mizo Shader Suite • Standalone</p></div>
+  <div class="h tr"><button type="button" class="code-btn" id="btn-toggle-code">〈/〉 View HTML</button></div>
   <div class="h bl"><div class="cb"><span class="cs"></span>${accentColor.toUpperCase()}</div></div>
   <div class="h br"><div class="p"><span class="d"></span><span id="f">-- FPS</span></div><div class="p">CANVAS 2D</div></div>
+
+  <!-- Slide-out Drawer to Read & Copy HTML Code -->
+  <div class="drawer" id="code-drawer">
+    <div class="drawer-panel">
+      <div class="drawer-header">
+        <div class="drawer-title">${presetTitle} — HTML Code</div>
+        <div class="drawer-actions">
+          <button type="button" class="btn-sm" id="btn-copy-code">Copy HTML</button>
+          <button type="button" class="btn-close" id="btn-close-code">✕</button>
+        </div>
+      </div>
+      <pre class="drawer-body" id="code-content"></pre>
+    </div>
+  </div>
 
   <script>
     // ${presetTitle} — Standalone (${preset})
@@ -5922,10 +5998,48 @@ export class ${cleanPresetName}Visualizer {
     }
 
     raf = requestAnimationFrame(draw);
+
+    // Code Drawer: Read and Copy this HTML
+    (function() {
+      var drawer = document.getElementById("code-drawer");
+      var toggleBtn = document.getElementById("btn-toggle-code");
+      var closeBtn = document.getElementById("btn-close-code");
+      var copyBtn = document.getElementById("btn-copy-code");
+      var codePre = document.getElementById("code-content");
+
+      function openDrawer() {
+        if (!codePre.textContent) {
+          codePre.textContent = "<!DOCTYPE html>\\n" + document.documentElement.outerHTML;
+        }
+        drawer.classList.add("open");
+      }
+      function closeDrawer() {
+        drawer.classList.remove("open");
+      }
+
+      if (toggleBtn) toggleBtn.addEventListener("click", openDrawer);
+      if (closeBtn) closeBtn.addEventListener("click", closeDrawer);
+      if (drawer) drawer.addEventListener("click", function(e) {
+        if (e.target === drawer) closeDrawer();
+      });
+      window.addEventListener("keydown", function(e) {
+        if (e.key === "Escape" && drawer && drawer.classList.contains("open")) closeDrawer();
+      });
+      if (copyBtn) copyBtn.addEventListener("click", function() {
+        var text = "<!DOCTYPE html>\\n" + document.documentElement.outerHTML;
+        navigator.clipboard.writeText(text).then(function() {
+          copyBtn.textContent = "Copied!";
+          setTimeout(function() { copyBtn.textContent = "Copy HTML"; }, 1800);
+        });
+      });
+    })();
   </script>
 </body>
 </html>`;
+  };
 
+  const downloadStandaloneHTML = (preset = presetMode) => {
+    const htmlContent = getStandaloneHTML(preset);
     const blob = new Blob([htmlContent], { type: "text/html;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -5935,6 +6049,106 @@ export class ${cleanPresetName}Visualizer {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+
+  const openHtmlViewModal = (preset = presetMode) => {
+    const backdrop = document.getElementById("html-view-modal-backdrop");
+    const titleEl = document.getElementById("html-modal-title");
+    const colorTagEl = document.getElementById("html-modal-color-tag");
+    const iframeEl = document.getElementById("html-modal-iframe");
+    const codeEl = document.getElementById("html-modal-code");
+    const tabPreview = document.getElementById("html-tab-preview");
+    const tabCode = document.getElementById("html-tab-code");
+    const panePreview = document.getElementById("html-pane-preview");
+    const paneCode = document.getElementById("html-pane-code");
+    const copyBtn = document.getElementById("html-modal-copy-btn");
+    const copyText = document.getElementById("html-modal-copy-text");
+    const downloadBtn = document.getElementById("html-modal-download-btn");
+    const newtabBtn = document.getElementById("html-modal-newtab-btn");
+    const closeBtn = document.getElementById("html-modal-close-btn");
+
+    if (!backdrop) return;
+
+    const html = getStandaloneHTML(preset);
+    const presetTitle = getPresetTitle(preset);
+    const accentColor = color || "#f07c00";
+
+    if (titleEl) titleEl.textContent = `${presetTitle} — Standalone HTML`;
+    if (colorTagEl) colorTagEl.textContent = accentColor.toUpperCase();
+    if (codeEl) codeEl.textContent = html;
+    if (iframeEl) iframeEl.srcdoc = html;
+
+    // Reset tabs to Preview by default
+    if (tabPreview && tabCode && panePreview && paneCode) {
+      tabPreview.classList.add("active");
+      tabCode.classList.remove("active");
+      panePreview.classList.add("active");
+      paneCode.classList.remove("active");
+    }
+
+    const closeModal = () => {
+      backdrop.classList.remove("active");
+      backdrop.setAttribute("aria-hidden", "true");
+      if (iframeEl) iframeEl.srcdoc = ""; // Release resources
+    };
+
+    if (closeBtn) closeBtn.onclick = closeModal;
+    backdrop.onclick = (e) => {
+      if (e.target === backdrop) closeModal();
+    };
+
+    const onKey = (e) => {
+      if (e.key === "Escape") {
+        closeModal();
+        window.removeEventListener("keydown", onKey);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+
+    if (tabPreview && tabCode) {
+      tabPreview.onclick = () => {
+        tabPreview.classList.add("active");
+        tabCode.classList.remove("active");
+        panePreview.classList.add("active");
+        paneCode.classList.remove("active");
+      };
+      tabCode.onclick = () => {
+        tabCode.classList.add("active");
+        tabPreview.classList.remove("active");
+        paneCode.classList.add("active");
+        panePreview.classList.remove("active");
+      };
+    }
+
+    if (copyBtn) {
+      copyBtn.onclick = () => {
+        navigator.clipboard.writeText(html).then(() => {
+          if (copyText) copyText.textContent = "Copied!";
+          if (typeof showToast === "function") showToast("HTML code copied to clipboard!");
+          setTimeout(() => {
+            if (copyText) copyText.textContent = "Copy HTML";
+          }, 2000);
+        });
+      };
+    }
+
+    if (downloadBtn) {
+      downloadBtn.onclick = () => {
+        downloadStandaloneHTML(preset);
+        if (typeof showToast === "function") showToast("Standalone HTML downloaded!");
+      };
+    }
+
+    if (newtabBtn) {
+      newtabBtn.onclick = () => {
+        const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        window.open(url, "_blank");
+      };
+    }
+
+    backdrop.classList.add("active");
+    backdrop.setAttribute("aria-hidden", "false");
   };
 
   let mediaRecorder = null;
@@ -7042,13 +7256,12 @@ const visualizer = new ${cleanPresetName}Visualizer(canvas, {
       });
     }
 
-    // 6. Standalone HTML Code Download
+    // 6. Standalone HTML View & Code
     if (exportHtmlBtn) {
       exportHtmlBtn.addEventListener("click", (e) => {
         e.stopPropagation();
         closeExportDropdown();
-        downloadStandaloneHTML();
-        showToast("Standalone HTML downloaded!");
+        openHtmlViewModal();
       });
     }
 
