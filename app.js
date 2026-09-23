@@ -4650,43 +4650,529 @@
     return titles[preset] || (preset ? preset.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ") : "Ambient Visualizer");
   };
 
-  // ── Standalone exports code generator for all 24 shaders ─────────
-  const getPresetCode = (preset) => {
+  // ── Standalone exports code generator (Setup & Render) ─────────
+  const getPresetSetupCode = (preset) => {
+    switch (preset) {
+      case "dot-globe":
+        return `
+    // 3D Dot Globe Landmass Detection Matrix & Projection Cache
+    var isLand = function(lat, lon) {
+      if (lat > 48 && lat < 72 && lon > -140 && lon < -55) return true;
+      if (lat > 25 && lat < 50 && lon > -125 && lon < -65) {
+        if (lat > 25 && lat < 35 && lon < -100) return true;
+        if (lat > 30 && lon > -105) return true;
+        if (lat > 40) return true;
+        return false;
+      }
+      if (lat > 15 && lat < 32 && lon > -117 && lon < -85) return true;
+      if (lat > 7 && lat < 18 && lon > -92 && lon < -77) return true;
+      if (lat > 55 && lat < 72 && lon > -170 && lon < -140) return true;
+      if (lat > 60 && lat < 83 && lon > -55 && lon < -18) return true;
+      if (lat > -5 && lat < 13 && lon > -82 && lon < -48) return true;
+      if (lat > -23 && lat < -5 && lon > -78 && lon < -35) return true;
+      if (lat > -40 && lat < -23 && lon > -72 && lon < -38) return true;
+      if (lat > -55 && lat < -40 && lon > -75 && lon < -63) return true;
+      if (lat > 36 && lat < 46 && lon > -10 && lon < 28) return true;
+      if (lat > 46 && lat < 55 && lon > -5 && lon < 25) return true;
+      if (lat > 55 && lat < 65 && lon > 5 && lon < 32) return true;
+      if (lat > 50 && lat < 60 && lon > -10 && lon < 3) return true;
+      if (lat > 65 && lat < 71 && lon > 12 && lon < 30) return true;
+      if (lat > 20 && lat < 37 && lon > -17 && lon < 40) return true;
+      if (lat > 4 && lat < 20 && lon > -17 && lon < 45) return true;
+      if (lat > -5 && lat < 4 && lon > 8 && lon < 42) return true;
+      if (lat > -18 && lat < -5 && lon > 12 && lon < 42) return true;
+      if (lat > -35 && lat < -18 && lon > 16 && lon < 36) return true;
+      if (lat > -25 && lat < -12 && lon > 43 && lon < 50) return true;
+      if (lat > 12 && lat < 37 && lon > 35 && lon < 60) return true;
+      if (lat > 50 && lat < 75 && lon > 30 && lon < 180) return true;
+      if (lat > 45 && lat < 50 && lon > 40 && lon < 145) return true;
+      if (lat > 8 && lat < 28 && lon > 68 && lon < 88) return true;
+      if (lat > 28 && lat < 35 && lon > 70 && lon < 80) return true;
+      if (lat > 22 && lat < 42 && lon > 98 && lon < 125) return true;
+      if (lat > 42 && lat < 53 && lon > 80 && lon < 130) return true;
+      if (lat > 18 && lat < 22 && lon > 100 && lon < 112) return true;
+      if (lat > 0 && lat < 20 && lon > 96 && lon < 110) return true;
+      if (lat > 30 && lat < 45 && lon > 129 && lon < 146) return true;
+      if (lat > 34 && lat < 42 && lon > 125 && lon < 130) return true;
+      if (lat > -8 && lat < 6 && lon > 95 && lon < 140) return true;
+      if (lat > 5 && lat < 18 && lon > 118 && lon < 127) return true;
+      if (lat > -38 && lat < -12 && lon > 115 && lon < 152) return true;
+      if (lat > -47 && lat < -34 && lon > 166 && lon < 178) return true;
+      if (lat > 6 && lat < 10 && lon > 79 && lon < 82) return true;
+      if (lat > 63 && lat < 66 && lon > -24 && lon < -14) return true;
+      return false;
+    };
+
+    var globePoints = [];
+    var globeRotY = 0;
+    var globeRotX = 0.35;
+    var globeDragging = false;
+    var globeDragLastX = 0;
+    var globeDragLastY = 0;
+
+    function initGlobePoints() {
+      globePoints = [];
+      var step = 2.8;
+      for (var lat = -85; lat <= 85; lat += step) {
+        var latRad = lat * Math.PI / 180;
+        var lonCount = Math.max(6, Math.floor(128 * Math.cos(latRad)));
+        var lonStep = 360 / lonCount;
+        for (var i = 0; i < lonCount; i++) {
+          var lon = -180 + i * lonStep;
+          var lonRad = lon * Math.PI / 180;
+          globePoints.push({
+            x: Math.cos(latRad) * Math.cos(lonRad),
+            y: Math.sin(latRad),
+            z: Math.cos(latRad) * Math.sin(lonRad),
+            land: isLand(lat, lon)
+          });
+        }
+      }
+    }
+    initGlobePoints();
+
+    // Mouse & Touch Drag Rotation
+    canvas.addEventListener("mousedown", function(e) {
+      globeDragging = true;
+      globeDragLastX = e.clientX;
+      globeDragLastY = e.clientY;
+    });
+    window.addEventListener("mousemove", function(e) {
+      if (globeDragging) {
+        var dx = e.clientX - globeDragLastX;
+        var dy = e.clientY - globeDragLastY;
+        globeRotY += dx * 0.005;
+        globeRotX += dy * 0.005;
+        globeRotX = Math.max(-1.3, Math.min(1.3, globeRotX));
+        globeDragLastX = e.clientX;
+        globeDragLastY = e.clientY;
+      }
+    });
+    window.addEventListener("mouseup", function() {
+      globeDragging = false;
+    });
+    canvas.addEventListener("touchstart", function(e) {
+      if (e.touches.length > 0) {
+        globeDragging = true;
+        globeDragLastX = e.touches[0].clientX;
+        globeDragLastY = e.touches[0].clientY;
+      }
+    }, { passive: true });
+    window.addEventListener("touchmove", function(e) {
+      if (globeDragging && e.touches.length > 0) {
+        var dx = e.touches[0].clientX - globeDragLastX;
+        var dy = e.touches[0].clientY - globeDragLastY;
+        globeRotY += dx * 0.005;
+        globeRotX += dy * 0.005;
+        globeRotX = Math.max(-1.3, Math.min(1.3, globeRotX));
+        globeDragLastX = e.touches[0].clientX;
+        globeDragLastY = e.touches[0].clientY;
+      }
+    }, { passive: true });
+    window.addEventListener("touchend", function() {
+      globeDragging = false;
+    });`;
+
+      case "streamline-pinch":
+        return `
+    var NUM_STREAM_LINES = 72;
+    var NUM_STREAM_PARTICLES = 240;
+    var streamLines = [];
+    var streamParticles = [];
+    var streamRotY = 0;
+    var streamRotX = 0.18;
+    var streamDragging = false;
+    var streamDragLastX = 0;
+    var streamDragLastY = 0;
+
+    var getStreamPoint = function(lineIdx, u) {
+      var phi = (lineIdx / NUM_STREAM_LINES) * Math.PI * 2;
+      var layer = 0.65 + 0.35 * ((lineIdx % 5) / 4);
+      var spreadY = (0.75 + 0.25 * Math.cos(phi * 2)) * layer;
+      var rThroat = 0.03 + 0.03 * (lineIdx % 3);
+      var rOuter = 0.92 * spreadY;
+      var r = rThroat + (rOuter - rThroat) * Math.pow(Math.abs(u), 1.85);
+      var theta = phi + u * 0.32;
+      return {
+        x: u,
+        y: r * Math.sin(theta),
+        z: r * Math.cos(theta)
+      };
+    };
+
+    function initStreamlines() {
+      streamLines = [];
+      streamParticles = [];
+      var dotsPerLine = 48;
+      for (var k = 0; k < NUM_STREAM_LINES; k++) {
+        for (var i = 0; i <= dotsPerLine; i++) {
+          var u = -1.0 + (i / dotsPerLine) * 2.0;
+          var pt = getStreamPoint(k, u);
+          streamLines.push({ x: pt.x, y: pt.y, z: pt.z, lineIdx: k, u: u });
+        }
+      }
+      for (var j = 0; j < NUM_STREAM_PARTICLES; j++) {
+        var lineIdx = Math.floor(Math.random() * NUM_STREAM_LINES);
+        var uVal = -1.0 + Math.random() * 2.0;
+        var dir = (Math.random() < 0.5) ? 1 : -1;
+        streamParticles.push({
+          lineIdx: lineIdx,
+          u: uVal,
+          dir: dir,
+          baseSpeed: 0.0022 + Math.random() * 0.0035,
+          size: 1.2 + Math.random() * 1.6,
+          phase: Math.random() * Math.PI * 2
+        });
+      }
+    }
+    initStreamlines();
+
+    canvas.addEventListener("mousedown", function(e) {
+      streamDragging = true;
+      streamDragLastX = e.clientX;
+      streamDragLastY = e.clientY;
+    });
+    window.addEventListener("mousemove", function(e) {
+      if (streamDragging) {
+        var dx = e.clientX - streamDragLastX;
+        var dy = e.clientY - streamDragLastY;
+        streamRotY += dx * 0.004;
+        streamRotX += dy * 0.004;
+        streamRotX = Math.max(-1.2, Math.min(1.2, streamRotX));
+        streamDragLastX = e.clientX;
+        streamDragLastY = e.clientY;
+      }
+    });
+    window.addEventListener("mouseup", function() {
+      streamDragging = false;
+    });`;
+
+      case "flow-field":
+        return `
+    var flowParticles = [];
+    var createFlowParticle = function(fromBorder) {
+      var x, y;
+      if (fromBorder) {
+        if (Math.random() < 0.5) {
+          x = Math.random() < 0.5 ? -5 : width + 5;
+          y = Math.random() * height;
+        } else {
+          x = Math.random() * width;
+          y = Math.random() < 0.5 ? -5 : height + 5;
+        }
+      } else {
+        x = Math.random() * width;
+        y = Math.random() * height;
+      }
+      return {
+        x: x, y: y,
+        vx: (Math.random() - 0.5) * 1.5,
+        vy: (Math.random() - 0.5) * 1.5,
+        size: Math.random() * 2 + 1,
+        life: Math.random() * 100 + 100
+      };
+    };
+    function initFlowParticles() {
+      flowParticles = [];
+      for (var i = 0; i < 400; i++) {
+        flowParticles.push(createFlowParticle(false));
+      }
+    }
+    initFlowParticles();`;
+
+      case "constellation-field":
+        return `
+    var constellationStars = [];
+    function initConstellationStars() {
+      constellationStars = [];
+      var count = Math.min(160, Math.floor((width * height) / 9000));
+      for (var i = 0; i < count; i++) {
+        constellationStars.push({
+          x: Math.random() * width,
+          y: Math.random() * height,
+          vx: (Math.random() - 0.5) * 0.5,
+          vy: (Math.random() - 0.5) * 0.5,
+          radius: Math.random() * 1.5 + 0.8
+        });
+      }
+    }
+    initConstellationStars();`;
+
+      case "particle-wheel":
+        return `
+    var wheelParticles = [];
+    function initWheelParticles() {
+      wheelParticles = [];
+      var count = 600;
+      var minDim = Math.min(width, height);
+      var innerVoid = minDim * 0.20;
+      var outerRadius = minDim * 0.42;
+      for (var i = 0; i < count; i++) {
+        var r = innerVoid + Math.random() * (outerRadius - innerVoid);
+        var angle = Math.random() * Math.PI * 2;
+        var angularSpeed = (0.002 + Math.random() * 0.004) * (Math.random() < 0.5 ? 1 : -1);
+        wheelParticles.push({
+          r: r, targetR: r, vr: 0,
+          angle: angle, angularSpeed: angularSpeed, vTheta: 0,
+          size: 1.0 + Math.random() * 1.5,
+          twinkleSpeed: 1 + Math.random() * 3,
+          twinklePhase: Math.random() * Math.PI * 2
+        });
+      }
+    }
+    initWheelParticles();`;
+
+      case "tech-boxes":
+        return `
+    var techBoxes = [];
+    var TECH_BOX = 46;
+    var TECH_GAP = 4;
+    var TECH_PITCH = TECH_BOX + TECH_GAP;
+    function initTechBoxes() {
+      techBoxes = [];
+      var cols = Math.floor(width / TECH_PITCH);
+      var rows = Math.floor(height / TECH_PITCH);
+      for (var c = 0; c < cols; c++) {
+        for (var r = 0; r < rows; r++) {
+          techBoxes.push({
+            c: c, r: r,
+            active: Math.random() < 0.28,
+            phase: Math.random() * Math.PI * 2,
+            type: Math.floor(Math.random() * 4)
+          });
+        }
+      }
+    }
+    initTechBoxes();`;
+
+      case "space-galaxy":
+        return `
+    var spaceStars = [];
+    var shootingStars = [];
+    function initSpaceGalaxy() {
+      spaceStars = [];
+      var numStars = 600;
+      var numArms = 3;
+      var maxR = Math.min(width, height) * 0.44;
+      for (var i = 0; i < numStars; i++) {
+        var arm = i % numArms;
+        var armAngle = (arm / numArms) * Math.PI * 2;
+        var distNorm = Math.pow(Math.random(), 1.6);
+        var r = distNorm * maxR;
+        var theta = armAngle + distNorm * 4.5 + (Math.random() - 0.5) * 0.45;
+        spaceStars.push({
+          r: r, theta: theta,
+          speed: (0.0004 + (1 - distNorm) * 0.001) * (0.8 + Math.random() * 0.4),
+          size: Math.random() * 1.8 + 0.6,
+          brightness: Math.random() * 0.5 + 0.5
+        });
+      }
+    }
+    initSpaceGalaxy();`;
+
+      case "data-stream":
+        return `
+    var dataStreamBoxes = [];
+    var DATA_STREAM_PITCH = 20;
+    function initDataStream() {
+      dataStreamBoxes = [];
+      var cols = Math.floor(width / DATA_STREAM_PITCH);
+      for (var c = 0; c < cols; c++) {
+        dataStreamBoxes.push({
+          c: c,
+          headY: Math.random() * height,
+          speed: (1.5 + Math.random() * 2.5),
+          length: Math.floor(8 + Math.random() * 14)
+        });
+      }
+    }
+    initDataStream();`;
+
+      case "pixel-build":
+        return `
+    var pixelBuildBlocks = [];
+    var PB_SIZE = 18;
+    function initPixelBuild() {
+      pixelBuildBlocks = [];
+      var cols = Math.floor(width / PB_SIZE);
+      var rows = Math.floor(height / PB_SIZE);
+      var count = Math.min(300, Math.floor(cols * rows * 0.35));
+      for (var i = 0; i < count; i++) {
+        pixelBuildBlocks.push({
+          c: Math.floor(Math.random() * cols),
+          r: Math.floor(Math.random() * rows),
+          targetAlpha: Math.random() * 0.8 + 0.2,
+          currentAlpha: 0,
+          speed: 0.02 + Math.random() * 0.05
+        });
+      }
+    }
+    initPixelBuild();`;
+
+      case "nodejs-particles":
+        return `
+    var nodejsPixelBlocks = [];
+    var nodejsRain = [];
+    function initNodejsParticles() {
+      nodejsPixelBlocks = [];
+      nodejsRain = [];
+      var count = 3000;
+      var r = 140;
+      for (var i = 0; i < count; i++) {
+        var seg = Math.floor(i / 500);
+        var progress = (i % 500) / 500;
+        var ang1 = (seg * 60 - 30) * Math.PI / 180;
+        var ang2 = ((seg + 1) * 60 - 30) * Math.PI / 180;
+        var x0 = (Math.cos(ang1) * (1 - progress) + Math.cos(ang2) * progress) * r;
+        var y0 = (Math.sin(ang1) * (1 - progress) + Math.sin(ang2) * progress) * r;
+        var z0 = (Math.random() - 0.5) * 40;
+        nodejsPixelBlocks.push({ x: x0, y: y0, z: z0 });
+      }
+      for (var j = 0; j < 80; j++) {
+        nodejsRain.push({
+          x: Math.random() * width,
+          y: Math.random() * height,
+          speed: 2 + Math.random() * 4,
+          len: 8 + Math.random() * 12
+        });
+      }
+    }
+    initNodejsParticles();`;
+
+      case "pixel-cascade":
+        return `
+    var cascadeFalling = [];
+    function spawnCascade() {
+      for (var i = 0; i < 4; i++) {
+        cascadeFalling.push({
+          x: Math.random() * width,
+          y: -15,
+          vy: 3 + Math.random() * 5,
+          size: 6 + Math.random() * 8
+        });
+      }
+    }`;
+
+      case "cloth-wave":
+        return `
+    var GRID_COLS = 54, GRID_ROWS = 32;
+    var SPACING_X = 28, SPACING_Z = 22;
+    var WAVE_AMPLITUDE = 65;
+    var clothParticles = [];
+    function initCloth() {
+      clothParticles = [];
+      var halfW = ((GRID_COLS - 1) * SPACING_X) * 0.5;
+      var halfD = ((GRID_ROWS - 1) * SPACING_Z) * 0.5;
+      for (var r = 0; r < GRID_ROWS; r++) {
+        for (var c = 0; c < GRID_COLS; c++) {
+          var wx = c * SPACING_X - halfW;
+          var wz = r * SPACING_Z - halfD;
+          clothParticles.push({ c: c, r: r, wx: wx, wz: wz, y: 0, projX: 0, projY: 0, depth: 0 });
+        }
+      }
+    }
+    initCloth();`;
+
+      case "snake-game":
+        return `
+    var snakes = [];
+    var lastSnakeUpdate = 0;
+    function initSnakeGame() {
+      var pitch = Math.max(12, pixelSize);
+      var cols = Math.floor(width / pitch);
+      var rows = Math.floor(height / pitch);
+      snakes = [
+        [{ c: Math.floor(cols / 2), r: Math.floor(rows / 2) }]
+      ];
+    }
+    initSnakeGame();`;
+
+      case "gravity-matrix":
+        return `
+    var gravityBlocks = [];
+    var artwork = [
+      [0,0,1,0,0, 0,0, 0,0,0,0,0,0, 0,0, 0,0,1],
+      [0,1,0,1,0, 0,0, 0,0,0,1,0,0, 0,0, 0,1,1],
+      [1,0,0,0,1, 0,0, 0,0,0,0,1,0, 0,0, 1,0,1],
+      [1,0,1,0,1, 0,0, 1,1,1,1,1,1, 0,0, 0,0,1],
+      [1,0,0,0,1, 0,0, 0,0,0,0,1,0, 0,0, 0,0,1],
+      [0,1,0,1,0, 0,0, 0,0,0,1,0,0, 0,0, 0,0,1],
+      [0,0,1,0,0, 0,0, 0,0,0,0,0,0, 0,0, 0,0,1]
+    ];
+    function initGravityMatrix() {
+      gravityBlocks = [];
+      var pitch = 14;
+      var cols = Math.floor(width / pitch);
+      var rows = Math.floor(height / pitch);
+      var startCol = Math.floor((cols - 18) / 2);
+      var startRow = Math.floor((rows - 7) / 2);
+      for (var r = 0; r < 7; r++) {
+        for (var c = 0; c < 18; c++) {
+          if (artwork[r][c] === 1) {
+            var tc = startCol + c;
+            var tr = startRow + r;
+            gravityBlocks.push({
+              c: Math.random() * cols,
+              r: -Math.random() * 40 - 5,
+              tc: tc, tr: tr,
+              vc: 0, vr: 0,
+              landed: false
+            });
+          }
+        }
+      }
+    }
+    initGravityMatrix();`;
+
+      case "ghosting":
+        return `
+    var artwork = [
+      [0,0,1,0,0, 0,0, 0,0,0,0,0,0, 0,0, 0,0,1],
+      [0,1,0,1,0, 0,0, 0,0,0,1,0,0, 0,0, 0,1,1],
+      [1,0,0,0,1, 0,0, 0,0,0,0,1,0, 0,0, 1,0,1],
+      [1,0,1,0,1, 0,0, 1,1,1,1,1,1, 0,0, 0,0,1],
+      [1,0,0,0,1, 0,0, 0,0,0,0,1,0, 0,0, 0,0,1],
+      [0,1,0,1,0, 0,0, 0,0,0,1,0,0, 0,0, 0,0,1],
+      [0,0,1,0,0, 0,0, 0,0,0,0,0,0, 0,0, 0,0,1]
+    ];`;
+
+      default:
+        return "";
+    }
+  };
+
+  const getPresetRenderCode = (preset) => {
     switch (preset) {
       case "led-arch":
         return `
       // 01. Classic LED Arch
-      const pitch = pixelSize;
-      const gap = 1;
-      const drawSize = Math.max(1, pitch - gap);
-      const cols = Math.floor(width / pitch);
-      const rows = Math.floor(height / pitch);
-      const offsetX = (width - cols * pitch) / 2;
-      const offsetY = (height - rows * pitch) / 2;
-      
-      const cx = width * 0.5;
-      const cy = height * 0.78;
-      const baseRadius = Math.min(width, height) * 0.58;
+      var pitch = pixelSize;
+      var gap = 1;
+      var drawSize = Math.max(1, pitch - gap);
+      var cols = Math.floor(width / pitch);
+      var rows = Math.floor(height / pitch);
+      var offsetX = (width - cols * pitch) / 2;
+      var offsetY = (height - rows * pitch) / 2;
+      var cx = width * 0.5;
+      var cy = height * 0.78;
+      var baseRadius = Math.min(width, height) * 0.58;
 
       ctx.beginPath();
-      let hasInactive = false;
-
-      for (let c = 0; c < cols; c++) {
-        const x = offsetX + c * pitch + pitch / 2;
-        for (let r = 0; r < rows; r++) {
-          const y = offsetY + r * pitch + pitch / 2;
-          
-          const dx = x - cx;
-          const dy = y - cy;
-          const distToCenter = Math.sqrt(dx * dx + dy * dy);
-          const angle = Math.atan2(dy, dx);
-
-          const baseWave = Math.sin(t * 1.2 + angle * 2.0) * 16;
-          const jitter = Math.sin(t * 8.5 + angle * 13.0) * 6;
-          const noise = Math.cos(t * 3.8 - angle * 5.0) * 11;
-          const targetRadius = baseRadius + baseWave + jitter + noise;
-          const distToArc = Math.abs(distToCenter - targetRadius);
-          const intensity = Math.pow(Math.max(0, 1 - distToArc / arcThickness), 2.2) * glowIntensity;
+      var hasInactive = false;
+      for (var c = 0; c < cols; c++) {
+        var x = offsetX + c * pitch + pitch / 2;
+        for (var r = 0; r < rows; r++) {
+          var y = offsetY + r * pitch + pitch / 2;
+          var dx = x - cx;
+          var dy = y - cy;
+          var distToCenter = Math.sqrt(dx * dx + dy * dy);
+          var angle = Math.atan2(dy, dx);
+          var baseWave = Math.sin(t * 1.2 + angle * 2.0) * 16;
+          var jitter = Math.sin(t * 8.5 + angle * 13.0) * 6;
+          var noise = Math.cos(t * 3.8 - angle * 5.0) * 11;
+          var targetRadius = baseRadius + baseWave + jitter + noise;
+          var distToArc = Math.abs(distToCenter - targetRadius);
+          var intensity = Math.pow(Math.max(0, 1 - distToArc / arcThickness), 2.2) * glowIntensity;
 
           if (intensity < 0.015) {
             ctx.rect(x - drawSize / 2, y - drawSize / 2, drawSize, drawSize);
@@ -4694,455 +5180,602 @@
             continue;
           }
 
-          const rVal = Math.min(255, Math.floor(baseR * intensity));
-          const gVal = Math.min(255, Math.floor(baseG * intensity));
-          const bVal = Math.min(255, Math.floor(baseB * intensity));
-
+          var rVal = Math.min(255, Math.floor(baseR * intensity));
+          var gVal = Math.min(255, Math.floor(baseG * intensity));
+          var bVal = Math.min(255, Math.floor(baseB * intensity));
           ctx.fillStyle = "rgb(" + rVal + "," + gVal + "," + bVal + ")";
           ctx.fillRect(x - drawSize / 2, y - drawSize / 2, drawSize, drawSize);
         }
       }
-
       if (hasInactive) {
         ctx.fillStyle = transparent ? "rgba(0, 20, 5, 0.03)" : "rgba(0, 20, 5, 0.15)";
         ctx.fill();
-      }
-        `;
+      }`;
 
       case "ghosting":
         return `
       // 02. Ghosting Flashlight
-      const pitch = Math.max(10, pixelSize);
-      const cellSize = pitch - 4;
-      const cols = Math.floor(width / pitch);
-      const rows = Math.floor(height / pitch);
-      const offsetX = (width - cols * pitch) / 2;
-      const offsetY = (height - rows * pitch) / 2;
-      const mouseX = width * (0.5 + Math.sin(t * 0.8) * 0.3);
-      const mouseY = height * (0.5 + Math.cos(t * 0.6) * 0.2);
-      const radius = arcThickness * 1.6;
+      var pitch = Math.max(14, pixelSize);
+      var cols = Math.floor(width / pitch);
+      var rows = Math.floor(height / pitch);
+      var startCol = Math.floor((cols - 18) / 2);
+      var startRow = Math.floor((rows - 7) / 2);
+      var lightRadius = arcThickness * 1.6;
 
-      for (let c = 0; c < cols; c++) {
-        const x = offsetX + c * pitch + pitch / 2;
-        for (let r = 0; r < rows; r++) {
-          const y = offsetY + r * pitch + pitch / 2;
-          const dist = Math.hypot(x - mouseX, y - mouseY);
-          const beam = Math.max(0, 1 - dist / radius);
-          const intensity = Math.pow(beam, 1.8) * glowIntensity;
-
-          if (intensity > 0.02) {
-            ctx.fillStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + Math.min(1, intensity) + ")";
-            ctx.fillRect(x - cellSize / 2, y - cellSize / 2, cellSize, cellSize);
-          } else {
-            ctx.fillStyle = transparent ? "rgba(" + baseR + "," + baseG + "," + baseB + ",0.02)" : "rgba(" + baseR + "," + baseG + "," + baseB + ",0.05)";
-            ctx.fillRect(x - cellSize / 2, y - cellSize / 2, cellSize, cellSize);
+      for (var c = 0; c < cols; c++) {
+        var x = c * pitch + pitch / 2;
+        for (var r = 0; r < rows; r++) {
+          var y = r * pitch + pitch / 2;
+          var artCol = c - startCol;
+          var artRow = r - startRow;
+          var isArt = (artCol >= 0 && artCol < 18 && artRow >= 0 && artRow < 7) ? (artwork[artRow][artCol] === 1) : false;
+          var dist = Math.hypot(x - mouse.x, y - mouse.y);
+          var lightFactor = Math.pow(Math.max(0, 1 - dist / lightRadius), 1.6);
+          if (isArt) {
+            var targetR = baseR, targetG = baseG, targetB = baseB;
+            var rVal = Math.min(255, Math.floor(27 + (targetR - 27) * lightFactor * 1.3));
+            var gVal = Math.min(255, Math.floor(22 + (targetG - 22) * lightFactor * 1.3));
+            var bVal = Math.min(255, Math.floor(34 + (targetB - 34) * lightFactor * 1.3));
+            ctx.fillStyle = "rgb(" + rVal + "," + gVal + "," + bVal + ")";
+            ctx.fillRect(x - pitch / 2 + 1, y - pitch / 2 + 1, pitch - 2, pitch - 2);
+          } else if (lightFactor > 0.05) {
+            ctx.fillStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + (lightFactor * 0.15) + ")";
+            ctx.fillRect(x - pitch / 2 + 1, y - pitch / 2 + 1, pitch - 2, pitch - 2);
           }
         }
-      }
-        `;
+      }`;
 
       case "snake-game":
         return `
       // 03. Retro Snake Grid
-      const pitch = Math.max(12, pixelSize);
-      const cols = Math.floor(width / pitch);
-      const rows = Math.floor(height / pitch);
-      const count = 28;
-      
-      for (let i = 0; i < count; i++) {
-        const progress = (i / count);
-        const snakeX = Math.floor((cols * 0.5 + Math.sin(t * 1.5 - progress * 4.0) * (cols * 0.35))) * pitch;
-        const snakeY = Math.floor((rows * 0.5 + Math.cos(t * 2.0 - progress * 3.0) * (rows * 0.3))) * pitch;
-        const alpha = (1.0 - progress * 0.8) * glowIntensity;
-        ctx.fillStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + Math.min(1, alpha) + ")";
-        ctx.fillRect(snakeX + 2, snakeY + 2, pitch - 4, pitch - 4);
+      var pitch = Math.max(12, pixelSize);
+      var cols = Math.floor(width / pitch);
+      var rows = Math.floor(height / pitch);
+      var offX = (width - cols * pitch) / 2;
+      var offY = (height - rows * pitch) / 2;
+      var targetC = Math.max(0, Math.min(cols - 1, Math.floor((mouse.x - offX) / pitch)));
+      var targetR = Math.max(0, Math.min(rows - 1, Math.floor((mouse.y - offY) / pitch)));
+
+      var now = performance.now();
+      if (now - lastSnakeUpdate > 60 / speed) {
+        lastSnakeUpdate = now;
+        if (snakes.length > 0 && snakes[0].length > 0) {
+          var head = snakes[0][0];
+          var dc = targetC > head.c ? 1 : targetC < head.c ? -1 : 0;
+          var dr = targetR > head.r ? 1 : targetR < head.r ? -1 : 0;
+          var nextC = head.c + dc;
+          var nextR = head.r + (dc === 0 ? dr : 0);
+          snakes[0].unshift({ c: nextC, r: nextR });
+          if (snakes[0].length > 18) snakes[0].pop();
+        }
       }
-        `;
+
+      if (snakes.length > 0) {
+        for (var i = 0; i < snakes[0].length; i++) {
+          var seg = snakes[0][i];
+          var segX = offX + seg.c * pitch;
+          var segY = offY + seg.r * pitch;
+          var segFactor = 1.0 - (i / snakes[0].length) * 0.7;
+          var rVal = Math.floor(baseR * segFactor);
+          var gVal = Math.floor(baseG * segFactor);
+          var bVal = Math.floor(baseB * segFactor);
+          ctx.fillStyle = "rgb(" + rVal + "," + gVal + "," + bVal + ")";
+          ctx.fillRect(segX + 1, segY + 1, pitch - 2, pitch - 2);
+        }
+      }`;
 
       case "gravity-matrix":
         return `
       // 04. Gravity Cascade
-      const pitch = Math.max(10, pixelSize);
-      const cols = Math.floor(width / pitch);
-      const rows = Math.floor(height / pitch);
-      
-      for (let c = 0; c < cols; c++) {
-        const dropSpeed = 1.0 + (c % 7) * 0.3;
-        const headY = (t * 180 * dropSpeed + c * 43) % (height + 200) - 100;
-        const trailLen = 8;
-        for (let k = 0; k < trailLen; k++) {
-          const y = headY - k * pitch;
-          if (y >= 0 && y < height) {
-            const alpha = (1.0 - k / trailLen) * glowIntensity;
-            ctx.fillStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + Math.min(1, alpha) + ")";
-            ctx.fillRect(c * pitch + 1, Math.floor(y / pitch) * pitch + 1, pitch - 2, pitch - 2);
+      var pitch = 14;
+      for (var i = 0; i < gravityBlocks.length; i++) {
+        var b = gravityBlocks[i];
+        if (!b.landed) {
+          var diffC = b.tc - b.c;
+          b.vc += diffC * 0.085 * speed;
+          b.vc *= 0.76;
+          var diffR = b.tr - b.r;
+          b.vr += (diffR > 1.5 ? 0.05 * speed : 0) + diffR * 0.085 * speed;
+          b.vr *= 0.76;
+          b.c += b.vc;
+          b.r += b.vr;
+          if (Math.abs(b.c - b.tc) < 0.75 && Math.abs(b.r - b.tr) < 0.75) {
+            b.c = b.tc; b.r = b.tr; b.landed = true;
           }
         }
-      }
-        `;
+        var bx = Math.round(b.c) * pitch;
+        var by = Math.round(b.r) * pitch;
+        if (!b.landed) {
+          ctx.fillStyle = "#ffffff";
+        } else {
+          var dMouse = Math.hypot(bx - mouse.x, by - mouse.y);
+          var hover = Math.pow(Math.max(0, 1 - dMouse / 150), 2.0);
+          var brightness = 0.55 + 0.65 * hover;
+          var rVal = Math.min(255, Math.floor(baseR * brightness));
+          var gVal = Math.min(255, Math.floor(baseG * brightness));
+          var bVal = Math.min(255, Math.floor(baseB * brightness));
+          ctx.fillStyle = "rgb(" + rVal + "," + gVal + "," + bVal + ")";
+        }
+        ctx.fillRect(bx + 1, by + 1, pitch - 2, pitch - 2);
+      }`;
 
       case "dot-globe":
         return `
-      // 05. 3D Dot Globe
-      const cx = width * 0.5;
-      const cy = height * 0.5;
-      const globeRadius = Math.min(width, height) * 0.35 * (arcThickness / 120);
-      const rotY = t * 0.6;
-      const rotX = Math.sin(t * 0.4) * 0.3;
-      const latSteps = 16, lonSteps = 32;
+      // 05. 3D Dot Globe (Faithful World Map Simulation)
+      if (!globeDragging) globeRotY += 0.0018 * speed;
 
-      for (let lat = -latSteps; lat <= latSteps; lat++) {
-        const theta = (lat / latSteps) * (Math.PI / 2);
-        const rRing = Math.cos(theta) * globeRadius;
-        const y0 = Math.sin(theta) * globeRadius;
+      var gcx = width / 2;
+      var gcy = height / 2;
+      var gRadius = Math.min(width, height) * 0.38;
 
-        for (let lon = 0; lon < lonSteps; lon++) {
-          const phi = (lon / lonSteps) * Math.PI * 2 + rotY;
-          const x0 = Math.sin(phi) * rRing;
-          const z0 = Math.cos(phi) * rRing;
+      var cosRX = Math.cos(globeRotX);
+      var sinRX = Math.sin(globeRotX);
+      var cosRY = Math.cos(globeRotY);
+      var sinRY = Math.sin(globeRotY);
 
-          const y1 = y0 * Math.cos(rotX) - z0 * Math.sin(rotX);
-          const z1 = y0 * Math.sin(rotX) + z0 * Math.cos(rotX);
+      var projected = [];
+      for (var i = 0; i < globePoints.length; i++) {
+        var p = globePoints[i];
+        var rx = p.x * cosRY + p.z * sinRY;
+        var ry = p.y;
+        var rz = -p.x * sinRY + p.z * cosRY;
+        var fx = rx;
+        var fy = ry * cosRX - rz * sinRX;
+        var fz = ry * sinRX + rz * cosRX;
 
-          if (z1 > -globeRadius * 0.2) {
-            const projX = cx + x0;
-            const projY = cy + y1;
-            const depth = (z1 + globeRadius) / (globeRadius * 2);
-            const dotSize = Math.max(0.8, (pixelSize / 4) * (0.6 + depth * 0.8));
-            const alpha = Math.min(1, (0.2 + depth * 0.8) * glowIntensity);
+        if (fz < -0.15) continue; // back-face cull
 
-            ctx.fillStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + alpha + ")";
-            ctx.beginPath();
-            ctx.arc(projX, projY, dotSize, 0, Math.PI * 2);
-            ctx.fill();
-          }
-        }
+        var depth = (fz + 1) / 2;
+        projected.push({
+          sx: gcx + fx * gRadius,
+          sy: gcy - fy * gRadius,
+          depth: depth,
+          land: p.land
+        });
       }
-        `;
+
+      projected.sort(function(a, b) { return a.depth - b.depth; });
+
+      for (var j = 0; j < projected.length; j++) {
+        var pt = projected[j];
+        var sz = 0.6 + pt.depth * 2.2;
+        var br;
+        if (pt.land) {
+          br = 55 + pt.depth * 200;
+          var r = Math.min(255, Math.floor(baseR * (br / 255)));
+          var g = Math.min(255, Math.floor(baseG * (br / 255)));
+          var b = Math.min(255, Math.floor(baseB * (br / 255)));
+          ctx.fillStyle = "rgb(" + r + "," + g + "," + b + ")";
+        } else {
+          br = 10 + pt.depth * 35;
+          ctx.fillStyle = "rgb(" + Math.floor(br) + "," + Math.floor(br) + "," + Math.floor(br + 5) + ")";
+        }
+        ctx.beginPath();
+        ctx.arc(pt.sx, pt.sy, sz, 0, Math.PI * 2);
+        ctx.fill();
+      }`;
 
       case "streamline-pinch":
         return `
-      // 06. Converging Streams
-      const numLines = 36;
-      const pinchX = width * (0.5 + Math.sin(t * 0.7) * 0.15);
-      const pinchY = height * 0.5;
-      const spread = arcThickness * 1.8;
-
-      ctx.lineWidth = Math.max(0.8, pixelSize / 8);
-      for (let i = 0; i < numLines; i++) {
-        const ratio = (i / numLines) - 0.5;
-        const startY = pinchY + ratio * height * 1.2;
-        const endY = pinchY + ratio * height * 1.2;
-
-        ctx.strokeStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + (0.25 + Math.abs(ratio) * 0.5) * glowIntensity + ")";
-        ctx.beginPath();
-        ctx.moveTo(0, startY);
-        ctx.bezierCurveTo(pinchX - spread, startY, pinchX - 30, pinchY + ratio * 40, pinchX, pinchY);
-        ctx.bezierCurveTo(pinchX + 30, pinchY + ratio * 40, pinchX + spread, endY, width, endY);
-        ctx.stroke();
+      // 06. Converging Streams (3D Perspective Tubes)
+      if (!streamDragging) {
+        streamRotY += 0.0012 * speed;
+        streamRotX = 0.18 + Math.sin(t * 0.6) * 0.06;
       }
-        `;
+      var gcx = width / 2;
+      var gcy = height / 2;
+      var scaleX = Math.min(width, height) * 0.82;
+      var scaleYZ = Math.min(width, height) * 0.48;
+
+      var cosRY = Math.cos(streamRotY);
+      var sinRY = Math.sin(streamRotY);
+      var cosRX = Math.cos(streamRotX);
+      var sinRX = Math.sin(streamRotX);
+
+      for (var i = 0; i < streamLines.length; i++) {
+        var pt = streamLines[i];
+        var rx = pt.x * cosRY + pt.z * sinRY;
+        var ry = pt.y;
+        var rz = -pt.x * sinRY + pt.z * cosRY;
+        var fx = rx;
+        var fy = ry * cosRX - rz * sinRX;
+        var fz = ry * sinRX + rz * cosRX;
+
+        var fov = 2.0;
+        var camZ = 2.4;
+        var pz = fz + camZ;
+        var proj = fov / pz;
+        var sx = gcx + fx * scaleX * proj;
+        var sy = gcy - fy * scaleYZ * proj;
+        var depth = Math.max(0.1, Math.min(1.0, (fz + 1.2) / 2.4));
+        var centerProximity = 1.0 - Math.min(1.0, Math.abs(pt.u) * 1.3);
+        var alpha = depth * (0.16 + centerProximity * 0.28);
+        var guideR = Math.floor(180 + (baseR - 180) * 0.4);
+        var guideG = Math.floor(190 + (baseG - 190) * 0.4);
+        var guideB = Math.floor(190 + (baseB - 190) * 0.4);
+        ctx.fillStyle = "rgba(" + guideR + "," + guideG + "," + guideB + "," + alpha + ")";
+        var dotSize = 0.8 + depth * 0.7;
+        ctx.fillRect(sx - dotSize / 2, sy - dotSize / 2, dotSize, dotSize);
+      }
+
+      var sortedParticles = [];
+      for (var j = 0; j < streamParticles.length; j++) {
+        var p = streamParticles[j];
+        var accel = 0.45 + 1.35 * (1.0 - Math.min(1.0, Math.abs(p.u) * 1.15));
+        p.u += p.dir * p.baseSpeed * accel * speed;
+        if (p.u > 1.05) { p.u = -1.05; p.lineIdx = Math.floor(Math.random() * NUM_STREAM_LINES); }
+        else if (p.u < -1.05) { p.u = 1.05; p.lineIdx = Math.floor(Math.random() * NUM_STREAM_LINES); }
+
+        var pt = getStreamPoint(p.lineIdx, p.u);
+        var rx = pt.x * cosRY + pt.z * sinRY;
+        var ry = pt.y;
+        var rz = -pt.x * sinRY + pt.z * cosRY;
+        var fx = rx;
+        var fy = ry * cosRX - rz * sinRX;
+        var fz = ry * sinRX + rz * cosRX;
+
+        var fov = 2.0;
+        var camZ = 2.4;
+        var pz = fz + camZ;
+        var proj = fov / pz;
+        var sx = gcx + fx * scaleX * proj;
+        var sy = gcy - fy * scaleYZ * proj;
+        var depth = Math.max(0.1, Math.min(1.0, (fz + 1.2) / 2.4));
+
+        sortedParticles.push({ sx: sx, sy: sy, depth: depth, size: p.size, u: p.u });
+      }
+
+      sortedParticles.sort(function(a, b) { return a.depth - b.depth; });
+      for (var k = 0; k < sortedParticles.length; k++) {
+        var sp = sortedParticles[k];
+        var rad = sp.size * (0.8 + sp.depth * 1.2);
+        var alpha = Math.min(1.0, 0.5 + sp.depth * 0.5);
+        ctx.fillStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + alpha + ")";
+        ctx.beginPath();
+        ctx.arc(sp.sx, sp.sy, rad, 0, Math.PI * 2);
+        ctx.fill();
+      }`;
 
       case "flow-field":
         return `
       // 07. Particle Flow-Field
-      const count = 400;
-      const cx = width * 0.5, cy = height * 0.5;
-      
-      for (let i = 0; i < count; i++) {
-        const angleSeed = (i / count) * Math.PI * 2;
-        const radSeed = (Math.sin(i * 13.7 + t * 0.5) * 0.5 + 0.5) * Math.min(width, height) * 0.45;
-        const angle = angleSeed + Math.sin(radSeed * 0.02 - t * 1.5) * 1.4;
-        const px = cx + Math.cos(angle) * radSeed;
-        const py = cy + Math.sin(angle) * radSeed;
-        const pSize = (1.0 + (i % 3) * 0.8) * (pixelSize / 6);
-        const alpha = (0.3 + (i % 5) * 0.15) * glowIntensity;
-
-        ctx.fillStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + Math.min(1, alpha) + ")";
-        ctx.beginPath();
-        ctx.arc(px, py, pSize, 0, Math.PI * 2);
-        ctx.fill();
+      if (transparent) {
+        ctx.save();
+        ctx.globalCompositeOperation = "destination-out";
+        ctx.fillStyle = "rgba(0, 0, 0, 0.08)";
+        ctx.fillRect(0, 0, width, height);
+        ctx.restore();
+      } else {
+        ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+        ctx.fillRect(0, 0, width, height);
       }
-        `;
+      var targetX = mouse.x;
+      var targetY = mouse.y;
+
+      for (var i = 0; i < flowParticles.length; i++) {
+        var p = flowParticles[i];
+        var dx = targetX - p.x;
+        var dy = targetY - p.y;
+        var dist = Math.hypot(dx, dy) || 0.001;
+
+        var force = (0.05 * speed) / Math.max(dist * 0.01, 0.5);
+        p.vx += (dx / dist) * force;
+        p.vy += (dy / dist) * force;
+        p.vx *= 0.96;
+        p.vy *= 0.96;
+        p.vx += (Math.random() - 0.5) * 0.05;
+        p.vy += (Math.random() - 0.5) * 0.05;
+        p.x += p.vx;
+        p.y += p.vy;
+
+        if (p.x < -10 || p.x > width + 10 || p.y < -10 || p.y > height + 10) {
+          var resp = createFlowParticle(true);
+          p.x = resp.x; p.y = resp.y; p.vx = resp.vx; p.vy = resp.vy;
+        }
+
+        ctx.fillStyle = "rgb(" + baseR + "," + baseG + "," + baseB + ")";
+        ctx.fillRect(p.x, p.y, p.size, p.size);
+      }
+
+      ctx.beginPath();
+      ctx.arc(targetX, targetY, 3, 0, Math.PI * 2);
+      ctx.fillStyle = "#ffffff";
+      ctx.fill();`;
 
       case "constellation-field":
         return `
       // 08. Constellation Field
-      const count = 120;
-      const maxDist = arcThickness * 1.1;
-      const points = [];
-
-      for (let i = 0; i < count; i++) {
-        const px = ((i * 137.5 + t * 25 * (1 + (i % 3) * 0.2)) % width);
-        const py = ((i * 269.3 + Math.sin(t * 0.8 + i) * 40) % height);
-        points.push({ x: px, y: py });
-
-        ctx.fillStyle = "rgba(" + baseR + "," + baseG + "," + baseB + ", 0.9)";
-        ctx.beginPath();
-        ctx.arc(px, py, Math.max(0.8, pixelSize / 8), 0, Math.PI * 2);
-        ctx.fill();
+      var maxDist = arcThickness * 1.1;
+      for (var i = 0; i < constellationStars.length; i++) {
+        var s = constellationStars[i];
+        s.x += s.vx * speed;
+        s.y += s.vy * speed;
+        if (s.x < 0) s.x = width;
+        if (s.x > width) s.x = 0;
+        if (s.y < 0) s.y = height;
+        if (s.y > height) s.y = 0;
       }
-
-      ctx.lineWidth = 0.6;
-      for (let i = 0; i < points.length; i++) {
-        for (let j = i + 1; j < points.length; j++) {
-          const dx = points[i].x - points[j].x;
-          const dy = points[i].y - points[j].y;
-          const d = Math.sqrt(dx * dx + dy * dy);
-          if (d < maxDist) {
-            const alpha = (1.0 - d / maxDist) * 0.35 * glowIntensity;
+      ctx.lineWidth = 1;
+      for (var i = 0; i < constellationStars.length; i++) {
+        var a = constellationStars[i];
+        for (var j = i + 1; j < constellationStars.length; j++) {
+          var b = constellationStars[j];
+          var dist = Math.hypot(b.x - a.x, b.y - a.y);
+          if (dist < maxDist) {
+            var alpha = (1 - dist / maxDist) * 0.4;
             ctx.strokeStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + alpha + ")";
             ctx.beginPath();
-            ctx.moveTo(points[i].x, points[i].y);
-            ctx.lineTo(points[j].x, points[j].y);
+            ctx.moveTo(a.x, a.y);
+            ctx.lineTo(b.x, b.y);
             ctx.stroke();
           }
         }
-      }
-        `;
+        ctx.fillStyle = "rgba(" + baseR + "," + baseG + "," + baseB + ", 0.9)";
+        ctx.beginPath();
+        ctx.arc(a.x, a.y, a.radius, 0, Math.PI * 2);
+        ctx.fill();
+      }`;
 
       case "particle-wheel":
         return `
       // 09. Central Particle Orbit Wheel
-      const cx = width / 2;
-      const cy = height / 2;
-      const minDim = Math.min(width, height);
-      const innerVoid = minDim * 0.18;
-      const count = 600;
-
-      for (let i = 0; i < count; i++) {
-        const baseAngle = (i / count) * Math.PI * 2;
-        const speedFactor = 0.5 + (i % 7) * 0.2;
-        const angle = baseAngle + t * 0.6 * speedFactor;
-        const r = innerVoid + ((i * 37) % Math.floor(minDim * 0.32));
-        const px = cx + Math.cos(angle) * r;
-        const py = cy + Math.sin(angle) * r;
-        const twinkle = 0.6 + 0.4 * Math.sin(t * 4.0 + i);
-        const pSize = (0.8 + (i % 3) * 0.6) * twinkle * (pixelSize / 5);
-
-        ctx.fillStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + (twinkle * glowIntensity) + ")";
+      var cx = width / 2;
+      var cy = height / 2;
+      var minDim = Math.min(width, height);
+      var innerVoid = minDim * 0.20;
+      for (var i = 0; i < wheelParticles.length; i++) {
+        var p = wheelParticles[i];
+        p.vr += (Math.random() - 0.5) * 0.08 * speed;
+        p.vr += (p.targetR - p.r) * 0.015 * speed;
+        p.vr *= 0.94;
+        p.r += p.vr * speed;
+        if (p.r < innerVoid) { p.r = innerVoid + Math.random() * 2; p.vr = Math.abs(p.vr); }
+        p.angle += (p.angularSpeed + p.vTheta) * speed;
+        var screenX = cx + Math.cos(p.angle) * p.r;
+        var screenY = cy + Math.sin(p.angle) * p.r;
+        var twinkle = 0.8 + 0.2 * Math.sin(t * 2 * p.twinkleSpeed + p.twinklePhase);
+        var pSize = p.size * twinkle * (pixelSize / 4);
+        ctx.fillStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + twinkle + ")";
         ctx.beginPath();
-        ctx.arc(px, py, Math.max(0.6, pSize), 0, Math.PI * 2);
+        ctx.arc(screenX, screenY, pSize, 0, Math.PI * 2);
         ctx.fill();
-      }
-        `;
+      }`;
 
       case "tech-boxes":
         return `
       // 10. Tech Boxes
-      const pitch = Math.max(20, pixelSize * 1.4);
-      const cols = Math.floor(width / pitch);
-      const rows = Math.floor(height / pitch);
-      const cx = width * 0.5, cy = height * 0.5;
-
-      for (let c = 0; c < cols; c++) {
-        const x = c * pitch + pitch / 2;
-        for (let r = 0; r < rows; r++) {
-          const y = r * pitch + pitch / 2;
-          const d = Math.hypot(x - cx, y - cy);
-          const pulse = Math.sin(d * 0.03 - t * 3.0);
-          const boxSize = (pitch - 4) * Math.max(0.2, (pulse + 1) * 0.5);
-
-          if (pulse > 0.2) {
-            ctx.strokeStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + pulse * glowIntensity + ")";
-            ctx.lineWidth = 1.0;
-            ctx.strokeRect(x - boxSize / 2, y - boxSize / 2, boxSize, boxSize);
+      var cols = Math.floor(width / TECH_PITCH);
+      var rows = Math.floor(height / TECH_PITCH);
+      var offX = (width - cols * TECH_PITCH) / 2;
+      var offY = (height - rows * TECH_PITCH) / 2;
+      for (var i = 0; i < techBoxes.length; i++) {
+        var b = techBoxes[i];
+        var bx = offX + b.c * TECH_PITCH;
+        var by = offY + b.r * TECH_PITCH;
+        var pulse = (Math.sin(t * 2.0 + b.phase) + 1) * 0.5;
+        if (b.active) {
+          ctx.strokeStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + (0.3 + pulse * 0.5) * glowIntensity + ")";
+          ctx.lineWidth = 1;
+          ctx.strokeRect(bx + 0.5, by + 0.5, TECH_BOX, TECH_BOX);
+          ctx.fillStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + (0.04 + pulse * 0.08) + ")";
+          ctx.fillRect(bx, by, TECH_BOX, TECH_BOX);
+          if (b.type === 0) {
+            ctx.fillStyle = "rgba(" + baseR + "," + baseG + "," + baseB + ", 0.8)";
+            ctx.fillRect(bx + 4, by + 4, 3, 3);
+            ctx.fillRect(bx + TECH_BOX - 7, by + 4, 3, 3);
+          } else if (b.type === 1) {
+            var scanY = by + ((t * 30 + b.phase * 10) % TECH_BOX);
+            ctx.strokeStyle = "rgba(" + baseR + "," + baseG + "," + baseB + ", 0.7)";
+            ctx.beginPath();
+            ctx.moveTo(bx + 4, scanY);
+            ctx.lineTo(bx + TECH_BOX - 4, scanY);
+            ctx.stroke();
           }
+        } else {
+          ctx.strokeStyle = "rgba(" + baseR + "," + baseG + "," + baseB + ", 0.08)";
+          ctx.lineWidth = 0.5;
+          ctx.strokeRect(bx + 0.5, by + 0.5, TECH_BOX, TECH_BOX);
         }
-      }
-        `;
+      }`;
 
       case "space-galaxy":
         return `
       // 11. Space Galaxy
-      const cx = width * 0.5, cy = height * 0.5;
-      const arms = 3;
-      const count = 900;
-      const maxR = Math.min(width, height) * 0.45;
+      var cx = width / 2;
+      var cy = height / 2;
+      var radGlow = ctx.createRadialGradient(cx, cy, 5, cx, cy, Math.min(width, height) * 0.35);
+      radGlow.addColorStop(0, "rgba(" + baseR + "," + baseG + "," + baseB + ", 0.3)");
+      radGlow.addColorStop(0.5, "rgba(" + baseR + "," + baseG + "," + baseB + ", 0.06)");
+      radGlow.addColorStop(1, "transparent");
+      ctx.fillStyle = radGlow;
+      ctx.fillRect(0, 0, width, height);
 
-      for (let i = 0; i < count; i++) {
-        const arm = i % arms;
-        const progress = Math.pow(i / count, 0.7);
-        const r = progress * maxR;
-        const armAngle = (arm * (Math.PI * 2 / arms));
-        const spiral = armAngle + progress * 4.5 + t * 0.5;
-        const spread = (Math.sin(i * 19.3) * 0.15) * r;
-        const px = cx + Math.cos(spiral) * (r + spread);
-        const py = cy + Math.sin(spiral) * (r + spread) * 0.65;
-        const alpha = (1.0 - progress * 0.7) * glowIntensity;
-
+      for (var i = 0; i < spaceStars.length; i++) {
+        var s = spaceStars[i];
+        s.theta += s.speed * speed;
+        var sx = cx + Math.cos(s.theta) * s.r;
+        var sy = cy + Math.sin(s.theta) * s.r * 0.65;
+        var alpha = s.brightness * glowIntensity;
         ctx.fillStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + Math.min(1, alpha) + ")";
         ctx.beginPath();
-        ctx.arc(px, py, Math.max(0.6, (1.2 - progress * 0.6) * (pixelSize / 5)), 0, Math.PI * 2);
+        ctx.arc(sx, sy, s.size, 0, Math.PI * 2);
         ctx.fill();
       }
-        `;
+      if (Math.random() < 0.02) {
+        shootingStars.push({
+          x: Math.random() * width,
+          y: Math.random() * height * 0.5,
+          vx: -6 - Math.random() * 4,
+          vy: 3 + Math.random() * 3,
+          life: 1.0
+        });
+      }
+      for (var j = shootingStars.length - 1; j >= 0; j--) {
+        var ss = shootingStars[j];
+        ss.x += ss.vx;
+        ss.y += ss.vy;
+        ss.life -= 0.035;
+        if (ss.life <= 0) { shootingStars.splice(j, 1); continue; }
+        ctx.strokeStyle = "rgba(255, 255, 255, " + ss.life + ")";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(ss.x, ss.y);
+        ctx.lineTo(ss.x - ss.vx * 3, ss.y - ss.vy * 3);
+        ctx.stroke();
+      }`;
 
       case "data-stream":
         return `
       // 12. Data Matrix
-      const colWidth = Math.max(12, pixelSize);
-      const cols = Math.floor(width / colWidth);
-      
-      for (let c = 0; c < cols; c++) {
-        const colSpeed = 120 + (c % 9) * 30;
-        const headY = (t * colSpeed + c * 79) % (height + 300) - 100;
-        const streamLen = 14;
-
-        for (let k = 0; k < streamLen; k++) {
-          const y = headY - k * colWidth;
-          if (y >= 0 && y < height) {
-            const isHead = (k === 0);
-            const alpha = isHead ? 1.0 : ((1.0 - k / streamLen) * 0.85) * glowIntensity;
-            ctx.fillStyle = isHead ? ("rgb(" + baseR + "," + baseG + "," + baseB + ")") : ("rgba(" + baseR + "," + baseG + "," + baseB + "," + Math.min(1, alpha) + ")");
-            ctx.fillRect(c * colWidth + 2, y, colWidth - 4, colWidth - 2);
+      var cols = Math.floor(width / DATA_STREAM_PITCH);
+      var rows = Math.floor(height / DATA_STREAM_PITCH);
+      var offX = (width - cols * DATA_STREAM_PITCH) / 2;
+      for (var i = 0; i < dataStreamBoxes.length; i++) {
+        var s = dataStreamBoxes[i];
+        s.headY += s.speed * speed;
+        if (s.headY > height + s.length * DATA_STREAM_PITCH) {
+          s.headY = -s.length * DATA_STREAM_PITCH;
+          s.speed = (1.5 + Math.random() * 2.5);
+        }
+        var headRow = Math.floor(s.headY / DATA_STREAM_PITCH);
+        var bx = offX + s.c * DATA_STREAM_PITCH;
+        for (var k = 0; k < s.length; k++) {
+          var r = headRow - k;
+          if (r >= 0 && r < rows) {
+            var by = r * DATA_STREAM_PITCH;
+            var alpha = (1.0 - k / s.length) * glowIntensity;
+            if (k === 0) {
+              ctx.fillStyle = "rgba(255, 255, 255, " + Math.min(1, alpha) + ")";
+            } else {
+              ctx.fillStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + Math.min(1, alpha) + ")";
+            }
+            ctx.fillRect(bx + 2, by + 2, DATA_STREAM_PITCH - 4, DATA_STREAM_PITCH - 4);
           }
         }
-      }
-        `;
+      }`;
 
       case "wave-grid":
         return `
       // 13. Ocean Wave Grid
-      const pitch = Math.max(12, pixelSize);
-      const cols = Math.floor(width / pitch);
-      const rows = Math.floor(height / pitch);
-
-      for (let r = 0; r < rows; r++) {
-        ctx.beginPath();
-        ctx.strokeStyle = "rgba(" + baseR + "," + baseG + "," + baseB + ", 0.4)";
-        ctx.lineWidth = 0.8;
-        for (let c = 0; c < cols; c++) {
-          const x = c * pitch;
-          const wave = Math.sin(c * 0.2 + r * 0.15 - t * 2.5) * (arcThickness * 0.25);
-          const y = r * pitch + wave;
-          if (c === 0) ctx.moveTo(x, y);
-          else ctx.lineTo(x, y);
-
-          const dotAlpha = Math.max(0, (wave / (arcThickness * 0.25))) * glowIntensity;
-          ctx.fillStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + dotAlpha + ")";
-          ctx.fillRect(x - 1.5, y - 1.5, 3, 3);
+      var cx = width / 2;
+      var cy = height / 2;
+      var offX = cx - (waveCols * WAVE_PITCH) / 2;
+      var offY = cy - (waveRows * WAVE_PITCH * 0.5) / 2;
+      for (var r = 0; r < waveRows; r++) {
+        for (var c = 0; c < waveCols; c++) {
+          var gx = offX + c * WAVE_PITCH;
+          var gy = offY + r * WAVE_PITCH * 0.65;
+          var dist = Math.hypot(c - waveCols / 2, r - waveRows / 2);
+          var wave = Math.sin(dist * 0.4 - t * 2.5) * Math.cos(c * 0.2 + t);
+          var elev = wave * 25 * glowIntensity;
+          var py = gy - elev;
+          var alpha = (0.35 + (wave + 1) * 0.3) * glowIntensity;
+          ctx.fillStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + Math.min(1, alpha) + ")";
+          ctx.beginPath();
+          ctx.arc(gx, py, Math.max(1, pixelSize * 0.3), 0, Math.PI * 2);
+          ctx.fill();
         }
-        ctx.stroke();
-      }
-        `;
+      }`;
 
       case "pixel-build":
         return `
-      // 14. Pixel Matrix Build
-      const pitch = Math.max(14, pixelSize);
-      const cols = Math.floor(width / pitch);
-      const rows = Math.floor(height / pitch);
-      const cx = cols / 2, cy = rows / 2;
-
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-          const d = Math.hypot(c - cx, r - cy);
-          const wave = Math.sin(d * 0.4 - t * 2.0);
-          if (wave > 0.1) {
-            const alpha = Math.min(1.0, wave * glowIntensity);
-            ctx.fillStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + alpha + ")";
-            ctx.fillRect(c * pitch + 1, r * pitch + 1, pitch - 2, pitch - 2);
-          }
+      // 14. Pixel Build
+      for (var i = 0; i < pixelBuildBlocks.length; i++) {
+        var b = pixelBuildBlocks[i];
+        b.currentAlpha += (b.targetAlpha - b.currentAlpha) * b.speed * speed;
+        if (Math.abs(b.targetAlpha - b.currentAlpha) < 0.02) {
+          b.targetAlpha = Math.random() * 0.8 + 0.2;
         }
-      }
-        `;
+        var px = b.c * PB_SIZE;
+        var py = b.r * PB_SIZE;
+        ctx.fillStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + (b.currentAlpha * glowIntensity) + ")";
+        ctx.fillRect(px + 1, py + 1, PB_SIZE - 2, PB_SIZE - 2);
+      }`;
 
       case "nodejs-particles":
         return `
       // 15. Node.js 3D Particles
-      const r = 135;
-      const swayX = Math.sin(t * 0.85) * 14.0;
-      const swayY = Math.cos(t * 1.15) * 9.0;
-      const rotY = Math.sin(t * 0.65) * 0.14;
-      const rotX = Math.cos(t * 0.85) * 0.08;
-      const cosX = Math.cos(rotX), sinX = Math.sin(rotX);
-      const cosY = Math.cos(rotY), sinY = Math.sin(rotY);
-      const cx = width * 0.5, cy = height * 0.5;
-      const scale = (Math.min(width, height) / 700) * (arcThickness / 100);
-      
-      for (let i = 0; i < 2800; i++) {
-        const ang = (Math.floor(i / 466) * 60 - 30) * Math.PI / 180;
-        const progress = (i % 466) / 466;
-        const nextAng = ang + Math.PI / 3;
-        const x0 = (Math.cos(ang) * (1 - progress) + Math.cos(nextAng) * progress) * r * scale;
-        const y0 = (Math.sin(ang) * (1 - progress) + Math.sin(nextAng) * progress) * r * scale;
-        
-        const x1 = x0 * cosY;
-        const z1 = -x0 * sinY;
-        const y2 = y0 * cosX - z1 * sinX;
-        const z2 = y0 * sinX + z1 * cosX;
-        
-        const projX = cx + (x1 + swayX) * (550 / (550 + z2));
-        const projY = cy + (y2 + swayY) * (550 / (550 + z2));
-        
-        ctx.fillStyle = "rgba(" + baseR + "," + baseG + "," + baseB + ", 0.85)";
-        ctx.fillRect(projX, projY, 1.5, 1.5);
+      var cx = width / 2;
+      var cy = height / 2;
+      var rotY = t * 0.8;
+      var rotX = Math.sin(t * 0.5) * 0.25;
+      var cosY = Math.cos(rotY), sinY = Math.sin(rotY);
+      var cosX = Math.cos(rotX), sinX = Math.sin(rotX);
+      for (var i = 0; i < nodejsPixelBlocks.length; i++) {
+        var p = nodejsPixelBlocks[i];
+        var x1 = p.x * cosY + p.z * sinY;
+        var z1 = -p.x * sinY + p.z * cosY;
+        var y1 = p.y * cosX - z1 * sinX;
+        var z2 = p.y * sinX + z1 * cosX;
+        var fov = 400;
+        var scale = fov / (fov + z2 + 200);
+        var px = cx + x1 * scale;
+        var py = cy + y1 * scale;
+        var alpha = (0.4 + (z2 + 100) / 200 * 0.6) * glowIntensity;
+        ctx.fillStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + Math.min(1, alpha) + ")";
+        ctx.fillRect(px, py, 1.8 * scale, 1.8 * scale);
       }
-        `;
+      ctx.lineWidth = 1;
+      for (var k = 0; k < nodejsRain.length; k++) {
+        var rn = nodejsRain[k];
+        rn.y += rn.speed * speed;
+        if (rn.y > height) { rn.y = -rn.len; rn.x = Math.random() * width; }
+        ctx.strokeStyle = "rgba(" + baseR + "," + baseG + "," + baseB + ", 0.25)";
+        ctx.beginPath();
+        ctx.moveTo(rn.x, rn.y);
+        ctx.lineTo(rn.x, rn.y + rn.len);
+        ctx.stroke();
+      }`;
 
       case "halftone-waves":
         return `
       // 16. Halftone Wave Grid & Circus Starburst
-      const pitch = Math.max(10, Math.min(36, pixelSize));
-      const cols = Math.ceil(width / pitch) + 2;
-      const rows = Math.ceil(height / pitch) + 2;
-      const startX = -pitch;
-      const startY = -pitch;
+      var pitch = Math.max(10, Math.min(36, pixelSize));
+      var cols = Math.ceil(width / pitch) + 2;
+      var rows = Math.ceil(height / pitch) + 2;
+      var startX = -pitch;
+      var startY = -pitch;
+      var minRadius = (pitch / 2) * 0.08;
+      var maxRadius = (pitch / 2) * 1.15;
+      var elapsed = t;
+      var cx = width / 2;
+      var cy = height / 2;
 
-      const minRadius = (pitch / 2) * 0.08;
-      const maxRadius = (pitch / 2) * 1.15;
-      const elapsed = t;
-
-      const cx = width / 2;
-      const cy = height / 2;
-
-      // Background ambient glow
-      const radGlow = ctx.createRadialGradient(cx, cy, 40, cx, cy, Math.max(width, height) * 0.6);
+      var radGlow = ctx.createRadialGradient(cx, cy, 40, cx, cy, Math.max(width, height) * 0.6);
       radGlow.addColorStop(0, "rgba(" + baseR + "," + baseG + "," + baseB + ", 0.12)");
       radGlow.addColorStop(1, "transparent");
       ctx.fillStyle = radGlow;
       ctx.fillRect(0, 0, width, height);
 
-      const arms = 8;
-      const twist = 0.008;
-
-      for (let r = 0; r < rows; r++) {
-        const gridY = startY + r * pitch;
-        for (let c = 0; c < cols; c++) {
-          const gridX = startX + c * pitch;
-          const dx = gridX - cx;
-          const dy = gridY - cy;
-          const dist = Math.hypot(dx, dy);
-          const theta = Math.atan2(dy, dx);
-
-          const spiralAngle = theta * arms - dist * twist - elapsed * 1.8;
-          const spiralWave = Math.sin(spiralAngle);
-          const radialPulse = Math.cos(dist * 0.035 - elapsed * 2.2);
-          const diagWave = Math.sin(gridX * 0.015 + gridY * 0.015 + elapsed * 0.8);
-
-          const raw = spiralWave * 0.68 + radialPulse * 0.22 + diagWave * 0.10;
-          const wave = Math.pow(Math.max(0, Math.min(1, 0.5 + 0.5 * raw)), 1.4);
-
-          const dotRadius = minRadius + (maxRadius - minRadius) * wave;
+      var arms = 8;
+      var twist = 0.008;
+      for (var r = 0; r < rows; r++) {
+        var gridY = startY + r * pitch;
+        for (var c = 0; c < cols; c++) {
+          var gridX = startX + c * pitch;
+          var dx = gridX - cx;
+          var dy = gridY - cy;
+          var dist = Math.hypot(dx, dy);
+          var theta = Math.atan2(dy, dx);
+          var spiralAngle = theta * arms - dist * twist - elapsed * 1.8;
+          var spiralWave = Math.sin(spiralAngle);
+          var radialPulse = Math.cos(dist * 0.035 - elapsed * 2.2);
+          var diagWave = Math.sin(gridX * 0.015 + gridY * 0.015 + elapsed * 0.8);
+          var raw = spiralWave * 0.68 + radialPulse * 0.22 + diagWave * 0.10;
+          var wave = Math.pow(Math.max(0, Math.min(1, 0.5 + 0.5 * raw)), 1.4);
+          var dotRadius = minRadius + (maxRadius - minRadius) * wave;
           if (dotRadius <= 0.4) continue;
-
-          // Outer bulb glow
           if (wave > 0.65 && glowIntensity > 1.2) {
             ctx.fillStyle = "rgba(" + baseR + "," + baseG + "," + baseB + ", 0.25)";
             ctx.beginPath();
             ctx.arc(gridX, gridY, dotRadius * 1.8, 0, Math.PI * 2);
             ctx.fill();
           }
-
-          // Main bulb with user accent color
-          const alpha = Math.max(0.25, Math.min(1.0, 0.35 + wave * 0.65 * (glowIntensity / 2.0)));
+          var alpha = Math.max(0.25, Math.min(1.0, 0.35 + wave * 0.65 * (glowIntensity / 2.0)));
           ctx.fillStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + alpha + ")";
           ctx.beginPath();
           ctx.arc(gridX, gridY, dotRadius, 0, Math.PI * 2);
           ctx.fill();
-
-          // Illuminated core highlight (pure accent color, no white wash)
           if (wave > 0.72) {
             ctx.fillStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + ((wave - 0.72) * 2.2) + ")";
             ctx.beginPath();
@@ -5150,503 +5783,369 @@
             ctx.fill();
           }
         }
-      }
-        `;
+      }`;
 
       case "kinetic-grid":
         return `
       // 17. 3D Kinetic Grid Morph
-      const pitch = Math.max(16, pixelSize * 1.1);
-      const cols = 28, rows = 28;
-      const cx = width * 0.5, cy = height * 0.5;
-      const maxElev = 65 * (arcThickness / 120);
+      var pitch = Math.max(16, Math.min(32, pixelSize * 1.1));
+      var cols = 26;
+      var rows = 26;
+      var maxElev = 65 * (glowIntensity / 2.0);
+      var elapsed = t;
+      var mPx = mouse.x;
+      var mPy = mouse.y;
+      var mRadius = 150;
+      var cx = width / 2;
+      var cy = height / 2;
 
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-          const gx = (c - cols / 2);
-          const gy = (r - rows / 2);
-          const dist = Math.hypot(gx, gy);
-          const wave = (Math.sin(dist * 0.35 - t * 2.8) + 1) * 0.5;
-          const elevation = wave * maxElev;
+      var radGlow = ctx.createRadialGradient(cx, cy, 30, cx, cy, Math.max(width, height) * 0.65);
+      radGlow.addColorStop(0, "rgba(" + baseR + "," + baseG + "," + baseB + ", 0.12)");
+      radGlow.addColorStop(1, "transparent");
+      ctx.fillStyle = radGlow;
+      ctx.fillRect(0, 0, width, height);
 
-          const screenX = cx + (gx - gy) * pitch * 0.866;
-          const screenY = cy + (gx + gy) * pitch * 0.5 - elevation;
+      var isoCos = 0.866025;
+      var isoSin = 0.500000;
+      var centerCol = (cols - 1) / 2;
+      var centerRow = (rows - 1) / 2;
+      var pillars = [];
 
-          ctx.fillStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + (0.4 + wave * 0.6) * glowIntensity + ")";
-          ctx.beginPath();
-          ctx.arc(screenX, screenY, Math.max(1, (pitch * 0.28) * (0.6 + wave * 0.4)), 0, Math.PI * 2);
-          ctx.fill();
+      for (var r = 0; r < rows; r++) {
+        for (var c = 0; c < cols; c++) {
+          var gx = (c - centerCol);
+          var gy = (r - centerRow);
+          var groundX = cx + (gx - gy) * pitch * isoCos;
+          var groundY = cy + (gx + gy) * pitch * isoSin + 35;
+          var dist = Math.hypot(gx, gy);
+          var ripple = Math.sin(dist * 0.55 - elapsed * 3.0);
+          var damp = Math.exp(-dist * 0.05);
+          var wave = 0.5 + 0.5 * (ripple * (0.6 + 0.4 * damp));
+          if (mouse.isHover) {
+            var mDist = Math.hypot(groundX - mPx, groundY - mPy);
+            if (mDist < mRadius) {
+              var mPower = (1 - mDist / mRadius);
+              wave = Math.min(1.0, wave + mPower * 0.7);
+            }
+          }
+          var elevationHeight = 6 + wave * maxElev;
+          var topY = groundY - elevationHeight;
+          pillars.push({
+            depth: r + c,
+            groundX: groundX, groundY: groundY, topY: topY,
+            wave: wave,
+            w: (pitch * 0.46)
+          });
         }
       }
-        `;
+
+      pillars.sort(function(a, b) { return a.depth - b.depth; });
+
+      for (var i = 0; i < pillars.length; i++) {
+        var p = pillars[i];
+        var pw = p.w;
+        var rVal = Math.min(255, Math.floor(baseR * (0.4 + p.wave * 0.6)));
+        var gVal = Math.min(255, Math.floor(baseG * (0.4 + p.wave * 0.6)));
+        var bVal = Math.min(255, Math.floor(baseB * (0.4 + p.wave * 0.6)));
+
+        // Left face
+        ctx.fillStyle = "rgba(" + Math.floor(rVal * 0.5) + "," + Math.floor(gVal * 0.5) + "," + Math.floor(bVal * 0.5) + ", 0.85)";
+        ctx.beginPath();
+        ctx.moveTo(p.groundX, p.topY);
+        ctx.lineTo(p.groundX - pw, p.topY + pw * 0.5);
+        ctx.lineTo(p.groundX - pw, p.groundY + pw * 0.5);
+        ctx.lineTo(p.groundX, p.groundY);
+        ctx.closePath();
+        ctx.fill();
+
+        // Right face
+        ctx.fillStyle = "rgba(" + Math.floor(rVal * 0.7) + "," + Math.floor(gVal * 0.7) + "," + Math.floor(bVal * 0.7) + ", 0.85)";
+        ctx.beginPath();
+        ctx.moveTo(p.groundX, p.topY);
+        ctx.lineTo(p.groundX + pw, p.topY + pw * 0.5);
+        ctx.lineTo(p.groundX + pw, p.groundY + pw * 0.5);
+        ctx.lineTo(p.groundX, p.groundY);
+        ctx.closePath();
+        ctx.fill();
+
+        // Top face
+        ctx.fillStyle = "rgb(" + rVal + "," + gVal + "," + bVal + ")";
+        ctx.beginPath();
+        ctx.moveTo(p.groundX, p.topY - pw * 0.5);
+        ctx.lineTo(p.groundX + pw, p.topY);
+        ctx.lineTo(p.groundX + pw, p.topY + pw * 0.5);
+        ctx.lineTo(p.groundX - pw, p.topY);
+        ctx.closePath();
+        ctx.fill();
+      }`;
 
       case "pixel-cascade":
         return `
       // 18. Pixel Game Wall Cascade
-      const pitch = Math.max(12, pixelSize);
-      const cols = Math.floor(width / pitch);
-      const rows = Math.floor(height / pitch);
-      
-      for (let c = 0; c < cols; c++) {
-        const colHeight = Math.floor((Math.sin(c * 0.4 + t * 1.2) * 0.3 + 0.5) * rows * 0.7);
-        for (let r = rows - colHeight; r < rows; r++) {
-          const secondaryCol = "rgba(" + Math.min(255, Math.round(baseR * 0.75 + 40)) + "," + Math.min(255, Math.round(baseG * 0.75 + 40)) + "," + Math.min(255, Math.round(baseB * 0.75 + 40)) + ", 0.9)";
-          ctx.fillStyle = (r % 2 === 0) ? ("rgb(" + baseR + "," + baseG + "," + baseB + ")") : secondaryCol;
-          ctx.fillRect(c * pitch + 1, r * pitch + 1, pitch - 2, pitch - 2);
-        }
-      }
-        `;
+      if (Math.random() < 0.3) spawnCascade();
+      for (var i = cascadeFalling.length - 1; i >= 0; i--) {
+        var b = cascadeFalling[i];
+        b.y += b.vy * speed;
+        if (b.y > height) { cascadeFalling.splice(i, 1); continue; }
+        ctx.fillStyle = "rgb(" + baseR + "," + baseG + "," + baseB + ")";
+        ctx.fillRect(b.x, b.y, b.size, b.size);
+      }`;
 
       case "flying-eagle":
         return `
       // 19. Cyber Flying Eagle
-      const pitch = Math.max(10, pixelSize);
-      const cols = Math.floor(width / pitch);
-      const rows = Math.floor(height / pitch);
-      const cx = width * 0.5;
-      const cy = height * 0.5 + Math.sin(t * 2.0) * 25;
-      const flap = Math.sin(t * 4.0);
+      var cx = width * 0.5;
+      var cy = height * 0.5 + Math.sin(t * 2.0) * 35;
+      var flap = Math.sin(t * 4.0);
+      var span = Math.min(width, height) * 0.38;
 
-      for (let r = 0; r < rows; r++) {
-        const y = r * pitch + pitch / 2;
-        for (let c = 0; c < cols; c++) {
-          const x = c * pitch + pitch / 2;
-          const dx = Math.abs(x - cx);
-          const dy = y - cy;
-          const wingY = (dx * 0.35) * flap;
-          const distToWing = Math.hypot(dx - 120, dy - wingY);
-          const distToBody = Math.hypot(dx, dy);
+      ctx.fillStyle = "rgb(" + baseR + "," + baseG + "," + baseB + ")";
+      ctx.beginPath();
+      ctx.arc(cx, cy - 25, 12, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - 30);
+      ctx.lineTo(cx, cy - 42);
+      ctx.lineTo(cx + 6, cy - 28);
+      ctx.fill();
 
-          let density = 0;
-          if (distToBody < 50) density = 1.0 - distToBody / 50;
-          if (distToWing < 90) density = Math.max(density, 1.0 - distToWing / 90);
-
-          if (density > 0.1) {
-            ctx.fillStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + density * glowIntensity + ")";
-            ctx.beginPath();
-            ctx.arc(x, y, Math.max(0.8, density * (pitch * 0.4)), 0, Math.PI * 2);
-            ctx.fill();
-          }
+      for (var side = -1; side <= 1; side += 2) {
+        for (var f = 0; f < 22; f++) {
+          var prog = f / 22;
+          var wx = cx + side * (prog * span);
+          var wy = cy + Math.sin(prog * Math.PI) * (flap * 50) + (prog * 20);
+          var size = 4.5 * (1 - prog * 0.5);
+          ctx.fillStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + (0.6 + (1 - prog) * 0.4) * glowIntensity + ")";
+          ctx.beginPath();
+          ctx.arc(wx, wy, size, 0, Math.PI * 2);
+          ctx.fill();
         }
       }
-        `;
+      for (var b = 0; b < 12; b++) {
+        var by = cy - 15 + b * 6;
+        var bSize = 8 * (1 - b / 15);
+        ctx.fillStyle = "rgb(" + baseR + "," + baseG + "," + baseB + ")";
+        ctx.beginPath();
+        ctx.arc(cx, by, bSize, 0, Math.PI * 2);
+        ctx.fill();
+      }`;
 
       case "amber-dispersion":
         return `
       // 20. Amber Halftone Dispersion
-      const pitch = Math.max(10, Math.min(32, pixelSize));
-      const cols = Math.ceil(width / pitch);
-      const rows = Math.ceil(height / pitch);
-      const maxRadius = (pitch / 2) * 0.94;
-      const elapsed = t * 1.5;
-
-      const fastNoise3D = (x, y, z) => {
-        const X = Math.floor(x) & 255, Y = Math.floor(y) & 255, Z = Math.floor(z) & 255;
-        const fx = x - Math.floor(x), fy = y - Math.floor(y), fz = z - Math.floor(z);
-        const u = fx * fx * fx * (fx * (fx * 6 - 15) + 10);
-        const v = fy * fy * fy * (fy * (fy * 6 - 15) + 10);
-        const w = fz * fz * fz * (fz * (fz * 6 - 15) + 10);
-        const hash = (i, j, k) => {
-          let h = (i * 374761393 + j * 668265263 + k * 362827313) ^ 0x5bf03635;
-          h = Math.imul(h ^ (h >>> 13), 1274126177);
-          return (h ^ (h >>> 16)) / 2147483648;
-        };
-        const x0 = hash(X, Y, Z), x1 = hash(X + 1, Y, Z);
-        const x2 = hash(X, Y + 1, Z), x3 = hash(X + 1, Y + 1, Z);
-        const y0 = x0 + u * (x1 - x0), y1 = x2 + u * (x3 - x2);
-        const z0 = y0 + v * (y1 - y0);
-        const x4 = hash(X, Y, Z + 1), x5 = hash(X + 1, Y, Z + 1);
-        const x6 = hash(X, Y + 1, Z + 1), x7 = hash(X + 1, Y + 1, Z + 1);
-        const y2 = x4 + u * (x5 - x4), y3 = x6 + u * (x7 - x6);
-        const z1 = y2 + v * (y3 - y2);
-        return z0 + w * (z1 - z0);
-      };
-
-      for (let r = 0; r < rows; r++) {
-        const baseY = r * pitch + pitch / 2;
-        const vNorm = baseY / height;
-        for (let c = 0; c < cols; c++) {
-          const baseX = c * pitch + pitch / 2;
-          const uNorm = baseX / width;
-
-          const nx = uNorm * 3.4;
-          const ny = vNorm * 2.6;
-
-          const wave1 = Math.sin(uNorm * 7.0 + vNorm * 5.0 - elapsed * 2.8);
-          const wave2 = Math.cos(uNorm * 11.0 - vNorm * 7.0 + elapsed * 2.0) * 0.45;
-          const wave3 = Math.sin(vNorm * 14.0 - elapsed * 3.5) * 0.25;
-
-          const noiseWarp = fastNoise3D(nx + wave1 * 0.5, ny + wave2 * 0.5, elapsed * 0.3) * 0.6;
-          const diagonalBias = (1.0 - uNorm * 0.6) * (0.4 + vNorm * 0.8);
-          const compositeWave = (wave1 + wave2 + wave3 + noiseWarp + 1.6) * 0.35;
-          let density = compositeWave * diagonalBias * 1.35;
-          density = Math.max(0, Math.min(1.0, Math.pow(density, 1.3)));
-
-          const waveElev = (wave1 + wave2 * 0.7) * 7.5;
-          const lateralWave = Math.cos(uNorm * 7.0 - elapsed * 2.8) * 3.5;
-          const gx = baseX + lateralWave;
-          const gy = baseY + waveElev;
-
-          let dotRadius = 0;
-          let dotColor = "rgba(" + baseR + "," + baseG + "," + baseB + ", 0.08)";
-
-          if (density < 0.08) {
-            dotRadius = 0.8;
-            dotColor = "rgba(" + baseR + "," + baseG + "," + baseB + ", 0.08)";
-          } else if (density < 0.3) {
-            dotRadius = 1.2 + density * maxRadius * 0.85;
-            dotColor = "rgba(" + baseR + "," + baseG + "," + baseB + ", 0.65)";
-          } else if (density < 0.6) {
-            dotRadius = maxRadius * (0.35 + density * 0.5);
-            dotColor = "rgba(" + baseR + "," + baseG + "," + baseB + ", 0.85)";
-          } else if (density < 0.85) {
-            dotRadius = maxRadius * (0.55 + density * 0.4);
-            dotColor = "rgb(" + baseR + "," + baseG + "," + baseB + ")";
-          } else {
-            dotRadius = maxRadius * Math.min(1.0, 0.78 + density * 0.22);
-            dotColor = "rgb(" + baseR + "," + baseG + "," + baseB + ")";
-          }
-
-          if (dotRadius > 0.4) {
-            ctx.fillStyle = dotColor;
+      var pitch = Math.max(12, pixelSize);
+      var cols = Math.ceil(width / pitch);
+      var rows = Math.ceil(height / pitch);
+      for (var r = 0; r < rows; r++) {
+        var py = r * pitch;
+        for (var c = 0; c < cols; c++) {
+          var px = c * pitch;
+          var n = Math.sin(px * 0.015 + t * 1.5) * Math.cos(py * 0.015 + t * 1.2);
+          var n2 = Math.sin(Math.hypot(px - width / 2, py - height / 2) * 0.02 - t * 2.0);
+          var val = Math.max(0, Math.min(1, (n + n2 + 1) * 0.5));
+          var rad = (pitch * 0.45) * val;
+          if (rad > 0.5) {
+            ctx.fillStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + (val * glowIntensity) + ")";
             ctx.beginPath();
-            ctx.arc(gx, gy, dotRadius, 0, Math.PI * 2);
+            ctx.arc(px + pitch / 2, py + pitch / 2, rad, 0, Math.PI * 2);
             ctx.fill();
           }
         }
-      }
-        `;
+      }`;
 
       case "stacked-panels":
         return `
-      // 21. 3D Isometric Stacked-Panel Wave
-      const cols = 24;
-      const rows = 24;
-      const spacingX = Math.max(16, pixelSize * 1.6);
-      const spacingZ = Math.max(16, pixelSize * 1.6);
-      const panelW = spacingX * 0.72;
-      const panelD = spacingZ * 0.72;
-      const angle = Math.PI / 6;
-      const cosA = Math.cos(angle);
-      const sinA = Math.sin(angle);
-      const centerX = width / 2;
-      const centerY = height / 2 + 30;
-      const halfGridX = ((cols - 1) * spacingX) / 2;
-      const halfGridZ = ((rows - 1) * spacingZ) / 2;
-
-      const project = (wx, wy, wz) => ({
-        x: centerX + (wx - wz) * cosA,
-        y: centerY + (wx + wz) * sinA - wy
-      });
-
-      for (let depth = 0; depth <= (rows + cols - 2); depth++) {
-        for (let r = 0; r < rows; r++) {
-          const c = depth - r;
-          if (c < 0 || c >= cols) continue;
-          const wx = c * spacingX - halfGridX;
-          const wz = r * spacingZ - halfGridZ;
-          const d = Math.hypot(wx, wz);
-          const wave = Math.sin(d * 0.02 - t * 2.5) * 0.5 + 0.5;
-          const h = 10 + wave * 90 * (arcThickness / 8);
-
-          const hw = panelW / 2;
-          const hd = panelD / 2;
-          const b2 = project(wx + hw, 0, wz + hd);
-          const b3 = project(wx - hw, 0, wz + hd);
-          const b1 = project(wx + hw, 0, wz - hd);
-          const t0 = project(wx - hw, h, wz - hd);
-          const t1 = project(wx + hw, h, wz - hd);
-          const t2 = project(wx + hw, h, wz + hd);
-          const t3 = project(wx - hw, h, wz + hd);
-
-          ctx.fillStyle = "rgb(18, 20, 24)";
-          ctx.beginPath();
-          ctx.moveTo(b3.x, b3.y); ctx.lineTo(b2.x, b2.y); ctx.lineTo(t2.x, t2.y); ctx.lineTo(t3.x, t3.y);
-          ctx.fill();
-
-          ctx.fillStyle = "rgb(28, 30, 38)";
-          ctx.beginPath();
-          ctx.moveTo(b2.x, b2.y); ctx.lineTo(b1.x, b1.y); ctx.lineTo(t1.x, t1.y); ctx.lineTo(t2.x, t2.y);
-          ctx.fill();
-
-          ctx.fillStyle = wave > 0.3 ? "rgba(" + baseR + "," + baseG + "," + baseB + ", 0.9)" : "rgb(38, 42, 52)";
-          ctx.beginPath();
-          ctx.moveTo(t0.x, t0.y); ctx.lineTo(t1.x, t1.y); ctx.lineTo(t2.x, t2.y); ctx.lineTo(t3.x, t3.y);
-          ctx.fill();
-          ctx.strokeStyle = "rgba(255, 255, 255, 0.12)";
-          ctx.stroke();
-        }
-      }
-        `;
+      // 21. Stacked-Panel Wave
+      var numPanels = 7;
+      var panelW = Math.min(width, height) * 0.65;
+      var panelH = panelW * 0.55;
+      var cx = width / 2;
+      var cy = height * 0.5;
+      for (var i = 0; i < numPanels; i++) {
+        var offsetZ = (i - numPanels / 2) * 45;
+        var waveY = Math.sin(t * 1.8 + i * 0.6) * 22;
+        var py = cy + offsetZ + waveY;
+        var alpha = (0.2 + (i / numPanels) * 0.6) * glowIntensity;
+        ctx.strokeStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + Math.min(1, alpha) + ")";
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(cx - panelW / 2, py - panelH / 2, panelW, panelH);
+        ctx.fillStyle = "rgba(" + baseR + "," + baseG + "," + baseB + ", 0.03)";
+        ctx.fillRect(cx - panelW / 2, py - panelH / 2, panelW, panelH);
+      }`;
 
       case "stack-box":
         return `
       // 22. 3D Stack Box Layer Grid
-      const cols = 22;
-      const rows = 22;
-      const spacingX = Math.max(22, pixelSize * 2.0);
-      const spacingZ = Math.max(22, pixelSize * 2.0);
-      const boxW = spacingX * 0.74;
-      const boxD = spacingZ * 0.74;
-      const angle = Math.PI / 6;
-      const cosA = Math.cos(angle);
-      const sinA = Math.sin(angle);
-      const centerX = width / 2;
-      const centerY = height / 2 + 30;
-      const halfGridX = ((cols - 1) * spacingX) / 2;
-      const halfGridZ = ((rows - 1) * spacingZ) / 2;
-
-      const project = (wx, wy, wz) => ({
-        x: centerX + (wx - wz) * cosA,
-        y: centerY + (wx + wz) * sinA - wy
-      });
-
-      const hw = boxW / 2;
-      const hd = boxD / 2;
-      const capHw = hw * 0.88;
-      const capHd = hd * 0.88;
-
-      for (let depth = 0; depth <= (rows + cols - 2); depth++) {
-        for (let r = 0; r < rows; r++) {
-          const c = depth - r;
-          if (c < 0 || c >= cols) continue;
-          const wx = c * spacingX - halfGridX;
-          const wz = r * spacingZ - halfGridZ;
-          const d = Math.hypot(wx, wz);
-          const pop = Math.sin(d * 0.02 - t * 2.2) * 0.5 + 0.5;
-          const h = 8 + pop * 24 * (arcThickness / 8) + Math.sin(wx * 0.01 + wz * 0.01 + t * 1.5) * 3;
-          const pH = h + (pop > 0.05 ? 4 : 0);
-
-          const b0 = project(wx - hw, 0, wz - hd);
-          const b1 = project(wx + hw, 0, wz - hd);
-          const b2 = project(wx + hw, 0, wz + hd);
-          const b3 = project(wx - hw, 0, wz + hd);
-
-          const t0 = project(wx - hw, h, wz - hd);
-          const t1 = project(wx + hw, h, wz - hd);
-          const t2 = project(wx + hw, h, wz + hd);
-          const t3 = project(wx - hw, h, wz + hd);
-
-          ctx.strokeStyle = "rgba(255, 255, 255, 0.04)";
-          ctx.beginPath();
-          ctx.moveTo(b0.x, b0.y); ctx.lineTo(b1.x, b1.y); ctx.lineTo(b2.x, b2.y); ctx.lineTo(b3.x, b3.y);
-          ctx.closePath();
-          ctx.stroke();
-
-          ctx.fillStyle = pop > 0.3 ? "rgb(24, 28, 38)" : "rgb(14, 16, 22)";
-          ctx.beginPath();
-          ctx.moveTo(b3.x, b3.y); ctx.lineTo(b2.x, b2.y); ctx.lineTo(t2.x, t2.y); ctx.lineTo(t3.x, t3.y);
-          ctx.fill();
-
-          ctx.fillStyle = pop > 0.3 ? "rgb(36, 42, 56)" : "rgb(24, 28, 38)";
-          ctx.beginPath();
-          ctx.moveTo(b2.x, b2.y); ctx.lineTo(b1.x, b1.y); ctx.lineTo(t1.x, t1.y); ctx.lineTo(t2.x, t2.y);
-          ctx.fill();
-
-          ctx.fillStyle = pop > 0.3 ? "rgba(" + baseR + "," + baseG + "," + baseB + ", 0.85)" : "rgb(38, 44, 58)";
-          ctx.beginPath();
-          ctx.moveTo(t0.x, t0.y); ctx.lineTo(t1.x, t1.y); ctx.lineTo(t2.x, t2.y); ctx.lineTo(t3.x, t3.y);
-          ctx.fill();
-          ctx.strokeStyle = pop > 0.3 ? "rgba(255, 255, 255, 0.3)" : "rgba(255, 255, 255, 0.08)";
-          ctx.stroke();
-
-          const cap0 = project(wx - capHw, pH, wz - capHd);
-          const cap1 = project(wx + capHw, pH, wz - capHd);
-          const cap2 = project(wx + capHw, pH, wz + capHd);
-          const cap3 = project(wx - capHw, pH, wz + capHd);
-          ctx.fillStyle = pop > 0.3 ? "rgba(" + baseR + "," + baseG + "," + baseB + ", 0.95)" : "rgba(100, 116, 139, 0.85)";
-          ctx.beginPath();
-          ctx.moveTo(cap0.x, cap0.y); ctx.lineTo(cap1.x, cap1.y); ctx.lineTo(cap2.x, cap2.y); ctx.lineTo(cap3.x, cap3.y);
-          ctx.closePath();
-          ctx.fill();
-          ctx.stroke();
+      var boxCols = 18, boxRows = 18;
+      var boxPitch = 32;
+      var cx = width / 2, cy = height * 0.45;
+      var isoCos = 0.866025, isoSin = 0.5;
+      var boxes = [];
+      for (var r = 0; r < boxRows; r++) {
+        for (var c = 0; c < boxCols; c++) {
+          var gx = (c - boxCols / 2);
+          var gy = (r - boxRows / 2);
+          var screenX = cx + (gx - gy) * boxPitch * isoCos;
+          var screenY = cy + (gx + gy) * boxPitch * isoSin;
+          var dist = Math.hypot(gx, gy);
+          var h = (Math.sin(dist * 0.5 - t * 2.5) + 1) * 20 * glowIntensity;
+          boxes.push({ depth: r + c, x: screenX, y: screenY - h, h: h, w: boxPitch * 0.48 });
         }
       }
-        `;
+      boxes.sort(function(a, b) { return a.depth - b.depth; });
+      for (var i = 0; i < boxes.length; i++) {
+        var b = boxes[i];
+        var bw = b.w;
+        ctx.fillStyle = "rgb(" + baseR + "," + baseG + "," + baseB + ")";
+        ctx.beginPath();
+        ctx.moveTo(b.x, b.y - bw * 0.5);
+        ctx.lineTo(b.x + bw, b.y);
+        ctx.lineTo(b.x, b.y + bw * 0.5);
+        ctx.lineTo(b.x - bw, b.y);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = "rgba(" + Math.floor(baseR * 0.6) + "," + Math.floor(baseG * 0.6) + "," + Math.floor(baseB * 0.6) + ", 0.9)";
+        ctx.beginPath();
+        ctx.moveTo(b.x, b.y + bw * 0.5);
+        ctx.lineTo(b.x - bw, b.y);
+        ctx.lineTo(b.x - bw, b.y + 15);
+        ctx.lineTo(b.x, b.y + bw * 0.5 + 15);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = "rgba(" + Math.floor(baseR * 0.4) + "," + Math.floor(baseG * 0.4) + "," + Math.floor(baseB * 0.4) + ", 0.9)";
+        ctx.beginPath();
+        ctx.moveTo(b.x, b.y + bw * 0.5);
+        ctx.lineTo(b.x + bw, b.y);
+        ctx.lineTo(b.x + bw, b.y + 15);
+        ctx.lineTo(b.x, b.y + bw * 0.5 + 15);
+        ctx.closePath();
+        ctx.fill();
+      }`;
 
       case "pixel-wall":
         return `
       // 23. 2D Pixel Pop Wall
-      const tileSize = Math.max(16, pixelSize * 1.5);
-      const gap = 3;
-      const stride = tileSize + gap;
-      const cols = Math.ceil(width / stride) + 1;
-      const rows = Math.ceil(height / stride) + 1;
-      const offsetX = (width - ((cols - 1) * stride + tileSize)) * 0.5;
-      const offsetY = (height - ((rows - 1) * stride + tileSize)) * 0.5;
-      const cx = width * 0.5, cy = height * 0.5;
-
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-          const x = offsetX + c * stride;
-          const y = offsetY + r * stride;
-          const cellCx = x + tileSize * 0.5;
-          const cellCy = y + tileSize * 0.5;
-          const d = Math.hypot(cellCx - cx, cellCy - cy);
-          const pop = Math.max(0, Math.sin(d * 0.02 - t * 2.5));
-          const popOffset = pop * 14 * (arcThickness / 8);
-
-          if (popOffset > 0.5) {
-            ctx.fillStyle = "#080a0e";
-            ctx.fillRect(x, y + tileSize - popOffset, tileSize, popOffset);
-          }
-
-          const topY = y - popOffset;
-          ctx.fillStyle = pop > 0.1 ? "rgba(" + baseR + "," + baseG + "," + baseB + ", 0.9)" : "rgb(18, 21, 28)";
-          ctx.fillRect(x, topY, tileSize, tileSize);
-
-          ctx.strokeStyle = pop > 0.1 ? "rgba(255, 255, 255, 0.4)" : "rgba(255, 255, 255, 0.08)";
-          ctx.strokeRect(x + 0.5, topY + 0.5, tileSize - 1, tileSize - 1);
-
-          ctx.fillStyle = pop > 0.1 ? "rgb(" + baseR + "," + baseG + "," + baseB + ")" : "rgba(255, 255, 255, 0.15)";
-          ctx.fillRect(cellCx - 1, topY + tileSize * 0.5 - 1, 2, 2);
+      var tileSize = Math.max(16, pixelSize);
+      var cols = Math.floor(width / tileSize);
+      var rows = Math.floor(height / tileSize);
+      var offX = (width - cols * tileSize) / 2;
+      var offY = (height - rows * tileSize) / 2;
+      for (var c = 0; c < cols; c++) {
+        for (var r = 0; r < rows; r++) {
+          var tx = offX + c * tileSize;
+          var ty = offY + r * tileSize;
+          var dMouse = Math.hypot(tx + tileSize / 2 - mouse.x, ty + tileSize / 2 - mouse.y);
+          var wave = Math.sin(dMouse * 0.04 - t * 4.0) * Math.max(0, 1 - dMouse / 350);
+          var pop = Math.max(0, wave);
+          var rVal = Math.min(255, Math.floor(baseR * (0.3 + pop * 0.7)));
+          var gVal = Math.min(255, Math.floor(baseG * (0.3 + pop * 0.7)));
+          var bVal = Math.min(255, Math.floor(baseB * (0.3 + pop * 0.7)));
+          ctx.fillStyle = "rgb(" + rVal + "," + gVal + "," + bVal + ")";
+          ctx.fillRect(tx + 1, ty + 1, tileSize - 2, tileSize - 2);
         }
-      }
-        `;
+      }`;
 
       case "cloth-wave":
         return `
       // 24. 3D Cloth Wave Grid
-      const cols = 40;
-      const rows = 40;
-      const spacingX = Math.max(16, pixelSize * 1.3);
-      const spacingZ = Math.max(16, pixelSize * 1.3);
-      const halfW = ((cols - 1) * spacingX) * 0.5;
-      const halfD = ((rows - 1) * spacingZ) * 0.5;
+      var cx = width / 2;
+      var cy = height * 0.55;
+      var cosPitch = Math.cos(0.55), sinPitch = Math.sin(0.55);
+      var fov = 420;
+      var camZ = 750;
 
-      const camPitch = 0.52;
-      const cosPitch = Math.cos(camPitch);
-      const sinPitch = Math.sin(camPitch);
-      const camFov = 420;
-      const camDist = 600;
-      const camElev = 260;
-      const cx = width * 0.5;
-      const cy = height * 0.52;
+      for (var i = 0; i < clothParticles.length; i++) {
+        var p = clothParticles[i];
+        var wave1 = Math.sin(p.wx * 0.012 + t * 2.2) * WAVE_AMPLITUDE;
+        var wave2 = Math.cos(p.wz * 0.016 + t * 1.8) * (WAVE_AMPLITUDE * 0.6);
+        p.y = wave1 + wave2;
 
-      const vr = Math.round(baseR * 0.22);
-      const vg = Math.round(baseG * 0.22);
-      const vb = Math.round(baseB * 0.40);
-
-      const pts = [];
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-          const wx = c * spacingX - halfW;
-          const wz = r * spacingZ - halfD;
-
-          const w1 = Math.sin(wx * 0.009 + wz * 0.008 + t * 1.4);
-          const w2 = Math.cos(wx * 0.006 - wz * 0.011 + t * 0.9) * 0.7;
-          const w3 = Math.sin((wx + wz) * 0.010 + t * 1.8) * 0.45;
-          const rawH = w1 + w2 + w3;
-          const wy = rawH * 32 * (arcThickness / 8);
-          const normElev = Math.max(0, Math.min(1, (rawH + 2.2) / 4.4));
-
-          const relX = wx;
-          const relY = wy - camElev;
-          const relZ = wz + camDist;
-
-          const rotY = relY * cosPitch - relZ * sinPitch;
-          const rotZ = relY * sinPitch + relZ * cosPitch;
-
-          if (rotZ > 10) {
-            const scale = camFov / rotZ;
-            const sx = cx + relX * scale;
-            const sy = cy - rotY * scale;
-            const rad = Math.max(0.4, (1.2 + 2.2 * normElev) * scale * 1.3);
-            pts.push({ sx, sy, rad, normElev });
-          }
-        }
+        var rotY = p.y * cosPitch - p.wz * sinPitch;
+        var rotZ = p.y * sinPitch + p.wz * cosPitch;
+        var depth = rotZ + camZ;
+        var scale = fov / Math.max(10, depth);
+        p.projX = cx + p.wx * scale;
+        p.projY = cy + rotY * scale;
+        p.depth = depth;
       }
 
-      for (let i = 0; i < pts.length; i++) {
-        const p = pts[i];
-        const n = p.normElev;
-        let rDot, gDot, bDot;
-        if (n < 0.5) {
-          const f = n * 2.0;
-          rDot = Math.round(vr + (baseR - vr) * f);
-          gDot = Math.round(vg + (baseG - vg) * f);
-          bDot = Math.round(vb + (baseB - vb) * f);
-        } else {
-          const f = (n - 0.5) * 2.0;
-          rDot = Math.round(baseR + (255 - baseR) * f * 0.4);
-          gDot = Math.round(baseG + (255 - baseG) * f * 0.4);
-          bDot = Math.round(baseB + (255 - baseB) * f * 0.4);
-        }
-        ctx.fillStyle = "rgba(" + rDot + "," + gDot + "," + bDot + "," + (0.2 + n * 0.75) + ")";
+      ctx.lineWidth = 0.8;
+      for (var r = 0; r < GRID_ROWS; r++) {
         ctx.beginPath();
-        ctx.arc(p.sx, p.sy, p.rad, 0, Math.PI * 2);
-        ctx.fill();
+        for (var c = 0; c < GRID_COLS; c++) {
+          var idx = r * GRID_COLS + c;
+          var pt = clothParticles[idx];
+          if (c === 0) ctx.moveTo(pt.projX, pt.projY);
+          else ctx.lineTo(pt.projX, pt.projY);
+        }
+        ctx.strokeStyle = "rgba(" + baseR + "," + baseG + "," + baseB + ", 0.22)";
+        ctx.stroke();
       }
-        `;
+      for (var c = 0; c < GRID_COLS; c += 2) {
+        ctx.beginPath();
+        for (var r = 0; r < GRID_ROWS; r++) {
+          var idx = r * GRID_COLS + c;
+          var pt = clothParticles[idx];
+          if (r === 0) ctx.moveTo(pt.projX, pt.projY);
+          else ctx.lineTo(pt.projX, pt.projY);
+        }
+        ctx.strokeStyle = "rgba(" + baseR + "," + baseG + "," + baseB + ", 0.15)";
+        ctx.stroke();
+      }
+      for (var i = 0; i < clothParticles.length; i += 3) {
+        var p = clothParticles[i];
+        var normWave = (p.y + WAVE_AMPLITUDE * 1.6) / (WAVE_AMPLITUDE * 3.2);
+        if (normWave > 0.65) {
+          ctx.fillStyle = "rgba(255, 255, 255, " + ((normWave - 0.65) * 1.8) + ")";
+          ctx.beginPath();
+          ctx.arc(p.projX, p.projY, 1.8, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }`;
 
       case "flow-vector-field":
         return `
       // 25. Vector Flow Field
-      const spacing = Math.max(14, Math.min(36, pixelSize * 1.2));
-      const dashLength = Math.max(10, Math.min(30, spacing * 0.75));
-      const thickness = Math.max(1.4, Math.min(4.0, arcThickness / 45));
-      const cols = Math.ceil(width / spacing) + 2;
-      const rows = Math.ceil(height / spacing) + 2;
-      const offsetX = (width - (cols - 1) * spacing) * 0.5;
-      const offsetY = (height - (rows - 1) * spacing) * 0.5;
-      const cx = width * 0.5, cy = height * 0.5;
-
-      ctx.lineCap = "round";
-      ctx.lineWidth = thickness;
-
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-          const x = offsetX + c * spacing;
-          const y = offsetY + r * spacing;
-          const dx = x - cx, dy = y - cy;
-          const dist = Math.hypot(dx, dy);
-          const angle = Math.atan2(dy, dx) + Math.sin(dist * 0.02 - t * 2.0) * 0.8;
-          const intensity = Math.max(0.15, Math.min(1.0, 0.4 + Math.sin(dist * 0.015 - t * 1.5) * 0.6));
-          const len = dashLength * intensity;
-
-          const hx = Math.cos(angle) * (len * 0.5);
-          const hy = Math.sin(angle) * (len * 0.5);
-
-          ctx.strokeStyle = "rgba(" + baseR + "," + baseG + "," + baseB + "," + intensity * glowIntensity + ")";
+      var cellW = width / FV_COLS;
+      var cellH = height / FV_ROWS;
+      for (var r = 0; r < FV_ROWS; r++) {
+        for (var c = 0; c < FV_COLS; c++) {
+          var nx = c * cellW + cellW / 2;
+          var ny = r * cellH + cellH / 2;
+          var angle = (Math.sin(nx * 0.005 + t * 0.8) + Math.cos(ny * 0.005 + t * 0.8)) * Math.PI;
+          var len = (cellW * 0.45);
+          var x2 = nx + Math.cos(angle) * len;
+          var y2 = ny + Math.sin(angle) * len;
+          ctx.strokeStyle = "rgba(" + baseR + "," + baseG + "," + baseB + ", 0.4)";
+          ctx.lineWidth = 1.2;
           ctx.beginPath();
-          ctx.moveTo(x - hx, y - hy);
-          ctx.lineTo(x + hx, y + hy);
+          ctx.moveTo(nx, ny);
+          ctx.lineTo(x2, y2);
           ctx.stroke();
+          ctx.fillStyle = "rgb(" + baseR + "," + baseG + "," + baseB + ")";
+          ctx.fillRect(x2 - 1.5, y2 - 1.5, 3, 3);
         }
-      }
-        `;
+      }`;
 
       default:
-        return `
-      const pitch = pixelSize;
-      const gap = 1;
-      const drawSize = pitch - gap;
-      const cols = Math.floor(width / pitch);
-      const rows = Math.floor(height / pitch);
-      const offsetX = (width - cols * pitch) / 2;
-      const offsetY = (height - rows * pitch) / 2;
-      const cx = width * 0.5;
-      const cy = height * 0.5;
-
-      for (let c = 0; c < cols; c++) {
-        const x = offsetX + c * pitch + pitch / 2;
-        for (let r = 0; r < rows; r++) {
-          const y = offsetY + r * pitch + pitch / 2;
-          const dx = x - cx;
-          const dy = y - cy;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          const intensity = Math.max(0, Math.sin(dist * 0.05 - t * 3.0));
-
-          const rVal = Math.min(255, Math.floor(baseR * intensity));
-          const gVal = Math.min(255, Math.floor(baseG * intensity));
-          const bVal = Math.min(255, Math.floor(baseB * intensity));
-
-          ctx.fillStyle = "rgb(" + rVal + "," + gVal + "," + bVal + ")";
-          ctx.fillRect(x - drawSize / 2, y - drawSize / 2, drawSize, drawSize);
-        }
-      }
-        `;
+        return "";
     }
+  };
+
+  const getPresetCode = (preset) => {
+    var setup = getPresetSetupCode(preset).trim();
+    var render = getPresetRenderCode(preset).trim();
+    if (!setup) return render;
+    return `
+      if (!this._presetStateInit) {
+        ${setup}
+        this._presetStateInit = true;
+      }
+      ${render}
+    `;
   };
 
   const copyJsModuleCode = () => {
@@ -5979,6 +6478,8 @@ export class ${cleanPresetName}Visualizer {
     // FPS
     var fc = 0, ft = performance.now(), fEl = document.getElementById("f");
 
+    ${getPresetSetupCode(preset)}
+
     function draw(time) {
       // FPS
       fc++;
@@ -5987,12 +6488,12 @@ export class ${cleanPresetName}Visualizer {
 
       width = W; height = H;
 
-      if (transparent) { ctx.clearRect(0, 0, W, H); }
-      else { ctx.fillStyle = "#030704"; ctx.fillRect(0, 0, W, H); }
+      ${preset === "flow-field" ? "" : `if (transparent) { ctx.clearRect(0, 0, W, H); }
+      else { ctx.fillStyle = "#030704"; ctx.fillRect(0, 0, W, H); }`}
 
       var t = ((time || performance.now()) - t0) * 0.001 * speed;
 
-      ${getPresetCode(preset).trim()}
+      ${getPresetRenderCode(preset).trim()}
 
       raf = requestAnimationFrame(draw);
     }
